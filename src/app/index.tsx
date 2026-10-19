@@ -1,98 +1,190 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
+import React from 'react';
+import {
+  Alert,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
-  return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
-}
-
 export default function HomeScreen() {
+  const handleGetStarted = (): void => {
+    const message =
+      'Welcome to TindaMate! Store setup and features will be connected in upcoming batches.';
+
+    if (Platform.OS === 'web') {
+      window.alert(`Mabuhay!\n\n${message}`);
+    } else {
+      Alert.alert('Mabuhay!', message, [{ text: 'OK' }]);
+    }
+  };
+
   return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.contentContainer}>
+        {/* Brand Header */}
+        <View style={styles.header}>
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>🏪 Tindahan Companion</Text>
+          </View>
+          <Text style={styles.appName}>TindaMate</Text>
+          <Text style={styles.tagline}>"Your Digital Tindahan Assistant"</Text>
+        </View>
 
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
+        {/* Supporting Message Card */}
+        <View style={styles.card}>
+          <Text style={styles.description}>
+            TindaMate is built to help sari-sari store owners manage their daily
+            store operations with ease. Simplify sales recording, keep inventory
+            in check, and manage customer credit (lista ng utang) — all from
+            your mobile phone.
+          </Text>
 
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
+          <View style={styles.featureList}>
+            <Text style={styles.featureItem}>
+              📦 <Text style={styles.featureBold}>Inventory:</Text> Track your fast-moving items
+            </Text>
+            <Text style={styles.featureItem}>
+              💵 <Text style={styles.featureBold}>Daily Sales:</Text> Record daily benta accurately
+            </Text>
+            <Text style={styles.featureItem}>
+              📝 <Text style={styles.featureBold}>Utang Tracker:</Text> Keep credit lists clear & updated
+            </Text>
+          </View>
+        </View>
 
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
+        {/* Interactive Action Element */}
+        <View style={styles.actionContainer}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Get Started with TindaMate"
+            onPress={handleGetStarted}
+            style={({ pressed }) => [
+              styles.button,
+              pressed && styles.buttonPressed,
+            ]}>
+            <Text style={styles.buttonText}>Get Started</Text>
+          </Pressable>
+          <Text style={styles.actionHint}>
+            Tap to begin exploring your digital tindahan
+          </Text>
+        </View>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
-  },
   safeArea: {
     flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
+    backgroundColor: '#F8FAFC',
   },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
+  contentContainer: {
     flex: 1,
+    width: '100%',
+    maxWidth: MaxContentWidth,
+    alignSelf: 'center',
+    justifyContent: 'center',
     paddingHorizontal: Spacing.four,
+    paddingBottom: BottomTabInset + Spacing.three,
     gap: Spacing.four,
   },
-  title: {
+  header: {
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  badge: {
+    backgroundColor: '#DBEAFE',
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.one,
+    borderRadius: 999,
+  },
+  badgeText: {
+    color: '#1D4ED8',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  appName: {
+    fontSize: 38,
+    fontWeight: '700',
+    color: '#0F172A',
+    letterSpacing: -0.5,
+  },
+  tagline: {
+    fontSize: 16,
+    fontStyle: 'italic',
+    fontWeight: '500',
+    color: '#2563EB',
     textAlign: 'center',
   },
-  code: {
-    textTransform: 'uppercase',
-  },
-  stepContainer: {
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: Spacing.four,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
     gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  description: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: '#475569',
+    textAlign: 'center',
+  },
+  featureList: {
+    marginTop: Spacing.one,
+    gap: Spacing.two,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+    paddingTop: Spacing.three,
+  },
+  featureItem: {
+    fontSize: 14,
+    color: '#334155',
+    lineHeight: 20,
+  },
+  featureBold: {
+    fontWeight: '600',
+    color: '#0F172A',
+  },
+  actionContainer: {
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  button: {
+    width: '100%',
+    backgroundColor: '#2563EB',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#2563EB',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  buttonPressed: {
+    backgroundColor: '#1D4ED8',
+    transform: [{ scale: 0.98 }],
+  },
+  buttonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  actionHint: {
+    fontSize: 12,
+    color: '#94A3B8',
   },
 });
+
