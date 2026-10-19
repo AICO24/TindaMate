@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   KeyboardTypeOptions,
+  Platform,
   Pressable,
   ReturnKeyTypeOptions,
   StyleProp,
@@ -49,8 +50,8 @@ export interface TindaMateInputProps {
  * TindaMateInput
  *
  * A high-fidelity form input component designed after the approved TindaMate reference UI.
- * Features a stacked layout (left icon, label, input text, and optional right password toggle),
- * along with responsive focus states and clear validation error messaging.
+ * Features a full-card touch target, stacked label, left icon slot, right password toggle,
+ * and reliable keyboard handling to prevent Android typing crashes.
  */
 export function TindaMateInput({
   label,
@@ -70,23 +71,38 @@ export function TindaMateInput({
 }: TindaMateInputProps) {
   const [isFocused, setIsFocused] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const inputRef = useRef<TextInput>(null);
 
   const hasError = Boolean(errorMessage);
 
+  // Modern inputMode for rock-solid stability on Android & Web
+  const computedInputMode =
+    keyboardType === 'email-address'
+      ? 'email'
+      : keyboardType === 'numeric' || keyboardType === 'number-pad'
+      ? 'numeric'
+      : 'text';
+
+  const handleContainerPress = () => {
+    inputRef.current?.focus();
+  };
+
   return (
     <View style={[styles.wrapper, style]}>
-      {/* Outer Card Container */}
-      <View
+      {/* Outer Card Container with full touch focus */}
+      <Pressable
+        onPress={handleContainerPress}
+        accessible={false}
         style={[
           styles.container,
           isFocused && styles.containerFocused,
           hasError && styles.containerError,
         ]}>
-        {/* Left Icon */}
+        {/* Left Icon Slot */}
         {leftIcon && <View style={styles.iconSlot}>{leftIcon}</View>}
 
         {/* Input & Label Content Area */}
-        <View style={styles.inputArea}>
+        <View style={styles.inputArea} pointerEvents="box-none">
           <Text
             style={[
               styles.label,
@@ -97,14 +113,24 @@ export function TindaMateInput({
           </Text>
 
           <TextInput
+            ref={inputRef}
             value={value}
             onChangeText={onChangeText}
             placeholder={placeholder}
             placeholderTextColor={Colors.textMuted}
             secureTextEntry={isPassword && !showPassword}
-            keyboardType={keyboardType}
+            inputMode={computedInputMode}
+            keyboardType={Platform.OS === 'ios' ? keyboardType : undefined}
             autoCapitalize={autoCapitalize}
             autoCorrect={autoCorrect}
+            autoComplete={keyboardType === 'email-address' ? 'email' : undefined}
+            textContentType={
+              keyboardType === 'email-address'
+                ? 'emailAddress'
+                : isPassword
+                ? 'password'
+                : undefined
+            }
             returnKeyType={returnKeyType}
             onSubmitEditing={onSubmitEditing}
             onFocus={() => setIsFocused(true)}
@@ -119,17 +145,17 @@ export function TindaMateInput({
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}
             onPress={() => setShowPassword((prev) => !prev)}
             style={({ pressed }) => [styles.eyeButton, pressed && styles.eyePressed]}>
             {showPassword ? (
               <EyeOffIcon size={20} color={hasError ? Colors.error : Colors.primary} />
             ) : (
-              <EyeIcon size={20} color={Colors.textMuted} />
+              <EyeIcon size={20} color={Colors.textSecondary} />
             )}
           </Pressable>
         )}
-      </View>
+      </Pressable>
 
       {/* Inline Validation Error Message */}
       {hasError && (
@@ -161,11 +187,7 @@ const styles = StyleSheet.create({
   containerFocused: {
     borderColor: Colors.primary,
     backgroundColor: '#FFFFFF',
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    elevation: 1,
   },
   containerError: {
     borderColor: Colors.error,
@@ -197,9 +219,9 @@ const styles = StyleSheet.create({
   textInput: {
     fontSize: Typography.sizes.body,
     color: Colors.textPrimary,
-    padding: 0,
-    margin: 0,
-    includeFontPadding: false,
+    paddingVertical: Platform.OS === 'android' ? 2 : 0,
+    paddingHorizontal: 0,
+    minHeight: 26,
     textAlignVertical: 'center',
   },
   eyeButton: {
@@ -223,4 +245,3 @@ const styles = StyleSheet.create({
     fontWeight: Typography.weights.medium,
   },
 });
-

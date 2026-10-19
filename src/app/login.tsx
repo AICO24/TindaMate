@@ -147,7 +147,7 @@ export default function LoginScreen() {
                   setErrors((prev) => ({ ...prev, password: undefined }));
                 }
               }}
-              leftIcon={<LockIcon size={18} color={errors.password ? Colors.error : Colors.textMuted} />}
+              leftIcon={<LockIcon size={18} variant={errors.password ? 'default' : 'green'} color={errors.password ? Colors.error : undefined} />}
               isPassword
               returnKeyType="done"
               onSubmitEditing={handleLogin}
