@@ -1,8 +1,10 @@
-import React from 'react';
 import {
   Pressable,
+  StyleProp,
   StyleSheet,
   Text,
+  TextStyle,
+  ViewStyle,
 } from 'react-native';
 
 import { BorderRadius, Colors, Typography } from '@/constants/theme';
@@ -16,6 +18,10 @@ export type TindaMateButtonProps = {
   accessibilityLabel?: string;
   /** Optional flag to disable interactions */
   disabled?: boolean;
+  /** Optional custom container style */
+  style?: StyleProp<ViewStyle>;
+  /** Optional custom text style */
+  textStyle?: StyleProp<TextStyle>;
 };
 
 /**
@@ -29,6 +35,8 @@ export function TindaMateButton({
   onPress,
   accessibilityLabel,
   disabled = false,
+  style,
+  textStyle,
 }: TindaMateButtonProps) {
   return (
     <Pressable
@@ -41,8 +49,9 @@ export function TindaMateButton({
         styles.button,
         pressed && !disabled && styles.buttonPressed,
         disabled && styles.buttonDisabled,
+        style,
       ]}>
-      <Text style={[styles.buttonText, disabled && styles.buttonTextDisabled]}>
+      <Text style={[styles.buttonText, disabled && styles.buttonTextDisabled, textStyle]}>
         {title}
       </Text>
     </Pressable>
@@ -54,7 +63,7 @@ const styles = StyleSheet.create({
     width: '100%',
     backgroundColor: Colors.primary,
     paddingVertical: 14,
-    borderRadius: BorderRadius.md,
+    borderRadius: BorderRadius.xl,
     alignItems: 'center',
     justifyContent: 'center',
     // Mobile elevation & shadow

@@ -23,14 +23,18 @@ import { Platform } from 'react-native';
  */
 export const Colors = {
   // Brand & Interactive Colors
-  primary: '#2563EB',         // Main action blue
-  primaryPressed: '#1D4ED8',  // Active/pressed blue
-  primaryLight: '#DBEAFE',    // Soft accent blue (badges, highlights)
+  primary: '#0D7A4D',         // Fresh/deep green (Primary action)
+  primaryPressed: '#0A5C3A',  // Active/pressed deep green
+  primaryLight: '#E8F5E9',    // Soft accent green (badges, highlights)
+  accent: '#F59E0B',          // Warm orange/amber ("Mate" brand accent)
+  accentPressed: '#D97706',   // Pressed amber
 
   // Surface & Layout Colors
-  background: '#F8FAFC',      // Screen background (Slate 50)
+  background: '#FFFFFF',      // Screen background (Clean white as in reference)
+  backgroundAlt: '#F8FAFC',   // Light slate surface
   card: '#FFFFFF',            // Card container surface (White)
-  border: '#E2E8F0',          // Card border (Slate 200)
+  border: '#E2E8F0',          // Card & input border (Slate 200)
+  borderFocused: '#0D7A4D',   // Active input border (Primary green)
   borderSubtle: '#F1F5F9',    // Divider line (Slate 100)
 
   // Typography Colors
@@ -39,7 +43,12 @@ export const Colors = {
   textMuted: '#94A3B8',       // Captions & hint text (Slate 400)
   textInverse: '#FFFFFF',     // Button label & text on dark backgrounds
 
-  // State Colors
+  // State & Feedback Colors
+  error: '#DC2626',           // Accessible error red
+  errorLight: '#FEF2F2',      // Soft error red background
+  errorBorder: '#FCA5A5',     // Soft error red border
+  warning: '#F59E0B',         // Warning amber
+  success: '#16A34A',         // Success green
   disabled: '#CBD5E1',        // Disabled button surface (Slate 300)
   disabledText: '#94A3B8',    // Disabled button label (Slate 400)
 
@@ -89,9 +98,11 @@ export const Spacing = {
  * Standard curve values for rounded elements.
  */
 export const BorderRadius = {
+  xs: 4,
   sm: 8,
   md: 12,
   lg: 16,
+  xl: 24,
   full: 999,
 } as const;
 
