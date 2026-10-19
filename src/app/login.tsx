@@ -127,7 +127,7 @@ export default function LoginScreen() {
                   setErrors((prev) => ({ ...prev, email: undefined }));
                 }
               }}
-              leftIcon={<MailIcon size={18} color={errors.email ? Colors.error : Colors.textMuted} />}
+              leftIcon={<MailIcon size={19} />}
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
@@ -147,7 +147,7 @@ export default function LoginScreen() {
                   setErrors((prev) => ({ ...prev, password: undefined }));
                 }
               }}
-              leftIcon={<LockIcon size={18} variant={errors.password ? 'default' : 'green'} color={errors.password ? Colors.error : undefined} />}
+              leftIcon={<LockIcon size={19} variant="green" />}
               isPassword
               returnKeyType="done"
               onSubmitEditing={handleLogin}

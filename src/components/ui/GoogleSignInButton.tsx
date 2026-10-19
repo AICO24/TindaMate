@@ -44,7 +44,7 @@ export function GoogleSignInButton({ onPress }: GoogleSignInButtonProps) {
         styles.button,
         pressed && styles.buttonPressed,
       ]}>
-      <GoogleGIcon size={20} />
+      <GoogleGIcon size={22} />
       <Text style={styles.buttonText}>Continue with Google</Text>
     </Pressable>
   );

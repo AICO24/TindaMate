@@ -136,7 +136,7 @@ export default function RegisterScreen() {
                   setErrors((prev) => ({ ...prev, fullName: undefined }));
                 }
               }}
-              leftIcon={<UserIcon size={18} color={errors.fullName ? Colors.error : Colors.textMuted} />}
+              leftIcon={<UserIcon size={19} />}
               autoCapitalize="words"
               autoCorrect={false}
               returnKeyType="next"
@@ -155,7 +155,7 @@ export default function RegisterScreen() {
                   setErrors((prev) => ({ ...prev, email: undefined }));
                 }
               }}
-              leftIcon={<MailIcon size={18} color={errors.email ? Colors.error : Colors.textMuted} />}
+              leftIcon={<MailIcon size={19} />}
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
@@ -175,7 +175,7 @@ export default function RegisterScreen() {
                   setErrors((prev) => ({ ...prev, password: undefined }));
                 }
               }}
-              leftIcon={<LockIcon size={18} color={errors.password ? Colors.error : Colors.textMuted} />}
+              leftIcon={<LockIcon size={19} />}
               isPassword
               returnKeyType="next"
               errorMessage={errors.password}
@@ -196,7 +196,7 @@ export default function RegisterScreen() {
                   setErrors((prev) => ({ ...prev, confirmPassword: undefined }));
                 }
               }}
-              leftIcon={<LockIcon size={18} color={errors.confirmPassword ? Colors.error : Colors.textMuted} />}
+              leftIcon={<LockIcon size={19} />}
               isPassword
               returnKeyType="done"
               onSubmitEditing={handleRegister}
