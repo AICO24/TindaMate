@@ -2,13 +2,13 @@ import React from 'react';
 import {
   Alert,
   Platform,
-  Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { TindaMateButton } from '@/components/ui/TindaMateButton';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 
 export default function HomeScreen() {
@@ -59,16 +59,10 @@ export default function HomeScreen() {
 
         {/* Interactive Action Element */}
         <View style={styles.actionContainer}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Get Started with TindaMate"
+          <TindaMateButton
+            title="Get Started"
             onPress={handleGetStarted}
-            style={({ pressed }) => [
-              styles.button,
-              pressed && styles.buttonPressed,
-            ]}>
-            <Text style={styles.buttonText}>Get Started</Text>
-          </Pressable>
+          />
           <Text style={styles.actionHint}>
             Tap to begin exploring your digital tindahan
           </Text>
@@ -159,28 +153,6 @@ const styles = StyleSheet.create({
   actionContainer: {
     alignItems: 'center',
     gap: Spacing.two,
-  },
-  button: {
-    width: '100%',
-    backgroundColor: '#2563EB',
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#2563EB',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  buttonPressed: {
-    backgroundColor: '#1D4ED8',
-    transform: [{ scale: 0.98 }],
-  },
-  buttonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
   },
   actionHint: {
     fontSize: 12,
