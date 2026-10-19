@@ -9,7 +9,14 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { TindaMateButton } from '@/components/ui/TindaMateButton';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import {
+  BorderRadius,
+  BottomTabInset,
+  Colors,
+  MaxContentWidth,
+  Spacing,
+  Typography,
+} from '@/constants/theme';
 
 export default function HomeScreen() {
   const handleGetStarted = (): void => {
@@ -75,7 +82,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: Colors.background,
   },
   contentContainer: {
     flex: 1,
@@ -92,35 +99,35 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   badge: {
-    backgroundColor: '#DBEAFE',
+    backgroundColor: Colors.primaryLight,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.one,
-    borderRadius: 999,
+    borderRadius: BorderRadius.full,
   },
   badgeText: {
-    color: '#1D4ED8',
-    fontSize: 13,
-    fontWeight: '600',
+    color: Colors.primaryPressed,
+    fontSize: Typography.sizes.sm,
+    fontWeight: Typography.weights.semiBold,
   },
   appName: {
-    fontSize: 38,
-    fontWeight: '700',
-    color: '#0F172A',
+    fontSize: Typography.sizes.hero,
+    fontWeight: Typography.weights.bold,
+    color: Colors.textPrimary,
     letterSpacing: -0.5,
   },
   tagline: {
-    fontSize: 16,
+    fontSize: Typography.sizes.base,
     fontStyle: 'italic',
-    fontWeight: '500',
-    color: '#2563EB',
+    fontWeight: Typography.weights.medium,
+    color: Colors.primary,
     textAlign: 'center',
   },
   card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    backgroundColor: Colors.card,
+    borderRadius: BorderRadius.lg,
     padding: Spacing.four,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: Colors.border,
     gap: Spacing.three,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 2 },
@@ -129,34 +136,34 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   description: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: '#475569',
+    fontSize: Typography.sizes.body,
+    lineHeight: Typography.lineHeights.relaxed,
+    color: Colors.textSecondary,
     textAlign: 'center',
   },
   featureList: {
     marginTop: Spacing.one,
     gap: Spacing.two,
     borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
+    borderTopColor: Colors.borderSubtle,
     paddingTop: Spacing.three,
   },
   featureItem: {
-    fontSize: 14,
-    color: '#334155',
-    lineHeight: 20,
+    fontSize: Typography.sizes.bodySm,
+    color: Colors.textSecondary,
+    lineHeight: Typography.lineHeights.normal,
   },
   featureBold: {
-    fontWeight: '600',
-    color: '#0F172A',
+    fontWeight: Typography.weights.semiBold,
+    color: Colors.textPrimary,
   },
   actionContainer: {
     alignItems: 'center',
     gap: Spacing.two,
   },
   actionHint: {
-    fontSize: 12,
-    color: '#94A3B8',
+    fontSize: Typography.sizes.xs,
+    color: Colors.textMuted,
   },
 });
 

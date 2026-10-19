@@ -5,6 +5,8 @@ import {
   Text,
 } from 'react-native';
 
+import { BorderRadius, Colors, Typography } from '@/constants/theme';
+
 export type TindaMateButtonProps = {
   /** Text displayed inside the button */
   title: string;
@@ -50,34 +52,34 @@ export function TindaMateButton({
 const styles = StyleSheet.create({
   button: {
     width: '100%',
-    backgroundColor: '#2563EB', // Primary brand blue
+    backgroundColor: Colors.primary,
     paddingVertical: 14,
-    borderRadius: 12,
+    borderRadius: BorderRadius.md,
     alignItems: 'center',
     justifyContent: 'center',
     // Mobile elevation & shadow
-    shadowColor: '#2563EB',
+    shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
     elevation: 4,
   },
   buttonPressed: {
-    backgroundColor: '#1D4ED8', // Darker blue when pressed
+    backgroundColor: Colors.primaryPressed,
     transform: [{ scale: 0.98 }],
   },
   buttonDisabled: {
-    backgroundColor: '#CBD5E1', // Slate 300
+    backgroundColor: Colors.disabled,
     shadowOpacity: 0,
     elevation: 0,
   },
   buttonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
+    color: Colors.textInverse,
+    fontSize: Typography.sizes.base,
+    fontWeight: Typography.weights.bold,
   },
   buttonTextDisabled: {
-    color: '#94A3B8', // Slate 400
+    color: Colors.disabledText,
   },
 });
 
