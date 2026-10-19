@@ -18,16 +18,11 @@ import {
   Typography,
 } from '@/constants/theme';
 
+import { router } from 'expo-router';
+
 export default function HomeScreen() {
   const handleGetStarted = (): void => {
-    const message =
-      'Welcome to TindaMate! Store setup and features will be connected in upcoming batches.';
-
-    if (Platform.OS === 'web') {
-      window.alert(`Mabuhay!\n\n${message}`);
-    } else {
-      Alert.alert('Mabuhay!', message, [{ text: 'OK' }]);
-    }
+    router.push('/login');
   };
 
   return (
@@ -38,7 +33,10 @@ export default function HomeScreen() {
           <View style={styles.badge}>
             <Text style={styles.badgeText}>🏪 Tindahan Companion</Text>
           </View>
-          <Text style={styles.appName}>TindaMate</Text>
+          <Text style={styles.appName}>
+            <Text style={{ color: Colors.primary }}>Tinda</Text>
+            <Text style={{ color: Colors.accent }}>Mate</Text>
+          </Text>
           <Text style={styles.tagline}>"Your Digital Tindahan Assistant"</Text>
         </View>
 
