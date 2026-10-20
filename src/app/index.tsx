@@ -39,10 +39,10 @@ export default function WelcomeScreen() {
   const fullImageWidth = contentWidth;
   const fullImageHeight = contentWidth * 2.16;
 
-  // 1. Logo Slice: Slices precisely between 6.8% and 16.6%
+  // 1. Logo Slice: Slices precisely between 6.8% and 19.2%
   // - Starts at 6.8% (strictly below status bar, time, wifi, battery)
-  // - Ends at 16.6% (captures cart, wordmark, tagline; well above illustration)
-  const logoBoxHeight = fullImageHeight * 0.098;
+  // - Height 12.4% (fully captures cart wheels and complete tagline with no cut-off)
+  const logoBoxHeight = fullImageHeight * 0.124;
   const logoTopOffset = -fullImageHeight * 0.068;
 
   // 2. Illustration Slice: Slices precisely between 19.2% and 52.8%
