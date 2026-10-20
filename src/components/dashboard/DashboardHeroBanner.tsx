@@ -1,17 +1,14 @@
 import React from 'react';
 import {
   Dimensions,
-  Image,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 
+import { DashboardMarketIllustration } from '@/components/dashboard/DashboardMarketIllustration';
 import { BorderRadius, Spacing } from '@/constants/theme';
-
-// Dedicated standalone market stall artwork (no status bars, no crop boxes, zero white lines)
-const DASHBOARD_STALL_IMAGE = require('@/assets/images/dashboard-stall.png');
 
 interface DashboardHeroBannerProps {
   displayName: string;
@@ -22,12 +19,12 @@ interface DashboardHeroBannerProps {
 /**
  * DashboardHeroBanner
  *
- * Visually polished Hero Section matching the official reference mockup:
+ * Visually polished mobile Hero section matching TindaMate specifications:
  * - Dynamic greeting ("Good morning," / "Good afternoon," / "Good evening,")
- * - Bold user display name and store context subtitle
- * - White interactive store pill: [ 🏪 TindaMate Store › ]
- * - Standalone market stall illustration ("Small Store. Big Dreams.", canopy, crates)
- *   blending seamlessly into the warm cream hero background with zero screenshot artifacts.
+ * - Dynamic user name with responsive scaling for long names
+ * - Friendly store overview supporting text
+ * - Compact interactive store pill: [ 🏪 TindaMate Store → ]
+ * - Dedicated pure React Native marketplace illustration (zero logo fragments, zero screenshot artifacts)
  */
 export function DashboardHeroBanner({
   displayName,
@@ -44,25 +41,41 @@ export function DashboardHeroBanner({
 
   const { width: windowWidth } = Dimensions.get('window');
   const isSmallPhone = windowWidth < 375;
-  // dashboard-stall.png is 385 x 218 (ratio = 1.766)
-  const stallWidth = isSmallPhone ? 150 : 175;
-  const stallHeight = Math.round(stallWidth / 1.766);
+  const isLargePhone = windowWidth >= 414;
+
+  // Responsive illustration size occupying right 35-45% of banner
+  const illustrationWidth = isSmallPhone ? 135 : isLargePhone ? 165 : 150;
+  const illustrationHeight = isSmallPhone ? 125 : isLargePhone ? 150 : 138;
+
+  // Responsive typography for long names (e.g., "Gochaico, Manolo Jr. A.!")
+  const nameFontSize =
+    displayName.length > 22
+      ? isSmallPhone ? 18 : 20
+      : displayName.length > 14
+      ? isSmallPhone ? 20 : 22
+      : isSmallPhone ? 22 : 25;
 
   return (
     <View style={styles.container}>
       <View style={styles.contentRow}>
-        {/* Left Side: Strong Greeting & Store Context */}
+        {/* Left Side: Text Hierarchy & Store Badge (55-65% width) */}
         <View style={styles.leftColumn}>
+          {/* 1. Greeting - medium / semibold */}
           <Text style={styles.greetingTitle}>{getGreeting()}</Text>
-          <Text style={styles.displayNameText} numberOfLines={1}>
+
+          {/* 2. User Name - large / bold / responsive */}
+          <Text
+            style={[styles.displayNameText, { fontSize: nameFontSize }]}
+            numberOfLines={2}>
             {displayName}!
           </Text>
 
+          {/* 3. Supporting sentence */}
           <Text style={styles.greetingSubtext} numberOfLines={2}>
             Here's what's happening with your store today.
           </Text>
 
-          {/* Store Context Pill Button */}
+          {/* 4. Store Context Pill: [ 🏪 TindaMate Store → ] */}
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={`Active store: ${storeName}`}
@@ -77,16 +90,15 @@ export function DashboardHeroBanner({
             <Text style={styles.storePillText} numberOfLines={1}>
               {storeName}
             </Text>
-            <Text style={styles.storePillChevron}>›</Text>
+            <Text style={styles.storePillArrow}>→</Text>
           </Pressable>
         </View>
 
-        {/* Right Side: Clean Market Stall Illustration */}
+        {/* Right Side: Dedicated Marketplace Illustration (35-45% width) */}
         <View style={styles.illustrationWrapper}>
-          <Image
-            source={DASHBOARD_STALL_IMAGE}
-            style={{ width: stallWidth, height: stallHeight }}
-            resizeMode="contain"
+          <DashboardMarketIllustration
+            width={illustrationWidth}
+            height={illustrationHeight}
           />
         </View>
       </View>
@@ -97,7 +109,9 @@ export function DashboardHeroBanner({
 const styles = StyleSheet.create({
   container: {
     paddingTop: Spacing.one,
-    paddingBottom: Spacing.two,
+    paddingBottom: Spacing.four,
+    minHeight: 165,
+    justifyContent: 'center',
   },
   contentRow: {
     flexDirection: 'row',
@@ -105,10 +119,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   leftColumn: {
-    flex: 1.15,
+    flex: 1.25,
     gap: 4,
-    paddingRight: 6,
+    paddingRight: 8,
     zIndex: 2,
+    justifyContent: 'center',
   },
   greetingTitle: {
     fontSize: 15,
@@ -116,19 +131,19 @@ const styles = StyleSheet.create({
     color: '#334155',
   },
   displayNameText: {
-    fontSize: 24,
     fontWeight: '800',
     color: '#064E3B',
     letterSpacing: -0.4,
-    lineHeight: 29,
+    lineHeight: 28,
     marginBottom: 2,
   },
   greetingSubtext: {
-    fontSize: 12,
+    fontSize: 12.5,
     color: '#64748B',
-    lineHeight: 16,
+    lineHeight: 17,
     marginBottom: 8,
   },
+  // Store pill button: [ 🏪 TindaMate Store → ]
   storePill: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -166,14 +181,14 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#064E3B',
   },
-  storePillChevron: {
-    fontSize: 16,
+  storePillArrow: {
+    fontSize: 14,
     fontWeight: '800',
-    color: '#064E3B',
+    color: '#059669',
   },
   illustrationWrapper: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: -6,
+    paddingLeft: 4,
   },
 });

@@ -48,8 +48,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: Spacing.one,
-    paddingBottom: Spacing.two,
+    paddingTop: Spacing.two,
+    paddingBottom: Spacing.three,
   },
   logoWrapper: {
     alignItems: 'flex-start',

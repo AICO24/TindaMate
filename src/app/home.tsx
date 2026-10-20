@@ -417,8 +417,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#FCFAF2',
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
-    paddingTop: Spacing.one,
-    paddingBottom: Spacing.two,
+    paddingTop: Spacing.two,
+    paddingBottom: Spacing.four,
   },
   heroInnerContainer: {
     width: '100%',
