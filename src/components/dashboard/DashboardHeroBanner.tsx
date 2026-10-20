@@ -10,7 +10,8 @@ import {
 
 import { BorderRadius, Spacing } from '@/constants/theme';
 
-const DASHBOARD_REFERENCE_IMAGE = require('@/assets/images/dashboard-reference.png');
+// Dedicated standalone market stall artwork (no status bars, no crop boxes, zero white lines)
+const DASHBOARD_STALL_IMAGE = require('@/assets/images/dashboard-stall.png');
 
 interface DashboardHeroBannerProps {
   displayName: string;
@@ -21,10 +22,12 @@ interface DashboardHeroBannerProps {
 /**
  * DashboardHeroBanner
  *
- * Enhanced Hero Section matching the official reference mockup:
- * - Strong greeting typography: "Good morning," and large bold "[User Name]!"
- * - Clean supporting message and white "TindaMate Store ›" pill button
- * - Large, vibrant 3D market stall illustration (stall, produce, leaves, chalkboard)
+ * Visually polished Hero Section matching the official reference mockup:
+ * - Dynamic greeting ("Good morning," / "Good afternoon," / "Good evening,")
+ * - Bold user display name and store context subtitle
+ * - White interactive store pill: [ 🏪 TindaMate Store › ]
+ * - Standalone market stall illustration ("Small Store. Big Dreams.", canopy, crates)
+ *   blending seamlessly into the warm cream hero background with zero screenshot artifacts.
  */
 export function DashboardHeroBanner({
   displayName,
@@ -40,15 +43,10 @@ export function DashboardHeroBanner({
   };
 
   const { width: windowWidth } = Dimensions.get('window');
-  const baseWidth = Math.min(windowWidth, 420);
-  const baseHeight = baseWidth * 2.16;
-
-  // Sizing for the large, prominent 3D market stall illustration
   const isSmallPhone = windowWidth < 375;
-  const illustrationBoxWidth = isSmallPhone ? 155 : 180;
-  const illustrationBoxHeight = isSmallPhone ? 135 : 155;
-  const illustrationTopOffset = -baseHeight * 0.104;
-  const illustrationLeftOffset = -baseWidth * 0.50;
+  // dashboard-stall.png is 385 x 218 (ratio = 1.766)
+  const stallWidth = isSmallPhone ? 150 : 175;
+  const stallHeight = Math.round(stallWidth / 1.766);
 
   return (
     <View style={styles.container}>
@@ -83,21 +81,12 @@ export function DashboardHeroBanner({
           </Pressable>
         </View>
 
-        {/* Right Side: Large 3D Market Stall Illustration */}
-        <View
-          style={[
-            styles.illustrationBox,
-            { width: illustrationBoxWidth, height: illustrationBoxHeight },
-          ]}>
+        {/* Right Side: Clean Market Stall Illustration */}
+        <View style={styles.illustrationWrapper}>
           <Image
-            source={DASHBOARD_REFERENCE_IMAGE}
-            style={{
-              width: baseWidth,
-              height: baseHeight,
-              marginTop: illustrationTopOffset,
-              marginLeft: illustrationLeftOffset,
-            }}
-            resizeMode="cover"
+            source={DASHBOARD_STALL_IMAGE}
+            style={{ width: stallWidth, height: stallHeight }}
+            resizeMode="contain"
           />
         </View>
       </View>
@@ -107,8 +96,8 @@ export function DashboardHeroBanner({
 
 const styles = StyleSheet.create({
   container: {
-    paddingTop: Spacing.two,
-    paddingBottom: Spacing.four,
+    paddingTop: Spacing.one,
+    paddingBottom: Spacing.two,
   },
   contentRow: {
     flexDirection: 'row',
@@ -122,22 +111,22 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   greetingTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     color: '#334155',
   },
   displayNameText: {
-    fontSize: 25,
+    fontSize: 24,
     fontWeight: '800',
     color: '#064E3B',
     letterSpacing: -0.4,
-    lineHeight: 30,
-    marginBottom: 3,
+    lineHeight: 29,
+    marginBottom: 2,
   },
   greetingSubtext: {
-    fontSize: 12.5,
+    fontSize: 12,
     color: '#64748B',
-    lineHeight: 17,
+    lineHeight: 16,
     marginBottom: 8,
   },
   storePill: {
@@ -182,10 +171,9 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#064E3B',
   },
-  illustrationBox: {
-    overflow: 'hidden',
-    alignItems: 'flex-start',
-    justifyContent: 'flex-start',
-    marginRight: -12,
+  illustrationWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: -6,
   },
 });

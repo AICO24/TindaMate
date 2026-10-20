@@ -39,6 +39,9 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
+# temporary scripts
+scripts/*.ps1
+
 example
 
 # generated native folders

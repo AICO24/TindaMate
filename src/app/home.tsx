@@ -387,7 +387,7 @@ export default function AuthenticatedDashboardScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F0F8F3', // Blends seamlessly with full-bleed top zone
+    backgroundColor: '#FCFAF2', // Blends seamlessly with warm hero backdrop
   },
   loadingContainer: {
     flex: 1,
@@ -412,11 +412,11 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: Spacing.four,
   },
-  // Full-bleed integrated top hero zone
+  // Full-bleed integrated top hero zone matching official artwork
   fullBleedHeroZone: {
-    backgroundColor: '#F0F8F3',
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
+    backgroundColor: '#FCFAF2',
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
     paddingTop: Spacing.one,
     paddingBottom: Spacing.two,
   },
