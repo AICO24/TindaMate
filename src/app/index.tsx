@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Dimensions,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -11,39 +13,51 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
 import { TindaMateCartLogo } from '@/components/ui/TindaMateCartLogo';
-import { WelcomeHeroIllustration } from '@/components/ui/WelcomeHeroIllustration';
-import { BorderRadius, Colors, Spacing } from '@/constants/theme';
+import { BorderRadius, Spacing } from '@/constants/theme';
 import { supabase } from '@/lib/supabase';
+
+// Reference image containing the authentic 3D vendor artwork
+const WELCOME_REFERENCE_IMAGE = require('@/assets/images/welcome-hero.png');
 
 /**
  * TindaMate Welcome Screen
  *
- * Restores the authentic TindaMate Welcome & Onboarding experience:
- * - Official brand header (Cart with leaf + TindaMate wordmark + tagline)
- * - Community marketplace hero illustration with local vendor and produce stall
- * - Clear value proposition: "Shop Local, Support Small"
+ * Clean, production-ready Welcome screen matching the reference design:
+ * - Brand emblem at top (clean vector cart with leaves + TindaMate wordmark + tagline)
+ * - Authentic 3D community market illustration (vendor with phone, fruit stall, chalkboard)
+ *   Cleanly sliced to exclude any phone status bar (time, battery, wifi, data bars)
+ * - Value proposition: "Shop Local, Support Small"
  * - Primary "Log In →" pill button
  * - Secondary "Create Account →" outlined pill button
  * - Tertiary "Continue as Guest" link
- * - Automatic session redirection to authenticated app shell (/home) if already logged in
+ * - Automatic session detection for returning authenticated users
  */
 export default function WelcomeScreen() {
   const [isCheckingSession, setIsCheckingSession] = useState(true);
 
+  // Screen dimension calculations for responsive proportional rendering
+  const { width: windowWidth } = Dimensions.get('window');
+  const contentWidth = Math.min(windowWidth - 32, 380);
+
+  // Proportional slicing for the middle 3D illustration only (skips top status bar and bottom buttons)
+  const fullImageWidth = contentWidth;
+  const fullImageHeight = contentWidth * 2.16;
+
+  // Middle slice strictly containing the 3D vendor, stall, and chalkboard (22% to 56% depth)
+  const illustrationBoxHeight = fullImageHeight * 0.34;
+  const illustrationTopOffset = -fullImageHeight * 0.22;
+
   useEffect(() => {
     let isMounted = true;
 
-    // Check if an authenticated user session already exists
     const checkExistingSession = async () => {
       try {
         const { data } = await supabase.auth.getSession();
         if (data?.session && isMounted) {
-          // If already authenticated, redirect straight to the authenticated shell
           router.replace('/home');
           return;
         }
       } catch (err) {
-        // If error checking session, fallback to welcome screen
         console.warn('[Welcome Screen] Session check failed:', err);
       } finally {
         if (isMounted) {
@@ -68,14 +82,13 @@ export default function WelcomeScreen() {
   };
 
   const handleGuest = () => {
-    // Navigate to authenticated shell in preview/guest mode
     router.push('/home');
   };
 
   if (isCheckingSession) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#0D7A4D" />
+        <ActivityIndicator size="large" color="#105B48" />
       </SafeAreaView>
     );
   }
@@ -84,19 +97,31 @@ export default function WelcomeScreen() {
     <SafeAreaView style={styles.safeArea}>
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { maxWidth: contentWidth + 24 }]}
         showsVerticalScrollIndicator={false}>
-        {/* Top Branding Section */}
-        <View style={styles.topBrandSection}>
+        {/* Top Brand Header (Vector rendered, zero screenshot artifacts) */}
+        <View style={styles.logoSection}>
           <TindaMateCartLogo scale={1.05} showTagline={true} />
         </View>
 
-        {/* Hero Illustration Graphic */}
-        <View style={styles.heroSection}>
-          <WelcomeHeroIllustration />
+        {/* Central 3D Marketplace Illustration (Cropped to isolate artwork only) */}
+        <View
+          style={[
+            styles.illustrationSection,
+            { width: contentWidth, height: illustrationBoxHeight },
+          ]}>
+          <Image
+            source={WELCOME_REFERENCE_IMAGE}
+            style={{
+              width: fullImageWidth,
+              height: fullImageHeight,
+              marginTop: illustrationTopOffset,
+            }}
+            resizeMode="contain"
+          />
         </View>
 
-        {/* Value Proposition Typography */}
+        {/* Core Value Proposition Section */}
         <View style={styles.textSection}>
           <Text style={styles.headline}>Shop Local,{'\n'}Support Small</Text>
           <Text style={styles.subheadline}>
@@ -105,7 +130,7 @@ export default function WelcomeScreen() {
           </Text>
         </View>
 
-        {/* Action Buttons Section */}
+        {/* Interactive Action Buttons */}
         <View style={styles.actionsSection}>
           {/* Primary Action: Log In Pill */}
           <Pressable
@@ -151,11 +176,11 @@ export default function WelcomeScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FAF9F6',
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FAF9F6',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -163,34 +188,36 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.three,
-    paddingBottom: Spacing.six,
-    maxWidth: 480,
+    paddingHorizontal: Spacing.three,
+    paddingTop: Spacing.two,
+    paddingBottom: Spacing.five,
     width: '100%',
     alignSelf: 'center',
+    alignItems: 'center',
     justifyContent: 'space-between',
     minHeight: '100%',
   },
-  topBrandSection: {
-    alignItems: 'center',
-    paddingTop: Spacing.two,
-    paddingBottom: Spacing.two,
-  },
-  heroSection: {
+  logoSection: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginVertical: Spacing.two,
+    marginTop: Spacing.two,
+    marginBottom: Spacing.one,
+  },
+  illustrationSection: {
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    marginVertical: Spacing.one,
   },
   textSection: {
     alignItems: 'center',
-    paddingHorizontal: Spacing.three,
-    marginBottom: Spacing.four,
+    paddingHorizontal: Spacing.two,
+    marginBottom: Spacing.three,
   },
   headline: {
     fontSize: 32,
     fontWeight: '800',
-    color: '#0D7A4D',
+    color: '#105B48',
     textAlign: 'center',
     lineHeight: 38,
     letterSpacing: -0.5,
@@ -198,10 +225,10 @@ const styles = StyleSheet.create({
   },
   subheadline: {
     fontSize: 15,
-    color: '#64748B',
+    color: '#5B6770',
     textAlign: 'center',
     lineHeight: 22,
-    maxWidth: 340,
+    maxWidth: 320,
   },
   actionsSection: {
     width: '100%',
@@ -211,20 +238,20 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     width: '100%',
-    maxWidth: 360,
-    backgroundColor: '#0D7A4D',
+    maxWidth: 340,
+    backgroundColor: '#13654E',
     paddingVertical: 15,
     borderRadius: BorderRadius.full,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#0D7A4D',
+    shadowColor: '#13654E',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
     elevation: 4,
   },
   primaryButtonPressed: {
-    backgroundColor: '#0A5C3A',
+    backgroundColor: '#0F4D3C',
     transform: [{ scale: 0.98 }],
   },
   primaryButtonText: {
@@ -235,10 +262,10 @@ const styles = StyleSheet.create({
   },
   secondaryButton: {
     width: '100%',
-    maxWidth: 360,
+    maxWidth: 340,
     backgroundColor: 'transparent',
     borderWidth: 1.8,
-    borderColor: '#0D7A4D',
+    borderColor: '#13654E',
     paddingVertical: 14,
     borderRadius: BorderRadius.full,
     alignItems: 'center',
@@ -249,7 +276,7 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.98 }],
   },
   secondaryButtonText: {
-    color: '#0D7A4D',
+    color: '#13654E',
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.2,
@@ -268,4 +295,3 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 });
-

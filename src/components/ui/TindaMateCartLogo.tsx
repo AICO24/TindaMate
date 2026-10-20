@@ -11,45 +11,50 @@ interface TindaMateCartLogoProps {
 /**
  * TindaMateCartLogo
  *
- * Renders the primary TindaMate brand emblem:
- * A green shopping cart with a sprouting leaf, paired with the
- * dual-color "TindaMate" wordmark and the official tagline
- * "Local Vendors. Better Choices."
+ * Renders the authentic TindaMate brand emblem matching the reference mockup:
+ * - Rounded forest green shopping cart (#105B48)
+ * - Two leafy sprouts extending upward from the basket
+ * - Dual-color wordmark: "Tinda" in forest green (#105B48) + "Mate" in warm orange (#EA580C)
+ * - Tagline: "Local Vendors. Better Choices."
  */
 export function TindaMateCartLogo({
   scale = 1,
   showTagline = true,
 }: TindaMateCartLogoProps) {
-  const iconSize = 42 * scale;
-
   return (
     <View style={styles.container}>
-      {/* Brand Row: Cart Emblem + TindaMate Wordmark */}
+      {/* Brand Row: Cart Emblem + Wordmark */}
       <View style={styles.brandRow}>
-        {/* Shopping Cart Icon with Leaf Accent */}
-        <View style={[styles.cartIconWrapper, { width: iconSize, height: iconSize }]}>
-          {/* Sprouting Leaf Accent */}
-          <View style={styles.leafContainer}>
-            <View style={styles.leafMain} />
-            <View style={styles.leafSmall} />
+        {/* Shopping Cart with Sprouting Leaves */}
+        <View style={[styles.cartWrapper, { transform: [{ scale }] }]}>
+          {/* Leaves sprouting up from cart */}
+          <View style={styles.leafGroup}>
+            {/* Primary Leaf (tilted left) */}
+            <View style={styles.leafLeft} />
+            {/* Secondary Leaf (tilted right) */}
+            <View style={styles.leafRight} />
           </View>
 
-          {/* Cart Basket Wireframe */}
-          <View style={styles.cartBasket}>
-            <View style={styles.cartHorizontalBar} />
-            <View style={styles.cartDiagonalArm} />
-            <View style={styles.cartHandle} />
+          {/* Cart Basket Body */}
+          <View style={styles.cartBody}>
+            {/* Top Wire Rim */}
+            <View style={styles.cartTopRim} />
+            {/* Horizontal Grid Bars */}
+            <View style={styles.cartGridBar} />
           </View>
 
-          {/* Cart Wheels */}
-          <View style={styles.wheelRow}>
+          {/* Handle */}
+          <View style={styles.cartHandle} />
+
+          {/* Wheels */}
+          <View style={styles.wheelsRow}>
             <View style={styles.wheel} />
             <View style={styles.wheel} />
           </View>
         </View>
 
-        {/* Wordmark: Tinda (Green) + Mate (Orange) */}
-        <Text style={[styles.wordmark, { fontSize: 32 * scale }]}>
+        {/* Wordmark: Tinda (Forest Green) + Mate (Warm Orange) */}
+        <Text style={[styles.wordmark, { fontSize: 30 * scale }]}>
           <Text style={styles.wordmarkGreen}>Tinda</Text>
           <Text style={styles.wordmarkOrange}>Mate</Text>
         </Text>
@@ -57,7 +62,7 @@ export function TindaMateCartLogo({
 
       {/* Official Tagline */}
       {showTagline && (
-        <Text style={[styles.tagline, { fontSize: 13 * scale }]}>
+        <Text style={[styles.tagline, { fontSize: 12.5 * scale }]}>
           Local Vendors. Better Choices.
         </Text>
       )}
@@ -76,108 +81,107 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 10,
   },
-  cartIconWrapper: {
+  cartWrapper: {
+    width: 36,
+    height: 36,
     position: 'relative',
-    justifyContent: 'center',
+    justifyContent: 'flex-end',
     alignItems: 'center',
   },
-  leafContainer: {
+  leafGroup: {
     position: 'absolute',
-    top: 2,
-    right: 14,
-    width: 14,
+    top: -2,
+    left: 8,
+    width: 16,
     height: 14,
-    zIndex: 2,
+    zIndex: 3,
   },
-  leafMain: {
+  leafLeft: {
+    position: 'absolute',
+    left: 0,
+    top: 2,
     width: 11,
     height: 11,
-    backgroundColor: '#0D7A4D',
+    backgroundColor: '#105B48',
     borderTopLeftRadius: 10,
     borderBottomRightRadius: 10,
-    borderTopRightRadius: 2,
-    borderBottomLeftRadius: 2,
-    transform: [{ rotate: '-30deg' }],
+    transform: [{ rotate: '-25deg' }],
   },
-  leafSmall: {
+  leafRight: {
     position: 'absolute',
-    top: 5,
-    right: -2,
-    width: 7,
-    height: 7,
+    right: 0,
+    top: 0,
+    width: 8,
+    height: 8,
     backgroundColor: '#34D399',
-    borderTopLeftRadius: 6,
-    borderBottomRightRadius: 6,
-    transform: [{ rotate: '20deg' }],
+    borderTopLeftRadius: 8,
+    borderBottomRightRadius: 8,
+    transform: [{ rotate: '30deg' }],
   },
-  cartBasket: {
-    width: 30,
-    height: 22,
-    borderLeftWidth: 3.5,
-    borderBottomWidth: 3.5,
-    borderColor: '#0D7A4D',
-    borderBottomLeftRadius: 4,
+  cartBody: {
+    width: 26,
+    height: 18,
+    borderLeftWidth: 3,
+    borderBottomWidth: 3,
+    borderRightWidth: 2.5,
+    borderColor: '#105B48',
+    borderBottomLeftRadius: 5,
+    borderBottomRightRadius: 3,
     position: 'relative',
-    marginTop: 4,
+    marginTop: 8,
   },
-  cartHorizontalBar: {
+  cartTopRim: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 2.5,
+    backgroundColor: '#105B48',
+  },
+  cartGridBar: {
     position: 'absolute',
     top: 6,
     left: 0,
     right: 0,
-    height: 2.5,
-    backgroundColor: '#0D7A4D',
-    borderRadius: 1,
-  },
-  cartDiagonalArm: {
-    position: 'absolute',
-    right: -4,
-    top: -2,
-    width: 3,
-    height: 14,
-    backgroundColor: '#0D7A4D',
-    borderRadius: 1.5,
-    transform: [{ rotate: '18deg' }],
+    height: 2,
+    backgroundColor: '#105B48',
   },
   cartHandle: {
     position: 'absolute',
-    top: -4,
-    left: -7,
-    width: 8,
-    height: 3.5,
-    backgroundColor: '#0D7A4D',
-    borderTopLeftRadius: 2,
-    borderBottomLeftRadius: 2,
+    left: 1,
+    top: 10,
+    width: 7,
+    height: 3,
+    backgroundColor: '#105B48',
+    borderRadius: 1.5,
   },
-  wheelRow: {
+  wheelsRow: {
     flexDirection: 'row',
-    width: 26,
+    width: 22,
     justifyContent: 'space-between',
-    paddingLeft: 3,
-    marginTop: 3,
+    marginTop: 2,
   },
   wheel: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#0D7A4D',
+    width: 5.5,
+    height: 5.5,
+    borderRadius: 2.75,
+    backgroundColor: '#105B48',
   },
   wordmark: {
     fontWeight: '800',
     letterSpacing: -0.5,
   },
   wordmarkGreen: {
-    color: '#0D7A4D',
+    color: '#105B48',
   },
   wordmarkOrange: {
-    color: '#F59E0B',
+    color: '#EA580C',
   },
   tagline: {
     color: '#475569',
     fontWeight: '600',
-    letterSpacing: 0.2,
+    letterSpacing: 0.3,
     marginTop: 3,
     textAlign: 'center',
   },
 });
-
