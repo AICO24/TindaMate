@@ -12,9 +12,9 @@ interface DashboardHeaderProps {
 /**
  * DashboardHeader
  *
- * Top bar matching the reference mockup:
- * - TindaMate brand emblem on left
- * - White circular profile button with dark teal user silhouette on right
+ * Prominent top identity bar matching the reference mockup:
+ * - Full-sized, high-visibility TindaMate logo & tagline on left
+ * - Premium white circular profile button with dark teal user avatar on right
  */
 export function DashboardHeader({
   userEmail,
@@ -22,12 +22,12 @@ export function DashboardHeader({
 }: DashboardHeaderProps) {
   return (
     <View style={styles.header}>
-      {/* Brand Logo & Tagline */}
+      {/* Prominent Brand Logo & Tagline */}
       <View style={styles.logoWrapper}>
-        <TindaMateCartLogo scale={0.88} showTagline={true} />
+        <TindaMateCartLogo scale={1.0} showTagline={true} />
       </View>
 
-      {/* White Profile Circle Button matching reference */}
+      {/* Profile Circle Button */}
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Open user profile and store settings"
@@ -48,9 +48,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: Spacing.two,
-    paddingHorizontal: 2,
-    marginBottom: Spacing.two,
+    paddingTop: Spacing.one,
+    paddingBottom: Spacing.two,
   },
   logoWrapper: {
     alignItems: 'flex-start',

@@ -21,11 +21,10 @@ interface DashboardHeroBannerProps {
 /**
  * DashboardHeroBanner
  *
- * Mobile-responsive banner matching the reference mockup:
- * - Left side: Dynamic time-based greeting, bold user name,
- *   supporting text, and the white "TindaMate Store ›" pill button.
- * - Right side: Responsive 3D market stall illustration that fits
- *   cleanly on any phone size without squishing the text.
+ * Enhanced Hero Section matching the official reference mockup:
+ * - Strong greeting typography: "Good morning," and large bold "[User Name]!"
+ * - Clean supporting message and white "TindaMate Store ›" pill button
+ * - Large, vibrant 3D market stall illustration (stall, produce, leaves, chalkboard)
  */
 export function DashboardHeroBanner({
   displayName,
@@ -40,24 +39,23 @@ export function DashboardHeroBanner({
     return 'Good evening,';
   };
 
-  // Dimensions for extracting the exact 3D market stall illustration
   const { width: windowWidth } = Dimensions.get('window');
-  const baseWidth = Math.min(windowWidth - 28, 380);
+  const baseWidth = Math.min(windowWidth, 420);
   const baseHeight = baseWidth * 2.16;
 
-  // Responsive illustration box size tailored for mobile phone widths
-  const isSmallPhone = windowWidth < 380;
-  const illustrationBoxWidth = isSmallPhone ? 130 : 155;
-  const illustrationBoxHeight = isSmallPhone ? 115 : 130;
-  const illustrationTopOffset = -baseHeight * 0.106;
-  const illustrationLeftOffset = -baseWidth * (isSmallPhone ? 0.54 : 0.51);
+  // Sizing for the large, prominent 3D market stall illustration
+  const isSmallPhone = windowWidth < 375;
+  const illustrationBoxWidth = isSmallPhone ? 155 : 180;
+  const illustrationBoxHeight = isSmallPhone ? 135 : 155;
+  const illustrationTopOffset = -baseHeight * 0.104;
+  const illustrationLeftOffset = -baseWidth * 0.50;
 
   return (
-    <View style={styles.card}>
+    <View style={styles.container}>
       <View style={styles.contentRow}>
-        {/* Left Side: Greeting & Store Context */}
+        {/* Left Side: Strong Greeting & Store Context */}
         <View style={styles.leftColumn}>
-          <Text style={styles.greetingGreeting}>{getGreeting()}</Text>
+          <Text style={styles.greetingTitle}>{getGreeting()}</Text>
           <Text style={styles.displayNameText} numberOfLines={1}>
             {displayName}!
           </Text>
@@ -85,7 +83,7 @@ export function DashboardHeroBanner({
           </Pressable>
         </View>
 
-        {/* Right Side: Responsive 3D Market Stall Illustration */}
+        {/* Right Side: Large 3D Market Stall Illustration */}
         <View
           style={[
             styles.illustrationBox,
@@ -108,22 +106,9 @@ export function DashboardHeroBanner({
 }
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: '#F2F9F4',
-    borderRadius: BorderRadius.xl,
-    paddingLeft: Spacing.three,
-    paddingTop: Spacing.three,
-    paddingBottom: Spacing.three,
-    paddingRight: 0,
-    borderWidth: 1,
-    borderColor: '#E1EFE6',
-    overflow: 'hidden',
-    shadowColor: '#064E3B',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
-    marginBottom: Spacing.two,
+  container: {
+    paddingTop: Spacing.two,
+    paddingBottom: Spacing.four,
   },
   contentRow: {
     flexDirection: 'row',
@@ -132,68 +117,68 @@ const styles = StyleSheet.create({
   },
   leftColumn: {
     flex: 1.15,
-    gap: 3,
-    paddingRight: 4,
+    gap: 4,
+    paddingRight: 6,
     zIndex: 2,
   },
-  greetingGreeting: {
-    fontSize: 14,
+  greetingTitle: {
+    fontSize: 16,
     fontWeight: '600',
     color: '#334155',
   },
   displayNameText: {
-    fontSize: 20,
+    fontSize: 25,
     fontWeight: '800',
     color: '#064E3B',
-    letterSpacing: -0.3,
-    lineHeight: 24,
-    marginBottom: 1,
+    letterSpacing: -0.4,
+    lineHeight: 30,
+    marginBottom: 3,
   },
   greetingSubtext: {
-    fontSize: 11.5,
+    fontSize: 12.5,
     color: '#64748B',
-    lineHeight: 15,
-    marginBottom: 4,
+    lineHeight: 17,
+    marginBottom: 8,
   },
   storePill: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: BorderRadius.full,
     borderWidth: 1,
     borderColor: '#D1FAE5',
-    gap: 5,
+    gap: 6,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
     shadowRadius: 3,
-    elevation: 1,
+    elevation: 2,
   },
   storePillPressed: {
     backgroundColor: '#F8FAFC',
     transform: [{ scale: 0.98 }],
   },
   storeIconCircle: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     backgroundColor: '#DCFCE7',
     alignItems: 'center',
     justifyContent: 'center',
   },
   storeIcon: {
-    fontSize: 11,
+    fontSize: 12,
   },
   storePillText: {
-    fontSize: 11.5,
+    fontSize: 13,
     fontWeight: '700',
     color: '#064E3B',
   },
   storePillChevron: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '800',
     color: '#064E3B',
   },
@@ -201,5 +186,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     alignItems: 'flex-start',
     justifyContent: 'flex-start',
+    marginRight: -12,
   },
 });

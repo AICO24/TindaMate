@@ -55,8 +55,8 @@ const THEME_STYLES = {
 /**
  * StoreOverviewCard
  *
- * Mobile-responsive summary card:
- * [ (Round Icon)   Title / Subtext        › ]
+ * Visually substantial summary card matching the reference mockup:
+ * [ (Large 42px Icon)   Title / Subtext        › ]
  */
 export function StoreOverviewCard({ item }: StoreOverviewCardProps) {
   const currentTheme = THEME_STYLES[item.theme];
@@ -74,7 +74,7 @@ export function StoreOverviewCard({ item }: StoreOverviewCardProps) {
         },
         pressed && styles.cardPressed,
       ]}>
-      {/* Left: Round Themed Icon */}
+      {/* Left: Prominent Round Themed Icon */}
       <View style={[styles.iconCircle, { backgroundColor: currentTheme.iconBg }]}>
         <Text style={[styles.iconSymbol, { color: currentTheme.iconColor }]}>
           {item.iconSymbol}
@@ -100,18 +100,19 @@ export function StoreOverviewCard({ item }: StoreOverviewCardProps) {
 const styles = StyleSheet.create({
   card: {
     flex: 1,
-    minWidth: '46%',
+    minWidth: '47%',
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: BorderRadius.lg,
-    paddingVertical: 12,
-    paddingHorizontal: 10,
+    borderRadius: 18,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
     borderWidth: 1,
-    gap: 8,
+    minHeight: 78,
+    gap: 10,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.02,
-    shadowRadius: 3,
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
     elevation: 1,
   },
   cardPressed: {
@@ -119,32 +120,33 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.98 }],
   },
   iconCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     alignItems: 'center',
     justifyContent: 'center',
   },
   iconSymbol: {
-    fontSize: 16,
+    fontSize: 19,
     fontWeight: '800',
   },
   textColumn: {
     flex: 1,
-    gap: 1,
+    gap: 2,
   },
   title: {
-    fontSize: 12.5,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '800',
     letterSpacing: -0.2,
   },
   subtitle: {
-    fontSize: 10.5,
+    fontSize: 11.5,
     color: '#64748B',
     fontWeight: '500',
   },
   chevron: {
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: '800',
+    paddingLeft: 2,
   },
 });

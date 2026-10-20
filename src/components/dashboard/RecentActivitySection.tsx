@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { BorderRadius, Spacing } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
 
 interface RecentActivitySectionProps {
   onViewAll?: () => void;
@@ -10,9 +10,9 @@ interface RecentActivitySectionProps {
 /**
  * RecentActivitySection
  *
- * Empty state card matching the reference mockup:
- * - Horizontal card with soft mint background (#EDF7F2)
- * - Sparkle checklist icon on left
+ * Visually polished empty state card matching the reference mockup:
+ * - Full-width horizontal card with generous padding (#EDF7F2)
+ * - Large sparkling checklist icon on left
  * - "No recent activity yet." title and transaction guidance on right
  */
 export function RecentActivitySection({ onViewAll }: RecentActivitySectionProps) {
@@ -58,9 +58,9 @@ export function RecentActivitySection({ onViewAll }: RecentActivitySectionProps)
 
 const styles = StyleSheet.create({
   container: {
-    gap: 10,
-    marginTop: Spacing.one,
-    marginBottom: Spacing.two,
+    gap: 12,
+    marginTop: Spacing.two,
+    marginBottom: Spacing.three,
   },
   headerRow: {
     flexDirection: 'row',
@@ -69,31 +69,31 @@ const styles = StyleSheet.create({
     paddingHorizontal: 2,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 19,
     fontWeight: '800',
     color: '#0F172A',
     letterSpacing: -0.3,
   },
   viewAllText: {
-    fontSize: 13,
+    fontSize: 13.5,
     fontWeight: '700',
     color: '#064E3B',
   },
   emptyCard: {
     backgroundColor: '#EDF7F2',
-    borderRadius: BorderRadius.xl,
-    paddingVertical: Spacing.four,
-    paddingHorizontal: Spacing.four,
+    borderRadius: 20,
+    paddingVertical: 18,
+    paddingHorizontal: 16,
     borderWidth: 1,
     borderColor: '#D4EBE0',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
+    gap: 16,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.02,
-    shadowRadius: 4,
-    elevation: 1,
+    shadowOpacity: 0.03,
+    shadowRadius: 5,
+    elevation: 2,
   },
   iconContainer: {
     flexDirection: 'row',
@@ -102,44 +102,49 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   clipboardBox: {
-    width: 44,
-    height: 44,
-    borderRadius: BorderRadius.md,
+    width: 50,
+    height: 50,
+    borderRadius: 14,
     backgroundColor: '#DCFCE7',
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   clipboardIcon: {
-    fontSize: 24,
+    fontSize: 26,
   },
   sparkleLeft: {
     position: 'absolute',
-    left: -10,
+    left: -11,
     top: 2,
-    fontSize: 10,
+    fontSize: 12,
   },
   sparkleRight: {
     position: 'absolute',
-    right: -10,
+    right: -11,
     bottom: 2,
-    fontSize: 10,
+    fontSize: 12,
   },
   textGroup: {
     flex: 1,
-    gap: 2,
+    gap: 3,
   },
   emptyTitle: {
-    fontSize: 14.5,
+    fontSize: 15,
     fontWeight: '800',
     color: '#064E3B',
   },
   emptyDescription: {
-    fontSize: 11.5,
+    fontSize: 12.5,
     color: '#64748B',
-    lineHeight: 16,
+    lineHeight: 17,
   },
   boldWord: {
-    fontWeight: '700',
-    color: '#475569',
+    fontWeight: '800',
+    color: '#334155',
   },
 });

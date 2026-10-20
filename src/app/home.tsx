@@ -26,13 +26,15 @@ import { supabase } from '@/lib/supabase';
 /**
  * TindaMate Main Dashboard Screen
  *
- * Mobile-First Responsive Dashboard:
- * 1. Top Header with TindaMate brand emblem and profile avatar
- * 2. Responsive hero banner with greeting, user name, store pill, and 3D market stall
- * 3. Store Overview (2x2 grid of horizontal summary cards: Today's Sales, Products, Low Stock, Utang)
- * 4. Quick Actions (4-column row: Add Product, Record Sale, Add Expense, Record Utang)
- * 5. Recent Activity (checklist card with transaction guidance)
- * 6. Bottom Navigation (pure vector line icons: Home with underline, Products, Sales, Utang, More)
+ * Visually Enhanced, Mobile-First Dashboard matching the official reference mockup:
+ * 1. Full-bleed Hero Zone (#F0F8F3 with rounded bottom corners):
+ *    - Prominent TindaMate brand emblem & white circular profile avatar
+ *    - Strong greeting typography ("Good morning,", large bold name, store pill)
+ *    - Large, vibrant 3D market stall illustration
+ * 2. Store Overview (2x2 grid of horizontal summary cards: Today's Sales, Products, Low Stock, Utang)
+ * 3. Quick Actions (Large 4-column row: Add Product, Record Sale, Add Expense, Record Utang)
+ * 4. Recent Activity (Polished empty state card with transaction guidance)
+ * 5. Persistent Bottom Navigation bar (Vector line icons: Home with green underline, Products, Sales, Utang, More)
  */
 export default function AuthenticatedDashboardScreen() {
   const [user, setUser] = useState<User | null>(null);
@@ -164,7 +166,7 @@ export default function AuthenticatedDashboardScreen() {
     user?.email?.split('@')[0] ||
     'Store Partner';
 
-  // Four Store Overview Cards
+  // Four Store Overview Cards (Matching reference horizontal layout)
   const overviewItems: OverviewItem[] = [
     {
       id: 'sales',
@@ -204,7 +206,7 @@ export default function AuthenticatedDashboardScreen() {
     },
   ];
 
-  // Four Quick Action Tiles (4-column row)
+  // Four Quick Action Tiles (4-column row matching mockup)
   const quickActions: QuickActionItem[] = [
     {
       id: 'add_product',
@@ -248,65 +250,70 @@ export default function AuthenticatedDashboardScreen() {
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}>
-          {/* Top Section */}
-          <View style={styles.topSectionWrapper}>
-            {/* 1. Header Row */}
-            <DashboardHeader
-              userEmail={user?.email}
-              onProfilePress={() => setIsProfileModalVisible(true)}
-            />
+          {/* 1. Full-Bleed Hero Zone with Soft Mint Backdrop (#F0F8F3) */}
+          <View style={styles.fullBleedHeroZone}>
+            <View style={styles.heroInnerContainer}>
+              {/* Header: Prominent Logo + Profile Circle */}
+              <DashboardHeader
+                userEmail={user?.email}
+                onProfilePress={() => setIsProfileModalVisible(true)}
+              />
 
-            {/* 2. Hero Greeting & Store Banner */}
-            <DashboardHeroBanner
-              displayName={displayName}
-              storeName="TindaMate Store"
-              onStorePress={() => setIsProfileModalVisible(true)}
-            />
+              {/* Greeting + 3D Market Stall Illustration */}
+              <DashboardHeroBanner
+                displayName={displayName}
+                storeName="TindaMate Store"
+                onStorePress={() => setIsProfileModalVisible(true)}
+              />
+            </View>
           </View>
 
-          {/* 3. Store Overview Section */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeaderRow}>
-              <Text style={styles.sectionTitle}>Store Overview</Text>
-              {/* Date Filter Pill matching reference */}
-              <View style={styles.filterPill}>
-                <Text style={styles.calendarIcon}>📅</Text>
-                <Text style={styles.filterPillText}>Today</Text>
-                <Text style={styles.filterChevron}>⌵</Text>
+          {/* 2. Main White Body Content */}
+          <View style={styles.bodyContentContainer}>
+            {/* 3. Store Overview Section */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeaderRow}>
+                <Text style={styles.sectionTitle}>Store Overview</Text>
+                {/* Date Filter Pill matching reference */}
+                <View style={styles.filterPill}>
+                  <Text style={styles.calendarIcon}>📅</Text>
+                  <Text style={styles.filterPillText}>Today</Text>
+                  <Text style={styles.filterChevron}>⌵</Text>
+                </View>
+              </View>
+
+              {/* 2x2 Overview Cards Grid */}
+              <View style={styles.gridRow}>
+                <StoreOverviewCard item={overviewItems[0]} />
+                <StoreOverviewCard item={overviewItems[1]} />
+              </View>
+              <View style={styles.gridRow}>
+                <StoreOverviewCard item={overviewItems[2]} />
+                <StoreOverviewCard item={overviewItems[3]} />
               </View>
             </View>
 
-            {/* 2x2 Overview Cards Grid */}
-            <View style={styles.gridRow}>
-              <StoreOverviewCard item={overviewItems[0]} />
-              <StoreOverviewCard item={overviewItems[1]} />
+            {/* 4. Quick Actions Section (4-column row matching mockup) */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeaderRow}>
+                <Text style={styles.sectionTitle}>Quick Actions</Text>
+                <Text style={styles.quickActionsSubtitle}>Manage your store, faster.</Text>
+              </View>
+
+              {/* 4-Column Action Tiles Row */}
+              <View style={styles.quickActionsRow}>
+                <QuickActionTile item={quickActions[0]} />
+                <QuickActionTile item={quickActions[1]} />
+                <QuickActionTile item={quickActions[2]} />
+                <QuickActionTile item={quickActions[3]} />
+              </View>
             </View>
-            <View style={styles.gridRow}>
-              <StoreOverviewCard item={overviewItems[2]} />
-              <StoreOverviewCard item={overviewItems[3]} />
-            </View>
+
+            {/* 5. Recent Activity Section */}
+            <RecentActivitySection
+              onViewAll={() => handleModuleClick('Recent Activity', 'Batch 3')}
+            />
           </View>
-
-          {/* 4. Quick Actions Section (4-column row matching mockup) */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeaderRow}>
-              <Text style={styles.sectionTitle}>Quick Actions</Text>
-              <Text style={styles.quickActionsSubtitle}>Manage your store, faster.</Text>
-            </View>
-
-            {/* 4-Column Action Tiles Row */}
-            <View style={styles.quickActionsRow}>
-              <QuickActionTile item={quickActions[0]} />
-              <QuickActionTile item={quickActions[1]} />
-              <QuickActionTile item={quickActions[2]} />
-              <QuickActionTile item={quickActions[3]} />
-            </View>
-          </View>
-
-          {/* 5. Recent Activity Section */}
-          <RecentActivitySection
-            onViewAll={() => handleModuleClick('Recent Activity', 'Batch 3')}
-          />
         </ScrollView>
 
         {/* 6. Persistent Bottom Navigation Bar */}
@@ -380,7 +387,7 @@ export default function AuthenticatedDashboardScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F0F8F3', // Blends seamlessly with full-bleed top zone
   },
   loadingContainer: {
     flex: 1,
@@ -395,26 +402,41 @@ const styles = StyleSheet.create({
   },
   mainContainer: {
     flex: 1,
+    backgroundColor: '#FFFFFF',
     justifyContent: 'space-between',
   },
   scrollView: {
     flex: 1,
+    backgroundColor: '#FFFFFF',
   },
   scrollContent: {
-    paddingHorizontal: 14,
-    paddingTop: 0,
     paddingBottom: Spacing.four,
-    maxWidth: 480,
-    width: '100%',
-    alignSelf: 'center',
-    gap: 12,
   },
-  topSectionWrapper: {
-    backgroundColor: '#FFFFFF',
+  // Full-bleed integrated top hero zone
+  fullBleedHeroZone: {
+    backgroundColor: '#F0F8F3',
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
     paddingTop: Spacing.one,
+    paddingBottom: Spacing.two,
+  },
+  heroInnerContainer: {
+    width: '100%',
+    maxWidth: 520,
+    alignSelf: 'center',
+    paddingHorizontal: 16,
+  },
+  // Body Content Container below Hero
+  bodyContentContainer: {
+    width: '100%',
+    maxWidth: 520,
+    alignSelf: 'center',
+    paddingHorizontal: 16,
+    paddingTop: Spacing.three,
+    gap: 20, // Generous visual breathing room between sections
   },
   section: {
-    gap: 10,
+    gap: 12,
   },
   sectionHeaderRow: {
     flexDirection: 'row',
@@ -422,7 +444,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   sectionTitle: {
-    fontSize: 17,
+    fontSize: 19,
     fontWeight: '800',
     color: '#0F172A',
     letterSpacing: -0.3,
@@ -431,43 +453,43 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 9,
-    paddingVertical: 4,
+    paddingHorizontal: 11,
+    paddingVertical: 5,
     borderRadius: BorderRadius.full,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    gap: 4,
+    gap: 5,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
+    shadowOpacity: 0.04,
     shadowRadius: 3,
     elevation: 1,
   },
   calendarIcon: {
-    fontSize: 11,
+    fontSize: 12,
   },
   filterPillText: {
-    fontSize: 11.5,
+    fontSize: 12,
     fontWeight: '700',
     color: '#334155',
   },
   filterChevron: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '800',
     color: '#64748B',
   },
   quickActionsSubtitle: {
-    fontSize: 11,
+    fontSize: 12,
     color: '#64748B',
     fontWeight: '500',
   },
   gridRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 10,
   },
   quickActionsRow: {
     flexDirection: 'row',
-    gap: 6,
+    gap: 8,
     justifyContent: 'space-between',
   },
   // Profile Modal Styling
