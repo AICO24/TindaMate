@@ -14,7 +14,7 @@ import { router } from 'expo-router';
 
 import { AuthDivider } from '@/components/ui/AuthDivider';
 import { AuthHeader } from '@/components/ui/AuthHeader';
-import { CheckIcon, LockIcon, MailIcon } from '@/components/ui/AuthIcons';
+import { AlertCircleIcon, CheckIcon, LockIcon, MailIcon } from '@/components/ui/AuthIcons';
 import { GoogleSignInButton } from '@/components/ui/GoogleSignInButton';
 import { TindaMateButton } from '@/components/ui/TindaMateButton';
 import { TindaMateInput } from '@/components/ui/TindaMateInput';
@@ -25,6 +25,7 @@ import {
   Spacing,
   Typography,
 } from '@/constants/theme';
+import { supabase } from '@/lib/supabase';
 
 export default function LoginScreen() {
   // Form State
@@ -32,7 +33,11 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
 
-  // Validation Error State
+  // Submission & Error State
+  const [isLoading, setIsLoading] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  // Field-level Validation Error State
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
 
   /**
@@ -60,28 +65,80 @@ export default function LoginScreen() {
   };
 
   /**
-   * Handle Login submission
-   *
-   * UI-only implementation for Batch 3A:
-   * Validates inputs, displays validation errors if any,
-   * or shows an informational message that backend auth will be connected in the Supabase batch.
+   * Helper to map Supabase Auth errors to user-friendly messages
    */
-  const handleLogin = () => {
+  const mapAuthError = (rawMessage: string): string => {
+    const lower = rawMessage.toLowerCase();
+    if (
+      lower.includes('invalid login credentials') ||
+      lower.includes('invalid_grant') ||
+      lower.includes('invalid_credentials')
+    ) {
+      return 'Invalid email or password. Please check your credentials and try again.';
+    }
+    if (lower.includes('email not confirmed')) {
+      return 'Please confirm your email address before logging in. Check your inbox for the confirmation link.';
+    }
+    if (lower.includes('network') || lower.includes('fetch') || lower.includes('connection')) {
+      return `Unable to connect to Supabase: ${rawMessage}. Please check your internet connection.`;
+    }
+    return rawMessage;
+  };
+
+  /**
+   * Handle Login submission with Supabase Auth
+   */
+  const handleLogin = async () => {
+    if (isLoading) return;
+
+    // Reset previous general auth error
+    setAuthError(null);
+
     const isValid = validateForm();
     if (!isValid) return;
 
-    const message =
-      'Form validation passed! Real login and session handling will be connected in the Supabase Auth batch.';
+    const trimmedEmail = email.trim();
 
-    if (Platform.OS === 'web') {
-      window.alert(`Login (UI Preview)\n\n${message}`);
-    } else {
-      Alert.alert('Login (UI Preview)', message, [{ text: 'OK' }]);
+    try {
+      setIsLoading(true);
+
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: trimmedEmail,
+        password: password,
+      });
+
+      if (error) {
+        console.warn('[Supabase SignIn Error]:', error.message);
+        const friendlyMessage = mapAuthError(error.message);
+        setAuthError(friendlyMessage);
+        if (Platform.OS === 'web') {
+          window.alert(`Login Failed: ${friendlyMessage}`);
+        } else {
+          Alert.alert('Login Failed', friendlyMessage, [{ text: 'OK' }]);
+        }
+        return;
+      }
+
+      if (data.session) {
+        // Successful login: navigate to existing home screen
+        router.replace('/');
+      }
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      console.warn('[Supabase SignIn Exception]:', errMsg);
+      setAuthError(errMsg);
+      if (Platform.OS === 'web') {
+        window.alert(`Login Error: ${errMsg}`);
+      } else {
+        Alert.alert('Login Error', errMsg, [{ text: 'OK' }]);
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
   /**
-   * Handle Forgot Password click
+   * Handle Forgot Password click (Preview placeholder until Batch 6)
    */
   const handleForgotPassword = () => {
     const message =
@@ -116,6 +173,14 @@ export default function LoginScreen() {
               </Text>
             </View>
 
+            {/* General Auth Error Banner */}
+            {authError && (
+              <View style={styles.authErrorBanner}>
+                <AlertCircleIcon size={16} color={Colors.error} />
+                <Text style={styles.authErrorText}>{authError}</Text>
+              </View>
+            )}
+
             {/* Email Field */}
             <TindaMateInput
               label="Email address"
@@ -123,6 +188,7 @@ export default function LoginScreen() {
               value={email}
               onChangeText={(text) => {
                 setEmail(text);
+                if (authError) setAuthError(null);
                 if (errors.email) {
                   setErrors((prev) => ({ ...prev, email: undefined }));
                 }
@@ -143,6 +209,7 @@ export default function LoginScreen() {
               value={password}
               onChangeText={(text) => {
                 setPassword(text);
+                if (authError) setAuthError(null);
                 if (errors.password) {
                   setErrors((prev) => ({ ...prev, password: undefined }));
                 }
@@ -157,7 +224,7 @@ export default function LoginScreen() {
 
             {/* Remember Me & Forgot Password Row */}
             <View style={styles.optionsRow}>
-              {/* Remember Me Checkbox */}
+              {/* Remember Me Checkbox (UI-only for now; persistence in future batch) */}
               <Pressable
                 accessibilityRole="checkbox"
                 accessibilityState={{ checked: rememberMe }}
@@ -184,8 +251,9 @@ export default function LoginScreen() {
             {/* Primary CTA: Login Button */}
             <View style={styles.ctaContainer}>
               <TindaMateButton
-                title="Login"
+                title={isLoading ? 'Signing In...' : 'Login'}
                 onPress={handleLogin}
+                disabled={isLoading}
                 accessibilityLabel="Log in to your account"
               />
             </View>
@@ -250,6 +318,25 @@ const styles = StyleSheet.create({
     fontSize: Typography.sizes.bodySm,
     color: Colors.textSecondary,
     lineHeight: Typography.lineHeights.normal,
+  },
+  authErrorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    backgroundColor: Colors.errorLight,
+    borderWidth: 1,
+    borderColor: Colors.errorBorder,
+    borderRadius: BorderRadius.md,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+    marginBottom: Spacing.three,
+  },
+  authErrorText: {
+    flex: 1,
+    fontSize: Typography.sizes.xs,
+    color: Colors.error,
+    fontWeight: Typography.weights.medium,
+    lineHeight: 18,
   },
   optionsRow: {
     flexDirection: 'row',

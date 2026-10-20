@@ -12,16 +12,18 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AuthHeader } from '@/components/ui/AuthHeader';
-import { LockIcon, MailIcon, UserIcon } from '@/components/ui/AuthIcons';
+import { AlertCircleIcon, LockIcon, MailIcon, UserIcon } from '@/components/ui/AuthIcons';
 import { PasswordStrengthMeter } from '@/components/ui/PasswordStrengthMeter';
 import { TindaMateButton } from '@/components/ui/TindaMateButton';
 import { TindaMateInput } from '@/components/ui/TindaMateInput';
 import {
+  BorderRadius,
   Colors,
   MaxContentWidth,
   Spacing,
   Typography,
 } from '@/constants/theme';
+import { supabase } from '@/lib/supabase';
 
 export default function RegisterScreen() {
   // Form State
@@ -30,7 +32,11 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
-  // Validation Error State
+  // Submission & Error State
+  const [isLoading, setIsLoading] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  // Field-level Validation Error State
   const [errors, setErrors] = useState<{
     fullName?: string;
     email?: string;
@@ -83,23 +89,101 @@ export default function RegisterScreen() {
   };
 
   /**
-   * Handle Registration submission
-   *
-   * UI-only implementation for Batch 3A:
-   * Validates inputs, displays validation errors if any,
-   * or shows an informational message that backend registration will be connected in the Supabase batch.
+   * Helper to map Supabase Auth errors to user-friendly messages
    */
-  const handleRegister = () => {
+  const mapAuthError = (rawMessage: string): string => {
+    const lower = rawMessage.toLowerCase();
+    if (lower.includes('already registered') || lower.includes('user already exists')) {
+      return 'This email address is already registered. Please log in instead or use another email.';
+    }
+    if (lower.includes('password') && (lower.includes('short') || lower.includes('weak') || lower.includes('least'))) {
+      return 'Password is too weak. Please use at least 6 characters with letters and numbers.';
+    }
+    if (lower.includes('valid email') || lower.includes('invalid email')) {
+      return 'Please enter a valid email address.';
+    }
+    if (lower.includes('network') || lower.includes('fetch') || lower.includes('connection')) {
+      return `Unable to connect to Supabase: ${rawMessage}. Please check your internet connection.`;
+    }
+    return rawMessage;
+  };
+
+  /**
+   * Handle Registration submission with Supabase Auth
+   */
+  const handleRegister = async () => {
+    if (isLoading) return;
+
+    // Reset previous general auth error
+    setAuthError(null);
+
     const isValid = validateForm();
     if (!isValid) return;
 
-    const message =
-      'Form validation passed! Account registration and store setup will be connected in the Supabase Auth batch.';
+    const trimmedName = fullName.trim();
+    const trimmedEmail = email.trim();
 
-    if (Platform.OS === 'web') {
-      window.alert(`Create Account (UI Preview)\n\n${message}`);
-    } else {
-      Alert.alert('Create Account (UI Preview)', message, [{ text: 'OK' }]);
+    try {
+      setIsLoading(true);
+
+      const { data, error } = await supabase.auth.signUp({
+        email: trimmedEmail,
+        password: password,
+        options: {
+          data: {
+            full_name: trimmedName,
+          },
+        },
+      });
+
+      if (error) {
+        console.warn('[Supabase SignUp Error]:', error.message);
+        const friendlyMessage = mapAuthError(error.message);
+        setAuthError(friendlyMessage);
+        if (Platform.OS === 'web') {
+          window.alert(`Registration Failed: ${friendlyMessage}`);
+        } else {
+          Alert.alert('Registration Failed', friendlyMessage, [{ text: 'OK' }]);
+        }
+        return;
+      }
+
+      // Check if session was returned or email confirmation is required
+      if (data.session) {
+        // Confirmation is disabled; user is immediately logged in
+        const message = 'Account created successfully! Welcome to TindaMate.';
+        if (Platform.OS === 'web') {
+          window.alert(message);
+          router.replace('/');
+        } else {
+          Alert.alert('Welcome!', message, [
+            { text: 'Get Started', onPress: () => router.replace('/') },
+          ]);
+        }
+      } else {
+        // Confirmation is enabled; user must verify email first
+        const message =
+          'Account created successfully! Please check your email inbox to confirm your account before logging in.';
+        if (Platform.OS === 'web') {
+          window.alert(message);
+          router.replace('/login');
+        } else {
+          Alert.alert('Confirm Your Email', message, [
+            { text: 'Go to Login', onPress: () => router.replace('/login') },
+          ]);
+        }
+      }
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      console.warn('[Supabase SignUp Exception]:', errMsg);
+      setAuthError(errMsg);
+      if (Platform.OS === 'web') {
+        window.alert(`Registration Error: ${errMsg}`);
+      } else {
+        Alert.alert('Registration Error', errMsg, [{ text: 'OK' }]);
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -125,6 +209,14 @@ export default function RegisterScreen() {
               </Text>
             </View>
 
+            {/* General Auth Error Banner */}
+            {authError && (
+              <View style={styles.authErrorBanner}>
+                <AlertCircleIcon size={16} color={Colors.error} />
+                <Text style={styles.authErrorText}>{authError}</Text>
+              </View>
+            )}
+
             {/* Field 1: Full Name */}
             <TindaMateInput
               label="Full Name"
@@ -132,6 +224,7 @@ export default function RegisterScreen() {
               value={fullName}
               onChangeText={(text) => {
                 setFullName(text);
+                if (authError) setAuthError(null);
                 if (errors.fullName) {
                   setErrors((prev) => ({ ...prev, fullName: undefined }));
                 }
@@ -151,6 +244,7 @@ export default function RegisterScreen() {
               value={email}
               onChangeText={(text) => {
                 setEmail(text);
+                if (authError) setAuthError(null);
                 if (errors.email) {
                   setErrors((prev) => ({ ...prev, email: undefined }));
                 }
@@ -171,6 +265,7 @@ export default function RegisterScreen() {
               value={password}
               onChangeText={(text) => {
                 setPassword(text);
+                if (authError) setAuthError(null);
                 if (errors.password) {
                   setErrors((prev) => ({ ...prev, password: undefined }));
                 }
@@ -192,6 +287,7 @@ export default function RegisterScreen() {
               value={confirmPassword}
               onChangeText={(text) => {
                 setConfirmPassword(text);
+                if (authError) setAuthError(null);
                 if (errors.confirmPassword) {
                   setErrors((prev) => ({ ...prev, confirmPassword: undefined }));
                 }
@@ -207,8 +303,9 @@ export default function RegisterScreen() {
             {/* Primary CTA: Register Button */}
             <View style={styles.ctaContainer}>
               <TindaMateButton
-                title="Register"
+                title={isLoading ? 'Creating Account...' : 'Register'}
                 onPress={handleRegister}
+                disabled={isLoading}
                 accessibilityLabel="Create your TindaMate account"
               />
             </View>
@@ -267,6 +364,25 @@ const styles = StyleSheet.create({
     fontSize: Typography.sizes.bodySm,
     color: Colors.textSecondary,
     lineHeight: Typography.lineHeights.normal,
+  },
+  authErrorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    backgroundColor: Colors.errorLight,
+    borderWidth: 1,
+    borderColor: Colors.errorBorder,
+    borderRadius: BorderRadius.md,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+    marginBottom: Spacing.three,
+  },
+  authErrorText: {
+    flex: 1,
+    fontSize: Typography.sizes.xs,
+    color: Colors.error,
+    fontWeight: Typography.weights.medium,
+    lineHeight: 18,
   },
   ctaContainer: {
     width: '100%',

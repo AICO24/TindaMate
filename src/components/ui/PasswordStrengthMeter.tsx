@@ -91,7 +91,7 @@ export function PasswordStrengthMeter({
       <View style={styles.barContainer}>
         {Array.from({ length: totalSegments }).map((_, index) => {
           const isFilled = index < score;
-          let segmentColor = Colors.border;
+          let segmentColor: string = Colors.border;
 
           if (isFilled) {
             if (strength === 'weak') segmentColor = Colors.error;
