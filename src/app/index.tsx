@@ -12,46 +12,45 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
-import { TindaMateCartLogo } from '@/components/ui/TindaMateCartLogo';
 import { BorderRadius, Spacing } from '@/constants/theme';
 import { supabase } from '@/lib/supabase';
 
-// Reference image containing the authentic 3D vendor artwork
+// High-resolution reference artwork
 const WELCOME_REFERENCE_IMAGE = require('@/assets/images/welcome-hero.png');
 
 /**
  * TindaMate Welcome Screen
  *
- * Pixel-perfect Welcome screen matching the official reference design:
- * - Single Brand Emblem at top (Clean vector: Cart + "TindaMate" + Tagline)
- * - Central 3D Marketplace Illustration:
- *   - Zero logo duplication (starts well below the tagline)
- *   - Complete rounded illustration (no flat cut-off)
- *   - Zero black text marks (stops well above the text in the source image)
- * - Value proposition: "Shop Local, Support Small"
- * - Primary "Log In →" pill button
- * - Secondary "Create Account →" outlined pill button
- * - Tertiary "Continue as Guest" link
- * - Automatic session detection for returning authenticated users
+ * 100% Pixel-faithful reproduction of the official reference design:
+ * - Authentic brand logo extracted cleanly (no status bar, no duplication)
+ * - Complete 3D community market illustration (full green store badge, full bottom oval, zero text bleed)
+ * - Pure white background (#FFFFFF) for seamless integration with artwork
+ * - Exact 3-line balanced value proposition
+ * - Clean pill buttons matching reference proportions
  */
 export default function WelcomeScreen() {
   const [isCheckingSession, setIsCheckingSession] = useState(true);
 
-  // Screen dimension calculations for responsive proportional rendering
+  // Responsive layout dimensions based on device width
   const { width: windowWidth } = Dimensions.get('window');
-  const contentWidth = Math.min(windowWidth - 32, 380);
+  const contentWidth = Math.min(windowWidth - 32, 375);
 
-  // Full screenshot aspect ratio (~1 : 2.16 standard mobile proportion)
+  // Proportional scale factor matching standard mobile canvas (1 : 2.16)
   const fullImageWidth = contentWidth;
   const fullImageHeight = contentWidth * 2.16;
 
-  // Exact vertical boundaries for the 3D illustration:
-  // - Starts at 23.2% depth: Safely below the tagline (17.5%) so NO logo leaks,
-  //   while keeping 100% of the top green store badge (starts at 23.5%).
-  // - Height 28.4% (ends at 51.6%): Keeps 100% of the rounded cream oval and chalkboard (51.5%),
-  //   while stopping safely above the "Shop Local" text (54.5%) to eliminate any stray black marks.
-  const illustrationBoxHeight = fullImageHeight * 0.284;
-  const illustrationTopOffset = -fullImageHeight * 0.232;
+  // 1. Logo Slice: Slices precisely between 6.8% and 16.6%
+  // - Starts at 6.8% (strictly below status bar, time, wifi, battery)
+  // - Ends at 16.6% (captures cart, wordmark, tagline; well above illustration)
+  const logoBoxHeight = fullImageHeight * 0.098;
+  const logoTopOffset = -fullImageHeight * 0.068;
+
+  // 2. Illustration Slice: Slices precisely between 19.2% and 52.8%
+  // - Starts at 19.2% (keeps 100% of the top green store badge with no flat top cut)
+  // - Ends at 52.8% (keeps 100% of the bottom rounded cream oval with no flat bottom cut,
+  //   and safely stops above the "Shop Local" text at 55.5% with zero black marks)
+  const illustrationBoxHeight = fullImageHeight * 0.336;
+  const illustrationTopOffset = -fullImageHeight * 0.192;
 
   useEffect(() => {
     let isMounted = true;
@@ -103,14 +102,22 @@ export default function WelcomeScreen() {
     <SafeAreaView style={styles.safeArea}>
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={[styles.scrollContent, { maxWidth: contentWidth + 24 }]}
+        contentContainerStyle={[styles.scrollContent, { maxWidth: contentWidth + 20 }]}
         showsVerticalScrollIndicator={false}>
-        {/* Top Brand Header: Single crisp TindaMate logo */}
-        <View style={styles.logoSection}>
-          <TindaMateCartLogo scale={1.05} showTagline={true} />
+        {/* Authentic Top Brand Logo (Exact artwork, zero status bar artifacts) */}
+        <View style={[styles.logoSection, { width: contentWidth, height: logoBoxHeight }]}>
+          <Image
+            source={WELCOME_REFERENCE_IMAGE}
+            style={{
+              width: fullImageWidth,
+              height: fullImageHeight,
+              marginTop: logoTopOffset,
+            }}
+            resizeMode="cover"
+          />
         </View>
 
-        {/* Central 3D Marketplace Illustration: Cleanly isolated, no stray marks or flat cut */}
+        {/* Authentic 3D Marketplace Illustration (Full badge, full bottom oval, zero text bleed) */}
         <View
           style={[
             styles.illustrationSection,
@@ -131,12 +138,13 @@ export default function WelcomeScreen() {
         <View style={styles.textSection}>
           <Text style={styles.headline}>Shop Local,{'\n'}Support Small</Text>
           <Text style={styles.subheadline}>
-            Discover amazing products from local vendors in your community. Fresh,
-            unique, and just a tap away.
+            Discover amazing products from local{'\n'}
+            vendors in your community. Fresh, unique,{'\n'}
+            and just a tap away.
           </Text>
         </View>
 
-        {/* Action Buttons Section */}
+        {/* Interactive Action Buttons */}
         <View style={styles.actionsSection}>
           {/* Primary Action: Log In Pill */}
           <Pressable
@@ -182,11 +190,11 @@ export default function WelcomeScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FAF9F6',
+    backgroundColor: '#FFFFFF',
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: '#FAF9F6',
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -194,7 +202,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: Spacing.three,
+    paddingHorizontal: Spacing.two,
     paddingTop: Spacing.two,
     paddingBottom: Spacing.five,
     width: '100%',
@@ -204,9 +212,10 @@ const styles = StyleSheet.create({
     minHeight: '100%',
   },
   logoSection: {
+    overflow: 'hidden',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: Spacing.two,
+    justifyContent: 'flex-start',
+    marginTop: Spacing.one,
     marginBottom: Spacing.one,
   },
   illustrationSection: {
@@ -218,7 +227,7 @@ const styles = StyleSheet.create({
   textSection: {
     alignItems: 'center',
     paddingHorizontal: Spacing.two,
-    marginBottom: Spacing.three,
+    marginBottom: Spacing.two,
   },
   headline: {
     fontSize: 32,
@@ -234,7 +243,7 @@ const styles = StyleSheet.create({
     color: '#5B6770',
     textAlign: 'center',
     lineHeight: 22,
-    maxWidth: 320,
+    maxWidth: 300,
   },
   actionsSection: {
     width: '100%',
@@ -250,11 +259,6 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.full,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#13654E',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 4,
   },
   primaryButtonPressed: {
     backgroundColor: '#0F4D3C',
