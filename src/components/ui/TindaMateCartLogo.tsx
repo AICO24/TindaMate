@@ -12,8 +12,8 @@ interface TindaMateCartLogoProps {
  * TindaMateCartLogo
  *
  * Renders the authentic TindaMate brand emblem matching the reference mockup:
- * - Rounded forest green shopping cart (#105B48)
- * - Two leafy sprouts extending upward from the basket
+ * - Rounded chunky forest green shopping cart (#105B48)
+ * - Two leafy sprouts extending upward from inside the cart
  * - Dual-color wordmark: "Tinda" in forest green (#105B48) + "Mate" in warm orange (#EA580C)
  * - Tagline: "Local Vendors. Better Choices."
  */
@@ -39,11 +39,11 @@ export function TindaMateCartLogo({
           <View style={styles.cartBody}>
             {/* Top Wire Rim */}
             <View style={styles.cartTopRim} />
-            {/* Horizontal Grid Bars */}
+            {/* Horizontal Grid Bar */}
             <View style={styles.cartGridBar} />
           </View>
 
-          {/* Handle */}
+          {/* Cart Handle */}
           <View style={styles.cartHandle} />
 
           {/* Wheels */}
@@ -54,7 +54,7 @@ export function TindaMateCartLogo({
         </View>
 
         {/* Wordmark: Tinda (Forest Green) + Mate (Warm Orange) */}
-        <Text style={[styles.wordmark, { fontSize: 30 * scale }]}>
+        <Text style={[styles.wordmark, { fontSize: 31 * scale }]}>
           <Text style={styles.wordmarkGreen}>Tinda</Text>
           <Text style={styles.wordmarkOrange}>Mate</Text>
         </Text>
@@ -82,51 +82,51 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   cartWrapper: {
-    width: 36,
-    height: 36,
+    width: 38,
+    height: 38,
     position: 'relative',
     justifyContent: 'flex-end',
     alignItems: 'center',
   },
   leafGroup: {
     position: 'absolute',
-    top: -2,
+    top: -3,
     left: 8,
-    width: 16,
-    height: 14,
+    width: 18,
+    height: 16,
     zIndex: 3,
   },
   leafLeft: {
     position: 'absolute',
     left: 0,
     top: 2,
-    width: 11,
-    height: 11,
+    width: 12,
+    height: 12,
     backgroundColor: '#105B48',
-    borderTopLeftRadius: 10,
-    borderBottomRightRadius: 10,
+    borderTopLeftRadius: 11,
+    borderBottomRightRadius: 11,
     transform: [{ rotate: '-25deg' }],
   },
   leafRight: {
     position: 'absolute',
     right: 0,
     top: 0,
-    width: 8,
-    height: 8,
+    width: 9,
+    height: 9,
     backgroundColor: '#34D399',
     borderTopLeftRadius: 8,
     borderBottomRightRadius: 8,
     transform: [{ rotate: '30deg' }],
   },
   cartBody: {
-    width: 26,
-    height: 18,
-    borderLeftWidth: 3,
-    borderBottomWidth: 3,
-    borderRightWidth: 2.5,
+    width: 28,
+    height: 19,
+    borderLeftWidth: 3.5,
+    borderBottomWidth: 3.5,
+    borderRightWidth: 2.8,
     borderColor: '#105B48',
     borderBottomLeftRadius: 5,
-    borderBottomRightRadius: 3,
+    borderBottomRightRadius: 4,
     position: 'relative',
     marginTop: 8,
   },
@@ -148,23 +148,23 @@ const styles = StyleSheet.create({
   },
   cartHandle: {
     position: 'absolute',
-    left: 1,
-    top: 10,
+    left: 0,
+    top: 9,
     width: 7,
-    height: 3,
+    height: 3.5,
     backgroundColor: '#105B48',
-    borderRadius: 1.5,
+    borderRadius: 2,
   },
   wheelsRow: {
     flexDirection: 'row',
-    width: 22,
+    width: 24,
     justifyContent: 'space-between',
     marginTop: 2,
   },
   wheel: {
-    width: 5.5,
-    height: 5.5,
-    borderRadius: 2.75,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     backgroundColor: '#105B48',
   },
   wordmark: {
@@ -180,7 +180,7 @@ const styles = StyleSheet.create({
   tagline: {
     color: '#475569',
     fontWeight: '600',
-    letterSpacing: 0.3,
+    letterSpacing: 0.35,
     marginTop: 3,
     textAlign: 'center',
   },

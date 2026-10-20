@@ -22,10 +22,12 @@ const WELCOME_REFERENCE_IMAGE = require('@/assets/images/welcome-hero.png');
 /**
  * TindaMate Welcome Screen
  *
- * Clean, production-ready Welcome screen matching the reference design:
- * - Brand emblem at top (clean vector cart with leaves + TindaMate wordmark + tagline)
- * - Authentic 3D community market illustration (vendor with phone, fruit stall, chalkboard)
- *   Cleanly sliced to exclude any phone status bar (time, battery, wifi, data bars)
+ * Pixel-perfect Welcome screen matching the official reference design:
+ * - Single Brand Emblem at top (Clean vector: Cart + "TindaMate" + Tagline)
+ * - Central 3D Marketplace Illustration:
+ *   - Zero logo duplication (starts well below the tagline)
+ *   - Complete rounded illustration (no flat cut-off)
+ *   - Zero black text marks (stops well above the text in the source image)
  * - Value proposition: "Shop Local, Support Small"
  * - Primary "Log In →" pill button
  * - Secondary "Create Account →" outlined pill button
@@ -39,13 +41,17 @@ export default function WelcomeScreen() {
   const { width: windowWidth } = Dimensions.get('window');
   const contentWidth = Math.min(windowWidth - 32, 380);
 
-  // Proportional slicing for the middle 3D illustration only (skips top status bar and bottom buttons)
+  // Full screenshot aspect ratio (~1 : 2.16 standard mobile proportion)
   const fullImageWidth = contentWidth;
   const fullImageHeight = contentWidth * 2.16;
 
-  // Middle slice strictly containing the 3D vendor, stall, and chalkboard (22% to 56% depth)
-  const illustrationBoxHeight = fullImageHeight * 0.34;
-  const illustrationTopOffset = -fullImageHeight * 0.22;
+  // Exact vertical boundaries for the 3D illustration:
+  // - Starts at 23.2% depth: Safely below the tagline (17.5%) so NO logo leaks,
+  //   while keeping 100% of the top green store badge (starts at 23.5%).
+  // - Height 28.4% (ends at 51.6%): Keeps 100% of the rounded cream oval and chalkboard (51.5%),
+  //   while stopping safely above the "Shop Local" text (54.5%) to eliminate any stray black marks.
+  const illustrationBoxHeight = fullImageHeight * 0.284;
+  const illustrationTopOffset = -fullImageHeight * 0.232;
 
   useEffect(() => {
     let isMounted = true;
@@ -99,12 +105,12 @@ export default function WelcomeScreen() {
         style={styles.scrollView}
         contentContainerStyle={[styles.scrollContent, { maxWidth: contentWidth + 24 }]}
         showsVerticalScrollIndicator={false}>
-        {/* Top Brand Header (Vector rendered, zero screenshot artifacts) */}
+        {/* Top Brand Header: Single crisp TindaMate logo */}
         <View style={styles.logoSection}>
           <TindaMateCartLogo scale={1.05} showTagline={true} />
         </View>
 
-        {/* Central 3D Marketplace Illustration (Cropped to isolate artwork only) */}
+        {/* Central 3D Marketplace Illustration: Cleanly isolated, no stray marks or flat cut */}
         <View
           style={[
             styles.illustrationSection,
@@ -117,7 +123,7 @@ export default function WelcomeScreen() {
               height: fullImageHeight,
               marginTop: illustrationTopOffset,
             }}
-            resizeMode="contain"
+            resizeMode="cover"
           />
         </View>
 
@@ -130,7 +136,7 @@ export default function WelcomeScreen() {
           </Text>
         </View>
 
-        {/* Interactive Action Buttons */}
+        {/* Action Buttons Section */}
         <View style={styles.actionsSection}>
           {/* Primary Action: Log In Pill */}
           <Pressable
