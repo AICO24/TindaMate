@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -13,57 +14,58 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { User } from '@supabase/supabase-js';
 
-import { TindaMateCartLogo } from '@/components/ui/TindaMateCartLogo';
-import { BorderRadius, Colors, Spacing, Typography } from '@/constants/theme';
+import { DashboardBottomNav, NavTab } from '@/components/dashboard/DashboardBottomNav';
+import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
+import { DashboardHeroBanner } from '@/components/dashboard/DashboardHeroBanner';
+import { QuickActionItem, QuickActionTile } from '@/components/dashboard/QuickActionTile';
+import { RecentActivitySection } from '@/components/dashboard/RecentActivitySection';
+import { OverviewItem, StoreOverviewCard } from '@/components/dashboard/StoreOverviewCard';
+import { BorderRadius, Spacing } from '@/constants/theme';
 import { supabase } from '@/lib/supabase';
 
 /**
- * Authenticated App Shell (Home Screen)
+ * TindaMate Main Dashboard Screen
  *
- * Serves as the central authenticated foundation for TindaMate:
- * - Validates active Supabase session
- * - Displays authenticated user details (email, full name)
- * - Sets the clean baseline for upcoming business modules
- * - Provides working Logout functionality calling supabase.auth.signOut()
+ * Primary starting point for authenticated store owners:
+ * 1. Top Brand Header with user profile button
+ * 2. Warm greeting & store context banner with mini marketplace illustration
+ * 3. Store Overview (4 pastel summary cards with honest empty states)
+ * 4. Quick Actions (4 action tiles for sales, products, expenses, and utang)
+ * 5. Recent Activity (clean empty state for new stores)
+ * 6. Persistent Bottom Navigation bar (Home, Products, Sales, Utang, More)
  */
-export default function AuthenticatedHomeScreen() {
+export default function AuthenticatedDashboardScreen() {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [activeTab, setActiveTab] = useState<NavTab>('home');
+  const [isProfileModalVisible, setIsProfileModalVisible] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
 
-    // Verify authenticated session on mount
+    // Verify session on mount
     const checkSession = async () => {
       try {
         const { data, error } = await supabase.auth.getSession();
         if (error || !data.session) {
-          // If no active session, redirect to unauthenticated Welcome flow
-          if (isMounted) {
-            router.replace('/');
-          }
+          if (isMounted) router.replace('/');
           return;
         }
-
         if (isMounted) {
           setUser(data.session.user);
         }
       } catch (err) {
-        console.warn('[Session Check Error]:', err);
-        if (isMounted) {
-          router.replace('/');
-        }
+        console.warn('[Dashboard Session Error]:', err);
+        if (isMounted) router.replace('/');
       } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
+        if (isMounted) setIsLoading(false);
       }
     };
 
     checkSession();
 
-    // Listen to auth state transitions
+    // Subscribe to auth state updates
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -89,14 +91,14 @@ export default function AuthenticatedHomeScreen() {
     const performSignOut = async () => {
       try {
         setIsLoggingOut(true);
+        setIsProfileModalVisible(false);
         const { error } = await supabase.auth.signOut();
         if (error) {
-          console.warn('[Supabase SignOut Error]:', error.message);
+          console.warn('[SignOut Error]:', error.message);
         }
-        // Redirect to Welcome page
         router.replace('/');
       } catch (err) {
-        console.warn('[Supabase SignOut Exception]:', err);
+        console.warn('[SignOut Exception]:', err);
         router.replace('/');
       } finally {
         setIsLoggingOut(false);
@@ -116,121 +118,253 @@ export default function AuthenticatedHomeScreen() {
     }
   };
 
+  /**
+   * Placeholder handler for coming soon modules
+   */
+  const handleModuleClick = (moduleName: string, batchNote: string) => {
+    const message = `${moduleName} will be connected to your Supabase store database in ${batchNote}!`;
+    if (Platform.OS === 'web') {
+      window.alert(message);
+    } else {
+      Alert.alert(moduleName, message, [{ text: 'Got it!' }]);
+    }
+  };
+
+  /**
+   * Handle bottom tab switching
+   */
+  const handleTabPress = (tab: NavTab) => {
+    setActiveTab(tab);
+    if (tab === 'home') return;
+    if (tab === 'more') {
+      setIsProfileModalVisible(true);
+      return;
+    }
+    const tabNames: Record<NavTab, string> = {
+      home: 'Home',
+      products: 'Products Catalog',
+      sales: 'Daily Sales & Cashier',
+      utang: 'Lista ng Utang',
+      more: 'Settings & Profile',
+    };
+    handleModuleClick(tabNames[tab], 'an upcoming batch');
+  };
+
   if (isLoading) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={Colors.primary} />
-        <Text style={styles.loadingText}>Loading TindaMate session...</Text>
+        <ActivityIndicator size="large" color="#105B48" />
+        <Text style={styles.loadingText}>Loading TindaMate Dashboard...</Text>
       </SafeAreaView>
     );
   }
 
-  const userDisplayName =
+  const displayName =
     user?.user_metadata?.full_name ||
     user?.email?.split('@')[0] ||
     'Vendor Partner';
 
+  // Four Store Overview Cards
+  const overviewItems: OverviewItem[] = [
+    {
+      id: 'sales',
+      title: "Today's Sales",
+      value: '₱0.00',
+      subtitle: 'No sales recorded yet',
+      icon: '💵',
+      theme: 'green',
+      onPress: () => handleModuleClick("Today's Sales", 'Batch 3'),
+    },
+    {
+      id: 'products',
+      title: 'Products',
+      value: '0 items',
+      subtitle: 'Tap to add first item',
+      icon: '📦',
+      theme: 'blue',
+      onPress: () => handleModuleClick('Product Inventory', 'Batch 3'),
+    },
+    {
+      id: 'low_stock',
+      title: 'Low Stock',
+      value: 'All Good',
+      subtitle: 'No low-stock items',
+      icon: '⚠️',
+      theme: 'amber',
+      onPress: () => handleModuleClick('Stock Alerts', 'Batch 3'),
+    },
+    {
+      id: 'utang',
+      title: 'Outstanding Utang',
+      value: '₱0.00',
+      subtitle: 'Lista ng utang is clear',
+      icon: '📝',
+      theme: 'purple',
+      onPress: () => handleModuleClick('Utang Tracker', 'Batch 4'),
+    },
+  ];
+
+  // Four Quick Action Tiles
+  const quickActions: QuickActionItem[] = [
+    {
+      id: 'add_product',
+      label: 'Add Product',
+      sublabel: 'New store item',
+      icon: '📦',
+      theme: 'emerald',
+      onPress: () => handleModuleClick('Add Product', 'Batch 3'),
+    },
+    {
+      id: 'record_sale',
+      label: 'Record Sale',
+      sublabel: 'Cashier entry',
+      icon: '🧾',
+      theme: 'blue',
+      onPress: () => handleModuleClick('Record Sale', 'Batch 3'),
+    },
+    {
+      id: 'add_expense',
+      label: 'Add Expense',
+      sublabel: 'Store expense',
+      icon: '💸',
+      theme: 'amber',
+      onPress: () => handleModuleClick('Add Expense', 'Batch 4'),
+    },
+    {
+      id: 'record_utang',
+      label: 'Record Utang',
+      sublabel: 'Customer credit',
+      icon: '✍️',
+      theme: 'purple',
+      onPress: () => handleModuleClick('Record Utang', 'Batch 4'),
+    },
+  ];
+
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}>
-        {/* Top Header with Brand Emblem */}
-        <View style={styles.header}>
-          <TindaMateCartLogo scale={0.85} showTagline={false} />
-          {/* Status Badge */}
-          <View style={styles.badge}>
-            <View style={styles.statusDot} />
-            <Text style={styles.badgeText}>Supabase Connected</Text>
-          </View>
-        </View>
+      <View style={styles.mainContainer}>
+        {/* Main Scrollable Dashboard Content */}
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}>
+          {/* 1. Top Header */}
+          <DashboardHeader
+            userEmail={user?.email}
+            onProfilePress={() => setIsProfileModalVisible(true)}
+          />
 
-        {/* User Greeting & Auth Summary Card */}
-        <View style={styles.welcomeCard}>
-          <Text style={styles.greetingTitle}>
-            Kumusta, {userDisplayName}! 👋
-          </Text>
-          <Text style={styles.greetingSubtitle}>
-            Welcome to your TindaMate workspace.
-          </Text>
+          {/* 2. Hero Greeting & Store Banner */}
+          <DashboardHeroBanner
+            displayName={displayName}
+            storeName="TindaMate Store"
+          />
 
-          <View style={styles.sessionInfoBox}>
-            <Text style={styles.sessionLabel}>Authenticated Account:</Text>
-            <Text style={styles.sessionValue}>{user?.email || 'Authenticated User'}</Text>
-          </View>
-        </View>
-
-        {/* Foundation Architecture Placeholder for Future Modules */}
-        <View style={styles.modulesContainer}>
-          <Text style={styles.sectionHeader}>Upcoming Modules</Text>
-          <Text style={styles.sectionSubheader}>
-            Foundation established. Business features will be implemented in subsequent batches:
-          </Text>
-
-          {/* Module 1: Inventory & Products */}
-          <View style={styles.moduleItem}>
-            <View style={styles.moduleIconBox}>
-              <Text style={styles.moduleEmoji}>📦</Text>
+          {/* 3. Store Overview Section */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={styles.sectionTitle}>Store Overview</Text>
+              {/* Date Filter Pill */}
+              <View style={styles.filterPill}>
+                <Text style={styles.filterPillText}>Today ▾</Text>
+              </View>
             </View>
-            <View style={styles.moduleTextGroup}>
-              <Text style={styles.moduleTitle}>Product & Inventory</Text>
-              <Text style={styles.moduleDesc}>Stock tracking, pricing, and fast-moving alerts</Text>
+
+            {/* 2x2 Overview Cards Grid */}
+            <View style={styles.gridRow}>
+              <StoreOverviewCard item={overviewItems[0]} />
+              <StoreOverviewCard item={overviewItems[1]} />
             </View>
-            <View style={styles.moduleBadge}>
-              <Text style={styles.moduleBadgeText}>Phase 2</Text>
+            <View style={styles.gridRow}>
+              <StoreOverviewCard item={overviewItems[2]} />
+              <StoreOverviewCard item={overviewItems[3]} />
             </View>
           </View>
 
-          {/* Module 2: Daily Sales & POS */}
-          <View style={styles.moduleItem}>
-            <View style={styles.moduleIconBox}>
-              <Text style={styles.moduleEmoji}>💵</Text>
+          {/* 4. Quick Actions Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Quick Actions</Text>
+            {/* 2x2 Quick Action Tiles Grid */}
+            <View style={styles.gridRow}>
+              <QuickActionTile item={quickActions[0]} />
+              <QuickActionTile item={quickActions[1]} />
             </View>
-            <View style={styles.moduleTextGroup}>
-              <Text style={styles.moduleTitle}>Daily Sales & Orders</Text>
-              <Text style={styles.moduleDesc}>Record daily transactions and cashier register</Text>
-            </View>
-            <View style={styles.moduleBadge}>
-              <Text style={styles.moduleBadgeText}>Phase 2</Text>
+            <View style={styles.gridRow}>
+              <QuickActionTile item={quickActions[2]} />
+              <QuickActionTile item={quickActions[3]} />
             </View>
           </View>
 
-          {/* Module 3: Utang Tracker / Credit Ledger */}
-          <View style={styles.moduleItem}>
-            <View style={styles.moduleIconBox}>
-              <Text style={styles.moduleEmoji}>📝</Text>
-            </View>
-            <View style={styles.moduleTextGroup}>
-              <Text style={styles.moduleTitle}>Credit Tracker (Lista ng Utang)</Text>
-              <Text style={styles.moduleDesc}>Customer credit limits and payment settlement</Text>
-            </View>
-            <View style={styles.moduleBadge}>
-              <Text style={styles.moduleBadgeText}>Phase 3</Text>
-            </View>
-          </View>
-        </View>
+          {/* 5. Recent Activity Section */}
+          <RecentActivitySection
+            onViewAll={() => handleModuleClick('Recent Activity', 'Batch 3')}
+          />
+        </ScrollView>
 
-        {/* Logout Action */}
-        <View style={styles.logoutContainer}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Log out of TindaMate"
-            onPress={handleLogout}
-            disabled={isLoggingOut}
-            style={({ pressed }) => [
-              styles.logoutButton,
-              pressed && styles.logoutButtonPressed,
-              isLoggingOut && styles.logoutButtonDisabled,
-            ]}>
-            {isLoggingOut ? (
-              <ActivityIndicator size="small" color="#DC2626" />
-            ) : (
-              <Text style={styles.logoutButtonText}>Log Out</Text>
-            )}
+        {/* 6. Persistent Bottom Navigation Bar */}
+        <DashboardBottomNav
+          activeTab={activeTab}
+          onTabPress={handleTabPress}
+        />
+      </View>
+
+      {/* Profile & Account Settings Modal */}
+      <Modal
+        visible={isProfileModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setIsProfileModalVisible(false)}>
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setIsProfileModalVisible(false)}>
+          <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
+            {/* Modal Header */}
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Store Account</Text>
+              <Pressable
+                onPress={() => setIsProfileModalVisible(false)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Text style={styles.modalCloseText}>✕</Text>
+              </Pressable>
+            </View>
+
+            {/* User Info */}
+            <View style={styles.userProfileInfo}>
+              <View style={styles.modalAvatar}>
+                <Text style={styles.modalAvatarText}>
+                  {user?.email?.charAt(0).toUpperCase() || 'U'}
+                </Text>
+              </View>
+              <View style={styles.userInfoText}>
+                <Text style={styles.userFullName}>{displayName}</Text>
+                <Text style={styles.userEmailText}>{user?.email}</Text>
+                <View style={styles.statusBadge}>
+                  <View style={styles.statusDot} />
+                  <Text style={styles.statusText}>Supabase Connected</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Logout Action */}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Log out of TindaMate"
+              onPress={handleLogout}
+              disabled={isLoggingOut}
+              style={({ pressed }) => [
+                styles.modalLogoutButton,
+                pressed && styles.modalLogoutButtonPressed,
+                isLoggingOut && styles.modalLogoutButtonDisabled,
+              ]}>
+              {isLoggingOut ? (
+                <ActivityIndicator size="small" color="#DC2626" />
+              ) : (
+                <Text style={styles.modalLogoutText}>Log Out of Account</Text>
+              )}
+            </Pressable>
           </Pressable>
-        </View>
-      </ScrollView>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -238,164 +372,154 @@ export default function AuthenticatedHomeScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FAFDF9',
+    backgroundColor: '#FFFFFF',
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 12,
   },
   loadingText: {
-    fontSize: Typography.sizes.base,
-    color: Colors.textSecondary,
+    fontSize: 14,
+    color: '#64748B',
+  },
+  mainContainer: {
+    flex: 1,
+    justifyContent: 'space-between',
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
     paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.four,
-    paddingBottom: Spacing.six,
+    paddingTop: Spacing.two,
+    paddingBottom: Spacing.four,
     maxWidth: 520,
     width: '100%',
     alignSelf: 'center',
     gap: Spacing.four,
   },
-  header: {
+  section: {
+    gap: 10,
+  },
+  sectionHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingBottom: Spacing.two,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
   },
-  badge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#DCFCE7',
+  sectionTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#0F172A',
+    letterSpacing: -0.2,
+  },
+  filterPill: {
+    backgroundColor: '#F1F5F9',
     paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingVertical: 4,
     borderRadius: BorderRadius.full,
-    gap: 6,
   },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#16A34A',
-  },
-  badgeText: {
-    color: '#166534',
+  filterPillText: {
     fontSize: 12,
     fontWeight: '700',
+    color: '#475569',
   },
-  welcomeCard: {
+  gridRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  // Profile Modal Styling
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    justifyContent: 'flex-end',
+  },
+  modalCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: BorderRadius.xl,
+    borderTopLeftRadius: BorderRadius.xl,
+    borderTopRightRadius: BorderRadius.xl,
     padding: Spacing.four,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
-    gap: 6,
+    gap: Spacing.four,
   },
-  greetingTitle: {
-    fontSize: 22,
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    paddingBottom: Spacing.two,
+  },
+  modalTitle: {
+    fontSize: 18,
     fontWeight: '800',
     color: '#0F172A',
   },
-  greetingSubtitle: {
-    fontSize: Typography.sizes.sm,
-    color: Colors.textSecondary,
-    marginBottom: 8,
-  },
-  sessionInfoBox: {
-    backgroundColor: '#F8FAFC',
-    padding: Spacing.three,
-    borderRadius: BorderRadius.md,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  sessionLabel: {
-    fontSize: 12,
-    color: Colors.textMuted,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  sessionValue: {
-    fontSize: Typography.sizes.bodySm,
+  modalCloseText: {
+    fontSize: 18,
+    color: '#94A3B8',
     fontWeight: '700',
-    color: '#0F172A',
   },
-  modulesContainer: {
-    gap: Spacing.three,
-    marginTop: Spacing.two,
-  },
-  sectionHeader: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#0F172A',
-  },
-  sectionSubheader: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    lineHeight: 18,
-  },
-  moduleItem: {
+  userProfileInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: BorderRadius.lg,
+    gap: 14,
+    backgroundColor: '#F8FAFC',
     padding: Spacing.three,
+    borderRadius: BorderRadius.lg,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    gap: Spacing.three,
   },
-  moduleIconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: BorderRadius.md,
-    backgroundColor: '#F1F5F9',
+  modalAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#105B48',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  moduleEmoji: {
-    fontSize: 20,
+  modalAvatarText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '800',
   },
-  moduleTextGroup: {
+  userInfoText: {
     flex: 1,
     gap: 2,
   },
-  moduleTitle: {
-    fontSize: 15,
-    fontWeight: '700',
+  userFullName: {
+    fontSize: 16,
+    fontWeight: '800',
     color: '#0F172A',
   },
-  moduleDesc: {
+  userEmailText: {
     fontSize: 12,
-    color: Colors.textSecondary,
-  },
-  moduleBadge: {
-    backgroundColor: '#F1F5F9',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: BorderRadius.sm,
-  },
-  moduleBadgeText: {
-    fontSize: 11,
     color: '#64748B',
-    fontWeight: '600',
   },
-  logoutContainer: {
-    marginTop: Spacing.four,
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.full,
+    gap: 5,
+    marginTop: 4,
+    alignSelf: 'flex-start',
   },
-  logoutButton: {
-    width: '100%',
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#16A34A',
+  },
+  statusText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#166534',
+  },
+  modalLogoutButton: {
     backgroundColor: '#FEE2E2',
     borderWidth: 1,
     borderColor: '#FCA5A5',
@@ -403,17 +527,17 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.xl,
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: Spacing.two,
   },
-  logoutButtonPressed: {
+  modalLogoutButtonPressed: {
     backgroundColor: '#FECACA',
   },
-  logoutButtonDisabled: {
+  modalLogoutButtonDisabled: {
     opacity: 0.6,
   },
-  logoutButtonText: {
+  modalLogoutText: {
     color: '#DC2626',
-    fontSize: Typography.sizes.base,
+    fontSize: 15,
     fontWeight: '700',
   },
 });
-
