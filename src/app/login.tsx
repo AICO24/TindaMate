@@ -120,8 +120,8 @@ export default function LoginScreen() {
       }
 
       if (data.session) {
-        // Successful login: navigate to existing home screen
-        router.replace('/');
+        // Successful login: navigate to authenticated home screen
+        router.replace('/home');
       }
     } catch (err: unknown) {
       const errMsg = err instanceof Error ? err.message : String(err);

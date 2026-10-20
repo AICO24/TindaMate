@@ -154,10 +154,10 @@ export default function RegisterScreen() {
         const message = 'Account created successfully! Welcome to TindaMate.';
         if (Platform.OS === 'web') {
           window.alert(message);
-          router.replace('/');
+          router.replace('/home');
         } else {
           Alert.alert('Welcome!', message, [
-            { text: 'Get Started', onPress: () => router.replace('/') },
+            { text: 'Get Started', onPress: () => router.replace('/home') },
           ]);
         }
       } else {
