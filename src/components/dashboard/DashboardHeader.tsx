@@ -12,35 +12,32 @@ interface DashboardHeaderProps {
 /**
  * DashboardHeader
  *
- * Top navigation bar of the TindaMate Dashboard:
- * - Brand emblem on the left
- * - User profile avatar button on the right
+ * Top bar matching the reference mockup:
+ * - TindaMate brand emblem on left
+ * - White circular profile button with dark teal user silhouette on right
  */
 export function DashboardHeader({
   userEmail,
   onProfilePress,
 }: DashboardHeaderProps) {
-  // Extract user initial
-  const initial = userEmail ? userEmail.charAt(0).toUpperCase() : 'U';
-
   return (
     <View style={styles.header}>
       {/* Brand Logo & Tagline */}
       <View style={styles.logoWrapper}>
-        <TindaMateCartLogo scale={0.78} showTagline={true} />
+        <TindaMateCartLogo scale={0.88} showTagline={true} />
       </View>
 
-      {/* Profile Avatar Button */}
+      {/* White Profile Circle Button matching reference */}
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Open user profile and settings"
+        accessibilityLabel="Open user profile and store settings"
         onPress={onProfilePress}
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         style={({ pressed }) => [
           styles.avatarButton,
           pressed && styles.avatarButtonPressed,
         ]}>
-        <Text style={styles.avatarText}>{initial}</Text>
+        <Text style={styles.avatarIcon}>👤</Text>
       </Pressable>
     </View>
   );
@@ -53,36 +50,32 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: Spacing.two,
     paddingHorizontal: 2,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
     marginBottom: Spacing.two,
   },
   logoWrapper: {
     alignItems: 'flex-start',
   },
   avatarButton: {
-    width: 38,
-    height: 38,
+    width: 44,
+    height: 44,
     borderRadius: BorderRadius.full,
-    backgroundColor: '#105B48',
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#DCFCE7',
-    shadowColor: '#105B48',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
+    shadowOpacity: 0.08,
+    shadowRadius: 5,
     elevation: 3,
   },
   avatarButtonPressed: {
     transform: [{ scale: 0.95 }],
-    opacity: 0.85,
+    backgroundColor: '#F8FAFC',
   },
-  avatarText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '800',
+  avatarIcon: {
+    fontSize: 20,
+    color: '#064E3B',
   },
 });
-

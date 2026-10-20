@@ -8,7 +8,7 @@ export interface OverviewItem {
   title: string;
   value: string;
   subtitle: string;
-  icon: string;
+  iconSymbol: string;
   theme: 'green' | 'blue' | 'amber' | 'purple';
   onPress?: () => void;
 }
@@ -19,48 +19,44 @@ interface StoreOverviewCardProps {
 
 const THEME_STYLES = {
   green: {
-    bg: '#ECFDF5',
-    border: '#A7F3D0',
-    iconBg: '#D1FAE5',
-    iconColor: '#065F46',
-    titleColor: '#047857',
-    badgeText: '#065F46',
+    bg: '#EAF7F0',
+    border: '#D1EFE0',
+    iconBg: '#10B981',
+    iconColor: '#FFFFFF',
+    titleColor: '#064E3B',
+    chevronColor: '#059669',
   },
   blue: {
-    bg: '#EFF6FF',
-    border: '#BFDBFE',
-    iconBg: '#DBEAFE',
-    iconColor: '#1E40AF',
-    titleColor: '#1D4ED8',
-    badgeText: '#1E40AF',
+    bg: '#EAF4FE',
+    border: '#D0E6FC',
+    iconBg: '#3B82F6',
+    iconColor: '#FFFFFF',
+    titleColor: '#1E3A8A',
+    chevronColor: '#2563EB',
   },
   amber: {
-    bg: '#FFFBEB',
-    border: '#FDE68A',
-    iconBg: '#FEF3C7',
-    iconColor: '#92400E',
-    titleColor: '#B45309',
-    badgeText: '#92400E',
+    bg: '#FFF4E8',
+    border: '#FFE4CB',
+    iconBg: '#F97316',
+    iconColor: '#FFFFFF',
+    titleColor: '#7C2D12',
+    chevronColor: '#EA580C',
   },
   purple: {
-    bg: '#FAF5FF',
-    border: '#E9D5FF',
-    iconBg: '#F3E8FF',
-    iconColor: '#6B21A8',
-    titleColor: '#7E22CE',
-    badgeText: '#6B21A8',
+    bg: '#F5EDFE',
+    border: '#E8D5FD',
+    iconBg: '#8B5CF6',
+    iconColor: '#FFFFFF',
+    titleColor: '#581C87',
+    chevronColor: '#7C3AED',
   },
 };
 
 /**
  * StoreOverviewCard
  *
- * Renders an overview summary card with:
- * - Themed pastel background and soft borders
- * - Categorized icon
- * - Honest empty-state value
- * - Helpful supporting text
- * - Subtle right-arrow action affordance
+ * Horizontal summary card matching the reference mockup:
+ * [ (Round Colored Icon)   Title / Subtext        › ]
  */
 export function StoreOverviewCard({ item }: StoreOverviewCardProps) {
   const currentTheme = THEME_STYLES[item.theme];
@@ -68,7 +64,7 @@ export function StoreOverviewCard({ item }: StoreOverviewCardProps) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${item.title}: ${item.value}`}
+      accessibilityLabel={`${item.title}: ${item.subtitle}`}
       onPress={item.onPress}
       style={({ pressed }) => [
         styles.card,
@@ -78,28 +74,25 @@ export function StoreOverviewCard({ item }: StoreOverviewCardProps) {
         },
         pressed && styles.cardPressed,
       ]}>
-      {/* Top Header: Icon + Arrow */}
-      <View style={styles.topRow}>
-        <View style={[styles.iconContainer, { backgroundColor: currentTheme.iconBg }]}>
-          <Text style={styles.iconText}>{item.icon}</Text>
-        </View>
-        <Text style={[styles.arrow, { color: currentTheme.iconColor }]}>→</Text>
+      {/* Left: Round Themed Icon */}
+      <View style={[styles.iconCircle, { backgroundColor: currentTheme.iconBg }]}>
+        <Text style={[styles.iconSymbol, { color: currentTheme.iconColor }]}>
+          {item.iconSymbol}
+        </Text>
       </View>
 
-      {/* Title */}
-      <Text style={[styles.title, { color: currentTheme.titleColor }]} numberOfLines={1}>
-        {item.title}
-      </Text>
+      {/* Middle: Title & Honest Empty-State Subtitle */}
+      <View style={styles.textColumn}>
+        <Text style={[styles.title, { color: currentTheme.titleColor }]} numberOfLines={1}>
+          {item.title}
+        </Text>
+        <Text style={styles.subtitle} numberOfLines={1}>
+          {item.subtitle}
+        </Text>
+      </View>
 
-      {/* Main Value / Status */}
-      <Text style={styles.value} numberOfLines={1}>
-        {item.value}
-      </Text>
-
-      {/* Subtitle / Empty State Guidance */}
-      <Text style={styles.subtitle} numberOfLines={2}>
-        {item.subtitle}
-      </Text>
+      {/* Right: Chevron Indicator */}
+      <Text style={[styles.chevron, { color: currentTheme.chevronColor }]}>›</Text>
     </Pressable>
   );
 }
@@ -107,51 +100,52 @@ export function StoreOverviewCard({ item }: StoreOverviewCardProps) {
 const styles = StyleSheet.create({
   card: {
     flex: 1,
-    minWidth: '46%',
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.three,
+    minWidth: '47%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: BorderRadius.xl,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
     borderWidth: 1,
-    gap: 4,
+    gap: 10,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.02,
+    shadowRadius: 4,
+    elevation: 1,
   },
   cardPressed: {
     opacity: 0.85,
     transform: [{ scale: 0.98 }],
   },
-  topRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 4,
-  },
-  iconContainer: {
-    width: 34,
-    height: 34,
-    borderRadius: BorderRadius.md,
+  iconCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  iconText: {
-    fontSize: 16,
+  iconSymbol: {
+    fontSize: 18,
+    fontWeight: '800',
   },
-  arrow: {
-    fontSize: 15,
-    fontWeight: '700',
+  textColumn: {
+    flex: 1,
+    gap: 2,
   },
   title: {
-    fontSize: 12,
+    fontSize: 13.5,
     fontWeight: '700',
-    letterSpacing: 0.2,
-  },
-  value: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#0F172A',
-    marginVertical: 1,
+    letterSpacing: -0.2,
   },
   subtitle: {
     fontSize: 11,
     color: '#64748B',
-    lineHeight: 14,
+    fontWeight: '500',
+  },
+  chevron: {
+    fontSize: 20,
+    fontWeight: '800',
+    paddingLeft: 2,
   },
 });
-

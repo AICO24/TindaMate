@@ -10,10 +10,10 @@ interface RecentActivitySectionProps {
 /**
  * RecentActivitySection
  *
- * Displays the recent transactions list or an honest empty state:
- * - Section title + "View All" link
- * - Calibrated empty-state illustration/card
- * - Friendly guidance for the sari-sari store owner
+ * Empty state card matching the reference mockup:
+ * - Horizontal card with soft mint background (#EDF7F2)
+ * - Sparkle checklist icon on left
+ * - "No recent activity yet." title and transaction guidance on right
  */
 export function RecentActivitySection({ onViewAll }: RecentActivitySectionProps) {
   return (
@@ -27,23 +27,30 @@ export function RecentActivitySection({ onViewAll }: RecentActivitySectionProps)
             accessibilityLabel="View all recent activity"
             onPress={onViewAll}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Text style={styles.viewAllText}>View All</Text>
+            <Text style={styles.viewAllText}>View All  ›</Text>
           </Pressable>
         )}
       </View>
 
-      {/* Honest Empty State Card */}
+      {/* Empty State Card matching mockup */}
       <View style={styles.emptyCard}>
-        <View style={styles.emptyIconCircle}>
-          <Text style={styles.emptyIcon}>📋</Text>
+        {/* Checklist with sparkles */}
+        <View style={styles.iconContainer}>
+          <Text style={styles.sparkleLeft}>✨</Text>
+          <View style={styles.clipboardBox}>
+            <Text style={styles.clipboardIcon}>📋</Text>
+          </View>
+          <Text style={styles.sparkleRight}>✨</Text>
         </View>
 
-        <Text style={styles.emptyTitle}>No recent activity yet</Text>
-
-        <Text style={styles.emptyDescription}>
-          Sales recordings, inventory updates, and customer credit transactions will
-          appear here once you start using the app.
-        </Text>
+        {/* Text Details */}
+        <View style={styles.textGroup}>
+          <Text style={styles.emptyTitle}>No recent activity yet.</Text>
+          <Text style={styles.emptyDescription}>
+            Your <Text style={styles.boldWord}>transactions</Text> and updates will
+            appear here once you start using the app.
+          </Text>
+        </View>
       </View>
     </View>
   );
@@ -53,6 +60,7 @@ const styles = StyleSheet.create({
   container: {
     gap: 10,
     marginTop: Spacing.one,
+    marginBottom: Spacing.two,
   },
   headerRow: {
     flexDirection: 'row',
@@ -61,54 +69,77 @@ const styles = StyleSheet.create({
     paddingHorizontal: 2,
   },
   sectionTitle: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: '800',
     color: '#0F172A',
-    letterSpacing: -0.2,
+    letterSpacing: -0.3,
   },
   viewAllText: {
     fontSize: 13,
-    fontWeight: '600',
-    color: '#105B48',
+    fontWeight: '700',
+    color: '#064E3B',
   },
   emptyCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#EDF7F2',
     borderRadius: BorderRadius.xl,
-    padding: Spacing.four,
+    paddingVertical: Spacing.four,
+    paddingHorizontal: Spacing.four,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#D4EBE0',
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
+    gap: 14,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
+    shadowOpacity: 0.02,
     shadowRadius: 4,
     elevation: 1,
   },
-  emptyIconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#F1F5F9',
+  iconContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 2,
+    position: 'relative',
   },
-  emptyIcon: {
-    fontSize: 22,
+  clipboardBox: {
+    width: 44,
+    height: 44,
+    borderRadius: BorderRadius.md,
+    backgroundColor: '#DCFCE7',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  clipboardIcon: {
+    fontSize: 24,
+  },
+  sparkleLeft: {
+    position: 'absolute',
+    left: -10,
+    top: 2,
+    fontSize: 10,
+  },
+  sparkleRight: {
+    position: 'absolute',
+    right: -10,
+    bottom: 2,
+    fontSize: 10,
+  },
+  textGroup: {
+    flex: 1,
+    gap: 2,
   },
   emptyTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#1E293B',
+    fontSize: 14.5,
+    fontWeight: '800',
+    color: '#064E3B',
   },
   emptyDescription: {
-    fontSize: 12,
+    fontSize: 11.5,
     color: '#64748B',
-    textAlign: 'center',
-    lineHeight: 18,
-    maxWidth: 290,
+    lineHeight: 16,
+  },
+  boldWord: {
+    fontWeight: '700',
+    color: '#475569',
   },
 });
-

@@ -5,10 +5,10 @@ import { BorderRadius, Spacing } from '@/constants/theme';
 
 export interface QuickActionItem {
   id: string;
-  label: string;
-  sublabel: string;
+  labelLine1: string;
+  labelLine2: string;
   icon: string;
-  theme: 'emerald' | 'blue' | 'amber' | 'purple';
+  theme: 'green' | 'orange' | 'blue' | 'purple';
   onPress: () => void;
 }
 
@@ -17,39 +17,43 @@ interface QuickActionTileProps {
 }
 
 const ACTION_THEMES = {
-  emerald: {
-    bg: '#ECFDF5',
-    border: '#A7F3D0',
+  green: {
+    bg: '#EAF7F0',
+    border: '#D1EFE0',
     iconBg: '#10B981',
-    text: '#065F46',
+    text: '#064E3B',
+    arrowColor: '#059669',
+  },
+  orange: {
+    bg: '#FFF4E8',
+    border: '#FFE4CB',
+    iconBg: '#F97316',
+    text: '#7C2D12',
+    arrowColor: '#EA580C',
   },
   blue: {
-    bg: '#EFF6FF',
-    border: '#BFDBFE',
+    bg: '#EAF4FE',
+    border: '#D0E6FC',
     iconBg: '#3B82F6',
-    text: '#1E40AF',
-  },
-  amber: {
-    bg: '#FFFBEB',
-    border: '#FDE68A',
-    iconBg: '#F59E0B',
-    text: '#92400E',
+    text: '#1E3A8A',
+    arrowColor: '#2563EB',
   },
   purple: {
-    bg: '#FAF5FF',
-    border: '#E9D5FF',
+    bg: '#F5EDFE',
+    border: '#E8D5FD',
     iconBg: '#8B5CF6',
-    text: '#6B21A8',
+    text: '#581C87',
+    arrowColor: '#7C3AED',
   },
 };
 
 /**
  * QuickActionTile
  *
- * Renders a colorful quick-action button on the dashboard:
- * - High-visibility vibrant icon container
- * - Clear action label and supporting sublabel
- * - Subtle arrow indicator
+ * Vertical action tile matching the 4-column row in the reference mockup:
+ * - Circular vibrant icon at top
+ * - Two-line centered title in the middle
+ * - Right arrow (→) at bottom
  */
 export function QuickActionTile({ item }: QuickActionTileProps) {
   const currentTheme = ACTION_THEMES[item.theme];
@@ -57,7 +61,7 @@ export function QuickActionTile({ item }: QuickActionTileProps) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={item.label}
+      accessibilityLabel={`${item.labelLine1} ${item.labelLine2}`}
       onPress={item.onPress}
       style={({ pressed }) => [
         styles.tile,
@@ -67,23 +71,23 @@ export function QuickActionTile({ item }: QuickActionTileProps) {
         },
         pressed && styles.tilePressed,
       ]}>
-      {/* Icon */}
-      <View style={[styles.iconBox, { backgroundColor: currentTheme.iconBg }]}>
-        <Text style={styles.icon}>{item.icon}</Text>
+      {/* Top Icon Circle */}
+      <View style={[styles.iconCircle, { backgroundColor: currentTheme.iconBg }]}>
+        <Text style={styles.iconText}>{item.icon}</Text>
       </View>
 
-      {/* Text Group */}
-      <View style={styles.textGroup}>
-        <Text style={[styles.label, { color: currentTheme.text }]} numberOfLines={1}>
-          {item.label}
+      {/* Two-Line Centered Label */}
+      <View style={styles.labelContainer}>
+        <Text style={[styles.labelText, { color: currentTheme.text }]}>
+          {item.labelLine1}
         </Text>
-        <Text style={styles.sublabel} numberOfLines={1}>
-          {item.sublabel}
+        <Text style={[styles.labelText, { color: currentTheme.text }]}>
+          {item.labelLine2}
         </Text>
       </View>
 
-      {/* Arrow Indicator */}
-      <Text style={[styles.arrow, { color: currentTheme.text }]}>→</Text>
+      {/* Bottom Arrow Indicator */}
+      <Text style={[styles.arrow, { color: currentTheme.arrowColor }]}>→</Text>
     </Pressable>
   );
 }
@@ -91,44 +95,47 @@ export function QuickActionTile({ item }: QuickActionTileProps) {
 const styles = StyleSheet.create({
   tile: {
     flex: 1,
-    minWidth: '46%',
-    flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.three,
+    justifyContent: 'space-between',
+    borderRadius: BorderRadius.xl,
+    paddingVertical: 14,
+    paddingHorizontal: 4,
     borderWidth: 1,
-    gap: 10,
+    minHeight: 118,
+    gap: 8,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.02,
+    shadowRadius: 3,
+    elevation: 1,
   },
   tilePressed: {
     opacity: 0.85,
-    transform: [{ scale: 0.98 }],
+    transform: [{ scale: 0.96 }],
   },
-  iconBox: {
-    width: 36,
-    height: 36,
-    borderRadius: BorderRadius.md,
+  iconCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  icon: {
+  iconText: {
     fontSize: 18,
     color: '#FFFFFF',
   },
-  textGroup: {
-    flex: 1,
-    gap: 1,
+  labelContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  label: {
-    fontSize: 13,
+  labelText: {
+    fontSize: 12,
     fontWeight: '700',
-  },
-  sublabel: {
-    fontSize: 11,
-    color: '#64748B',
+    textAlign: 'center',
+    lineHeight: 15,
   },
   arrow: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '800',
   },
 });
-

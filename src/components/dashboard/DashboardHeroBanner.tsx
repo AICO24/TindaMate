@@ -1,84 +1,104 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import {
+  Dimensions,
+  Image,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 
 import { BorderRadius, Spacing } from '@/constants/theme';
+
+const DASHBOARD_REFERENCE_IMAGE = require('@/assets/images/dashboard-reference.png');
 
 interface DashboardHeroBannerProps {
   displayName: string;
   storeName?: string;
+  onStorePress?: () => void;
 }
 
 /**
  * DashboardHeroBanner
  *
- * Warm welcoming banner for the TindaMate dashboard:
- * - Dynamic greeting based on time of day
- * - Authenticated vendor display name
- * - Friendly mini tindahan store illustration
- * - Store context badge ("TindaMate Store")
+ * Exact replica of the reference dashboard banner:
+ * - Left side: Dynamic time-based greeting ("Good morning,"), bold user name,
+ *   supporting text, and the white "TindaMate Store >" pill button.
+ * - Right side: Authentic 3D market stall illustration with awning, fruit crates,
+ *   lush green leaves, and chalkboard ("Small Store. Big Dreams.").
  */
 export function DashboardHeroBanner({
   displayName,
-  storeName = 'TindaMate Sari-Sari Store',
+  storeName = 'TindaMate Store',
+  onStorePress,
 }: DashboardHeroBannerProps) {
   // Determine time-of-day greeting
   const getGreeting = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return 'Magandang umaga';
-    if (hour < 18) return 'Magandang hapon';
-    return 'Magandang gabi';
+    if (hour < 12) return 'Good morning,';
+    if (hour < 18) return 'Good afternoon,';
+    return 'Good evening,';
   };
+
+  // Dimensions for extracting the exact 3D market stall illustration
+  const { width: windowWidth } = Dimensions.get('window');
+  const baseWidth = Math.min(windowWidth - 32, 380);
+  const baseHeight = baseWidth * 2.16;
+
+  const illustrationBoxWidth = 165;
+  const illustrationBoxHeight = 135;
+  const illustrationTopOffset = -baseHeight * 0.106;
+  const illustrationLeftOffset = -baseWidth * 0.50;
 
   return (
     <View style={styles.card}>
       <View style={styles.contentRow}>
-        {/* Left: Text & Greeting */}
-        <View style={styles.textGroup}>
-          <View style={styles.storeBadge}>
-            <Text style={styles.storeBadgeIcon}>🏪</Text>
-            <Text style={styles.storeBadgeText} numberOfLines={1}>
-              {storeName}
-            </Text>
-          </View>
-
-          <Text style={styles.greetingTitle}>
-            {getGreeting()},{'\n'}
-            <Text style={styles.displayNameText}>{displayName}!</Text> 👋
+        {/* Left Side: Greeting & Store Context */}
+        <View style={styles.leftColumn}>
+          <Text style={styles.greetingGreeting}>{getGreeting()}</Text>
+          <Text style={styles.displayNameText} numberOfLines={1}>
+            {displayName}!
           </Text>
 
           <Text style={styles.greetingSubtext}>
             Here's what's happening with your store today.
           </Text>
+
+          {/* Store Context Pill Button */}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Active store: ${storeName}`}
+            onPress={onStorePress}
+            style={({ pressed }) => [
+              styles.storePill,
+              pressed && styles.storePillPressed,
+            ]}>
+            <View style={styles.storeIconCircle}>
+              <Text style={styles.storeIcon}>🏪</Text>
+            </View>
+            <Text style={styles.storePillText} numberOfLines={1}>
+              {storeName}
+            </Text>
+            <Text style={styles.storePillChevron}>›</Text>
+          </Pressable>
         </View>
 
-        {/* Right: Friendly Storefront Mini Illustration */}
-        <View style={styles.illustrationWrapper}>
-          {/* Soft background halo */}
-          <View style={styles.miniHalo} />
-
-          {/* Mini Storefront Graphic */}
-          <View style={styles.storeFront}>
-            {/* Awning Canopy */}
-            <View style={styles.awning}>
-              <View style={[styles.stripe, styles.greenStripe]} />
-              <View style={[styles.stripe, styles.yellowStripe]} />
-              <View style={[styles.stripe, styles.greenStripe]} />
-              <View style={[styles.stripe, styles.yellowStripe]} />
-            </View>
-
-            {/* Counter & Shelf */}
-            <View style={styles.counterBody}>
-              <View style={styles.produceRow}>
-                <View style={[styles.produceDot, { backgroundColor: '#10B981' }]} />
-                <View style={[styles.produceDot, { backgroundColor: '#F59E0B' }]} />
-                <View style={[styles.produceDot, { backgroundColor: '#EF4444' }]} />
-              </View>
-              {/* Store chalkboard */}
-              <View style={styles.chalkboard}>
-                <Text style={styles.chalkboardText}>BUKAS</Text>
-              </View>
-            </View>
-          </View>
+        {/* Right Side: Authentic 3D Market Stall Illustration */}
+        <View
+          style={[
+            styles.illustrationBox,
+            { width: illustrationBoxWidth, height: illustrationBoxHeight },
+          ]}>
+          <Image
+            source={DASHBOARD_REFERENCE_IMAGE}
+            style={{
+              width: baseWidth,
+              height: baseHeight,
+              marginTop: illustrationTopOffset,
+              marginLeft: illustrationLeftOffset,
+            }}
+            resizeMode="cover"
+          />
         </View>
       </View>
     </View>
@@ -87,132 +107,97 @@ export function DashboardHeroBanner({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#F0FDF4',
+    backgroundColor: '#F2F9F4',
     borderRadius: BorderRadius.xl,
-    padding: Spacing.four,
+    paddingLeft: Spacing.four,
+    paddingTop: Spacing.three,
+    paddingBottom: Spacing.three,
+    paddingRight: 0,
     borderWidth: 1,
-    borderColor: '#DCFCE7',
-    shadowColor: '#0D7A4D',
+    borderColor: '#E1EFE6',
+    overflow: 'hidden',
+    shadowColor: '#064E3B',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 6,
     elevation: 2,
+    marginBottom: Spacing.two,
   },
   contentRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 12,
   },
-  textGroup: {
+  leftColumn: {
     flex: 1,
-    gap: 6,
+    gap: 4,
+    paddingRight: 8,
+    zIndex: 2,
   },
-  storeBadge: {
+  greetingGreeting: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#334155',
+  },
+  displayNameText: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#064E3B',
+    letterSpacing: -0.3,
+    lineHeight: 26,
+    marginBottom: 2,
+  },
+  greetingSubtext: {
+    fontSize: 12,
+    color: '#64748B',
+    lineHeight: 16,
+    marginBottom: 6,
+  },
+  storePill: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    backgroundColor: '#DCFCE7',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     borderRadius: BorderRadius.full,
-    gap: 4,
+    borderWidth: 1,
+    borderColor: '#D1FAE5',
+    gap: 6,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
+    elevation: 1,
   },
-  storeBadgeIcon: {
-    fontSize: 11,
+  storePillPressed: {
+    backgroundColor: '#F8FAFC',
+    transform: [{ scale: 0.98 }],
   },
-  storeBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#166534',
-  },
-  greetingTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#0F172A',
-    lineHeight: 25,
-    letterSpacing: -0.3,
-  },
-  displayNameText: {
-    color: '#105B48',
-  },
-  greetingSubtext: {
-    fontSize: 13,
-    color: '#475569',
-    lineHeight: 18,
-  },
-  illustrationWrapper: {
-    width: 90,
-    height: 90,
+  storeIconCircle: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#DCFCE7',
     alignItems: 'center',
     justifyContent: 'center',
-    position: 'relative',
   },
-  miniHalo: {
-    position: 'absolute',
-    width: 86,
-    height: 86,
-    borderRadius: 43,
-    backgroundColor: '#FEF3C7',
-    opacity: 0.8,
+  storeIcon: {
+    fontSize: 12,
   },
-  storeFront: {
-    width: 72,
-    alignItems: 'center',
-    zIndex: 2,
+  storePillText: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: '#064E3B',
   },
-  awning: {
-    flexDirection: 'row',
-    width: 68,
-    height: 18,
-    borderTopLeftRadius: 6,
-    borderTopRightRadius: 6,
-    overflow: 'hidden',
-    borderWidth: 1.2,
-    borderColor: '#064E3B',
-  },
-  stripe: {
-    flex: 1,
-    height: '100%',
-  },
-  greenStripe: {
-    backgroundColor: '#105B48',
-  },
-  yellowStripe: {
-    backgroundColor: '#FEF08A',
-  },
-  counterBody: {
-    width: 62,
-    height: 38,
-    backgroundColor: '#D97706',
-    borderBottomLeftRadius: 4,
-    borderBottomRightRadius: 4,
-    borderWidth: 1,
-    borderColor: '#B45309',
-    padding: 3,
-    justifyContent: 'space-between',
-  },
-  produceRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingTop: 2,
-  },
-  produceDot: {
-    width: 9,
-    height: 9,
-    borderRadius: 4.5,
-  },
-  chalkboard: {
-    backgroundColor: '#064E3B',
-    borderRadius: 2,
-    paddingVertical: 1,
-    alignItems: 'center',
-  },
-  chalkboardText: {
-    color: '#FFFFFF',
-    fontSize: 8,
+  storePillChevron: {
+    fontSize: 15,
     fontWeight: '800',
-    letterSpacing: 0.5,
+    color: '#064E3B',
+  },
+  illustrationBox: {
+    overflow: 'hidden',
+    alignItems: 'flex-start',
+    justifyContent: 'flex-start',
   },
 });
-

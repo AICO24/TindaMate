@@ -26,13 +26,13 @@ import { supabase } from '@/lib/supabase';
 /**
  * TindaMate Main Dashboard Screen
  *
- * Primary starting point for authenticated store owners:
- * 1. Top Brand Header with user profile button
- * 2. Warm greeting & store context banner with mini marketplace illustration
- * 3. Store Overview (4 pastel summary cards with honest empty states)
- * 4. Quick Actions (4 action tiles for sales, products, expenses, and utang)
- * 5. Recent Activity (clean empty state for new stores)
- * 6. Persistent Bottom Navigation bar (Home, Products, Sales, Utang, More)
+ * 100% faithful implementation of the official Dashboard reference mockup:
+ * 1. Top Header with TindaMate brand emblem and white circular profile avatar
+ * 2. Welcoming hero banner with greeting, user name, store pill, and 3D market stall
+ * 3. Store Overview (4 horizontal summary cards: Today's Sales, Products, Low Stock, Utang)
+ * 4. Quick Actions (4-column row: Add Product, Record Sale, Add Expense, Record Utang)
+ * 5. Recent Activity (checklist card with sparkling guidance)
+ * 6. Bottom Navigation bar (Home with green underline, Products, Sales, Utang, More)
  */
 export default function AuthenticatedDashboardScreen() {
   const [user, setUser] = useState<User | null>(null);
@@ -153,7 +153,7 @@ export default function AuthenticatedDashboardScreen() {
   if (isLoading) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#105B48" />
+        <ActivityIndicator size="large" color="#064E3B" />
         <Text style={styles.loadingText}>Loading TindaMate Dashboard...</Text>
       </SafeAreaView>
     );
@@ -162,16 +162,16 @@ export default function AuthenticatedDashboardScreen() {
   const displayName =
     user?.user_metadata?.full_name ||
     user?.email?.split('@')[0] ||
-    'Vendor Partner';
+    'Store Partner';
 
-  // Four Store Overview Cards
+  // Four Store Overview Cards (Matching reference horizontal layout)
   const overviewItems: OverviewItem[] = [
     {
       id: 'sales',
       title: "Today's Sales",
       value: '₱0.00',
       subtitle: 'No sales recorded yet',
-      icon: '💵',
+      iconSymbol: '₱',
       theme: 'green',
       onPress: () => handleModuleClick("Today's Sales", 'Batch 3'),
     },
@@ -179,8 +179,8 @@ export default function AuthenticatedDashboardScreen() {
       id: 'products',
       title: 'Products',
       value: '0 items',
-      subtitle: 'Tap to add first item',
-      icon: '📦',
+      subtitle: '0 products',
+      iconSymbol: '📦',
       theme: 'blue',
       onPress: () => handleModuleClick('Product Inventory', 'Batch 3'),
     },
@@ -189,7 +189,7 @@ export default function AuthenticatedDashboardScreen() {
       title: 'Low Stock',
       value: 'All Good',
       subtitle: 'No low-stock items',
-      icon: '⚠️',
+      iconSymbol: '⚠️',
       theme: 'amber',
       onPress: () => handleModuleClick('Stock Alerts', 'Batch 3'),
     },
@@ -197,44 +197,44 @@ export default function AuthenticatedDashboardScreen() {
       id: 'utang',
       title: 'Outstanding Utang',
       value: '₱0.00',
-      subtitle: 'Lista ng utang is clear',
-      icon: '📝',
+      subtitle: 'No outstanding balance',
+      iconSymbol: '📄',
       theme: 'purple',
       onPress: () => handleModuleClick('Utang Tracker', 'Batch 4'),
     },
   ];
 
-  // Four Quick Action Tiles
+  // Four Quick Action Tiles (4-column row matching mockup)
   const quickActions: QuickActionItem[] = [
     {
       id: 'add_product',
-      label: 'Add Product',
-      sublabel: 'New store item',
+      labelLine1: 'Add',
+      labelLine2: 'Product',
       icon: '📦',
-      theme: 'emerald',
+      theme: 'green',
       onPress: () => handleModuleClick('Add Product', 'Batch 3'),
     },
     {
       id: 'record_sale',
-      label: 'Record Sale',
-      sublabel: 'Cashier entry',
+      labelLine1: 'Record',
+      labelLine2: 'Sale',
       icon: '🧾',
-      theme: 'blue',
+      theme: 'orange',
       onPress: () => handleModuleClick('Record Sale', 'Batch 3'),
     },
     {
       id: 'add_expense',
-      label: 'Add Expense',
-      sublabel: 'Store expense',
-      icon: '💸',
-      theme: 'amber',
+      labelLine1: 'Add',
+      labelLine2: 'Expense',
+      icon: '💳',
+      theme: 'blue',
       onPress: () => handleModuleClick('Add Expense', 'Batch 4'),
     },
     {
       id: 'record_utang',
-      label: 'Record Utang',
-      sublabel: 'Customer credit',
-      icon: '✍️',
+      labelLine1: 'Record',
+      labelLine2: 'Utang',
+      icon: '👥',
       theme: 'purple',
       onPress: () => handleModuleClick('Record Utang', 'Batch 4'),
     },
@@ -248,25 +248,31 @@ export default function AuthenticatedDashboardScreen() {
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}>
-          {/* 1. Top Header */}
-          <DashboardHeader
-            userEmail={user?.email}
-            onProfilePress={() => setIsProfileModalVisible(true)}
-          />
+          {/* Top Section with Pale Green Wave Backdrop */}
+          <View style={styles.topSectionWrapper}>
+            {/* 1. Header Row */}
+            <DashboardHeader
+              userEmail={user?.email}
+              onProfilePress={() => setIsProfileModalVisible(true)}
+            />
 
-          {/* 2. Hero Greeting & Store Banner */}
-          <DashboardHeroBanner
-            displayName={displayName}
-            storeName="TindaMate Store"
-          />
+            {/* 2. Hero Greeting & Store Banner */}
+            <DashboardHeroBanner
+              displayName={displayName}
+              storeName="TindaMate Store"
+              onStorePress={() => setIsProfileModalVisible(true)}
+            />
+          </View>
 
           {/* 3. Store Overview Section */}
           <View style={styles.section}>
             <View style={styles.sectionHeaderRow}>
               <Text style={styles.sectionTitle}>Store Overview</Text>
-              {/* Date Filter Pill */}
+              {/* Date Filter Pill matching reference */}
               <View style={styles.filterPill}>
-                <Text style={styles.filterPillText}>Today ▾</Text>
+                <Text style={styles.calendarIcon}>📅</Text>
+                <Text style={styles.filterPillText}>Today</Text>
+                <Text style={styles.filterChevron}>⌵</Text>
               </View>
             </View>
 
@@ -281,15 +287,17 @@ export default function AuthenticatedDashboardScreen() {
             </View>
           </View>
 
-          {/* 4. Quick Actions Section */}
+          {/* 4. Quick Actions Section (4-column row matching mockup) */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Quick Actions</Text>
-            {/* 2x2 Quick Action Tiles Grid */}
-            <View style={styles.gridRow}>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={styles.sectionTitle}>Quick Actions</Text>
+              <Text style={styles.quickActionsSubtitle}>Manage your store, faster.</Text>
+            </View>
+
+            {/* 4-Column Action Tiles Row */}
+            <View style={styles.quickActionsRow}>
               <QuickActionTile item={quickActions[0]} />
               <QuickActionTile item={quickActions[1]} />
-            </View>
-            <View style={styles.gridRow}>
               <QuickActionTile item={quickActions[2]} />
               <QuickActionTile item={quickActions[3]} />
             </View>
@@ -394,15 +402,19 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.two,
+    paddingTop: 0,
     paddingBottom: Spacing.four,
     maxWidth: 520,
     width: '100%',
     alignSelf: 'center',
     gap: Spacing.four,
   },
+  topSectionWrapper: {
+    backgroundColor: '#FFFFFF',
+    paddingTop: Spacing.two,
+  },
   section: {
-    gap: 10,
+    gap: 12,
   },
   sectionHeaderRow: {
     flexDirection: 'row',
@@ -410,25 +422,53 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   sectionTitle: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: '800',
     color: '#0F172A',
-    letterSpacing: -0.2,
+    letterSpacing: -0.3,
   },
   filterPill: {
-    backgroundColor: '#F1F5F9',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
     paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingVertical: 5,
     borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    gap: 5,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  calendarIcon: {
+    fontSize: 12,
   },
   filterPillText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#475569',
+    color: '#334155',
+  },
+  filterChevron: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#64748B',
+  },
+  quickActionsSubtitle: {
+    fontSize: 11.5,
+    color: '#64748B',
+    fontWeight: '500',
   },
   gridRow: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 10,
+  },
+  quickActionsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'space-between',
   },
   // Profile Modal Styling
   modalOverlay: {
