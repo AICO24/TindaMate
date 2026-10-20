@@ -1,78 +1,149 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  Alert,
-  Platform,
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-import { TindaMateButton } from '@/components/ui/TindaMateButton';
-import {
-  BorderRadius,
-  BottomTabInset,
-  Colors,
-  MaxContentWidth,
-  Spacing,
-  Typography,
-} from '@/constants/theme';
-
 import { router } from 'expo-router';
 
-export default function HomeScreen() {
-  const handleGetStarted = (): void => {
+import { TindaMateCartLogo } from '@/components/ui/TindaMateCartLogo';
+import { WelcomeHeroIllustration } from '@/components/ui/WelcomeHeroIllustration';
+import { BorderRadius, Colors, Spacing } from '@/constants/theme';
+import { supabase } from '@/lib/supabase';
+
+/**
+ * TindaMate Welcome Screen
+ *
+ * Restores the authentic TindaMate Welcome & Onboarding experience:
+ * - Official brand header (Cart with leaf + TindaMate wordmark + tagline)
+ * - Community marketplace hero illustration with local vendor and produce stall
+ * - Clear value proposition: "Shop Local, Support Small"
+ * - Primary "Log In →" pill button
+ * - Secondary "Create Account →" outlined pill button
+ * - Tertiary "Continue as Guest" link
+ * - Automatic session redirection to authenticated app shell (/home) if already logged in
+ */
+export default function WelcomeScreen() {
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    // Check if an authenticated user session already exists
+    const checkExistingSession = async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        if (data?.session && isMounted) {
+          // If already authenticated, redirect straight to the authenticated shell
+          router.replace('/home');
+          return;
+        }
+      } catch (err) {
+        // If error checking session, fallback to welcome screen
+        console.warn('[Welcome Screen] Session check failed:', err);
+      } finally {
+        if (isMounted) {
+          setIsCheckingSession(false);
+        }
+      }
+    };
+
+    checkExistingSession();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleLogin = () => {
     router.push('/login');
   };
 
+  const handleRegister = () => {
+    router.push('/register');
+  };
+
+  const handleGuest = () => {
+    // Navigate to authenticated shell in preview/guest mode
+    router.push('/home');
+  };
+
+  if (isCheckingSession) {
+    return (
+      <SafeAreaView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#0D7A4D" />
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.contentContainer}>
-        {/* Brand Header */}
-        <View style={styles.header}>
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>🏪 Tindahan Companion</Text>
-          </View>
-          <Text style={styles.appName}>
-            <Text style={{ color: Colors.primary }}>Tinda</Text>
-            <Text style={{ color: Colors.accent }}>Mate</Text>
-          </Text>
-          <Text style={styles.tagline}>"Your Digital Tindahan Assistant"</Text>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}>
+        {/* Top Branding Section */}
+        <View style={styles.topBrandSection}>
+          <TindaMateCartLogo scale={1.05} showTagline={true} />
         </View>
 
-        {/* Supporting Message Card */}
-        <View style={styles.card}>
-          <Text style={styles.description}>
-            TindaMate is built to help sari-sari store owners manage their daily
-            store operations with ease. Simplify sales recording, keep inventory
-            in check, and manage customer credit (lista ng utang) — all from
-            your mobile phone.
-          </Text>
-
-          <View style={styles.featureList}>
-            <Text style={styles.featureItem}>
-              📦 <Text style={styles.featureBold}>Inventory:</Text> Track your fast-moving items
-            </Text>
-            <Text style={styles.featureItem}>
-              💵 <Text style={styles.featureBold}>Daily Sales:</Text> Record daily benta accurately
-            </Text>
-            <Text style={styles.featureItem}>
-              📝 <Text style={styles.featureBold}>Utang Tracker:</Text> Keep credit lists clear & updated
-            </Text>
-          </View>
+        {/* Hero Illustration Graphic */}
+        <View style={styles.heroSection}>
+          <WelcomeHeroIllustration />
         </View>
 
-        {/* Interactive Action Element */}
-        <View style={styles.actionContainer}>
-          <TindaMateButton
-            title="Get Started"
-            onPress={handleGetStarted}
-          />
-          <Text style={styles.actionHint}>
-            Tap to begin exploring your digital tindahan
+        {/* Value Proposition Typography */}
+        <View style={styles.textSection}>
+          <Text style={styles.headline}>Shop Local,{'\n'}Support Small</Text>
+          <Text style={styles.subheadline}>
+            Discover amazing products from local vendors in your community. Fresh,
+            unique, and just a tap away.
           </Text>
         </View>
-      </View>
+
+        {/* Action Buttons Section */}
+        <View style={styles.actionsSection}>
+          {/* Primary Action: Log In Pill */}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Log in to your TindaMate account"
+            onPress={handleLogin}
+            style={({ pressed }) => [
+              styles.primaryButton,
+              pressed && styles.primaryButtonPressed,
+            ]}>
+            <Text style={styles.primaryButtonText}>Log In  →</Text>
+          </Pressable>
+
+          {/* Secondary Action: Create Account Outlined Pill */}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Create a new TindaMate account"
+            onPress={handleRegister}
+            style={({ pressed }) => [
+              styles.secondaryButton,
+              pressed && styles.secondaryButtonPressed,
+            ]}>
+            <Text style={styles.secondaryButtonText}>Create Account  →</Text>
+          </Pressable>
+
+          {/* Tertiary Action: Continue as Guest */}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Continue as guest"
+            onPress={handleGuest}
+            style={({ pressed }) => [
+              styles.guestButton,
+              pressed && styles.guestButtonPressed,
+            ]}>
+            <Text style={styles.guestButtonText}>Continue as Guest</Text>
+          </Pressable>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -80,88 +151,121 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: '#FFFFFF',
   },
-  contentContainer: {
+  loadingContainer: {
     flex: 1,
-    width: '100%',
-    maxWidth: MaxContentWidth,
-    alignSelf: 'center',
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
     justifyContent: 'center',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
     paddingHorizontal: Spacing.four,
-    paddingBottom: BottomTabInset + Spacing.three,
-    gap: Spacing.four,
-  },
-  header: {
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
-  badge: {
-    backgroundColor: Colors.primaryLight,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.one,
-    borderRadius: BorderRadius.full,
-  },
-  badgeText: {
-    color: Colors.primaryPressed,
-    fontSize: Typography.sizes.sm,
-    fontWeight: Typography.weights.semiBold,
-  },
-  appName: {
-    fontSize: Typography.sizes.hero,
-    fontWeight: Typography.weights.bold,
-    color: Colors.textPrimary,
-    letterSpacing: -0.5,
-  },
-  tagline: {
-    fontSize: Typography.sizes.base,
-    fontStyle: 'italic',
-    fontWeight: Typography.weights.medium,
-    color: Colors.primary,
-    textAlign: 'center',
-  },
-  card: {
-    backgroundColor: Colors.card,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.four,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    gap: Spacing.three,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  description: {
-    fontSize: Typography.sizes.body,
-    lineHeight: Typography.lineHeights.relaxed,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-  },
-  featureList: {
-    marginTop: Spacing.one,
-    gap: Spacing.two,
-    borderTopWidth: 1,
-    borderTopColor: Colors.borderSubtle,
     paddingTop: Spacing.three,
+    paddingBottom: Spacing.six,
+    maxWidth: 480,
+    width: '100%',
+    alignSelf: 'center',
+    justifyContent: 'space-between',
+    minHeight: '100%',
   },
-  featureItem: {
-    fontSize: Typography.sizes.bodySm,
-    color: Colors.textSecondary,
-    lineHeight: Typography.lineHeights.normal,
-  },
-  featureBold: {
-    fontWeight: Typography.weights.semiBold,
-    color: Colors.textPrimary,
-  },
-  actionContainer: {
+  topBrandSection: {
     alignItems: 'center',
-    gap: Spacing.two,
+    paddingTop: Spacing.two,
+    paddingBottom: Spacing.two,
   },
-  actionHint: {
-    fontSize: Typography.sizes.xs,
-    color: Colors.textMuted,
+  heroSection: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: Spacing.two,
+  },
+  textSection: {
+    alignItems: 'center',
+    paddingHorizontal: Spacing.three,
+    marginBottom: Spacing.four,
+  },
+  headline: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#0D7A4D',
+    textAlign: 'center',
+    lineHeight: 38,
+    letterSpacing: -0.5,
+    marginBottom: Spacing.two,
+  },
+  subheadline: {
+    fontSize: 15,
+    color: '#64748B',
+    textAlign: 'center',
+    lineHeight: 22,
+    maxWidth: 340,
+  },
+  actionsSection: {
+    width: '100%',
+    gap: 12,
+    alignItems: 'center',
+    paddingBottom: Spacing.two,
+  },
+  primaryButton: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: '#0D7A4D',
+    paddingVertical: 15,
+    borderRadius: BorderRadius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#0D7A4D',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  primaryButtonPressed: {
+    backgroundColor: '#0A5C3A',
+    transform: [{ scale: 0.98 }],
+  },
+  primaryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+  },
+  secondaryButton: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: 'transparent',
+    borderWidth: 1.8,
+    borderColor: '#0D7A4D',
+    paddingVertical: 14,
+    borderRadius: BorderRadius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  secondaryButtonPressed: {
+    backgroundColor: '#E8F5E9',
+    transform: [{ scale: 0.98 }],
+  },
+  secondaryButtonText: {
+    color: '#0D7A4D',
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+  },
+  guestButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    marginTop: 2,
+  },
+  guestButtonPressed: {
+    opacity: 0.6,
+  },
+  guestButtonText: {
+    color: '#64748B',
+    fontSize: 14,
+    fontWeight: '500',
   },
 });
 
