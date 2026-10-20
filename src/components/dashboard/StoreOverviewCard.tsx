@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { BorderRadius, Spacing } from '@/constants/theme';
+import { BorderRadius } from '@/constants/theme';
 
 export interface OverviewItem {
   id: string;
@@ -55,8 +55,8 @@ const THEME_STYLES = {
 /**
  * StoreOverviewCard
  *
- * Horizontal summary card matching the reference mockup:
- * [ (Round Colored Icon)   Title / Subtext        › ]
+ * Mobile-responsive summary card:
+ * [ (Round Icon)   Title / Subtext        › ]
  */
 export function StoreOverviewCard({ item }: StoreOverviewCardProps) {
   const currentTheme = THEME_STYLES[item.theme];
@@ -81,7 +81,7 @@ export function StoreOverviewCard({ item }: StoreOverviewCardProps) {
         </Text>
       </View>
 
-      {/* Middle: Title & Honest Empty-State Subtitle */}
+      {/* Middle: Title & Subtitle */}
       <View style={styles.textColumn}>
         <Text style={[styles.title, { color: currentTheme.titleColor }]} numberOfLines={1}>
           {item.title}
@@ -91,7 +91,7 @@ export function StoreOverviewCard({ item }: StoreOverviewCardProps) {
         </Text>
       </View>
 
-      {/* Right: Chevron Indicator */}
+      {/* Right: Chevron */}
       <Text style={[styles.chevron, { color: currentTheme.chevronColor }]}>›</Text>
     </Pressable>
   );
@@ -100,18 +100,18 @@ export function StoreOverviewCard({ item }: StoreOverviewCardProps) {
 const styles = StyleSheet.create({
   card: {
     flex: 1,
-    minWidth: '47%',
+    minWidth: '46%',
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: BorderRadius.xl,
-    paddingVertical: 14,
-    paddingHorizontal: 12,
+    borderRadius: BorderRadius.lg,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
     borderWidth: 1,
-    gap: 10,
+    gap: 8,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.02,
-    shadowRadius: 4,
+    shadowRadius: 3,
     elevation: 1,
   },
   cardPressed: {
@@ -119,33 +119,32 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.98 }],
   },
   iconCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     alignItems: 'center',
     justifyContent: 'center',
   },
   iconSymbol: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '800',
   },
   textColumn: {
     flex: 1,
-    gap: 2,
+    gap: 1,
   },
   title: {
-    fontSize: 13.5,
+    fontSize: 12.5,
     fontWeight: '700',
     letterSpacing: -0.2,
   },
   subtitle: {
-    fontSize: 11,
+    fontSize: 10.5,
     color: '#64748B',
     fontWeight: '500',
   },
   chevron: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '800',
-    paddingLeft: 2,
   },
 });

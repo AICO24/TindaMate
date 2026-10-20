@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { BorderRadius, Spacing } from '@/constants/theme';
+import { BorderRadius } from '@/constants/theme';
 
 export interface QuickActionItem {
   id: string;
@@ -50,10 +50,11 @@ const ACTION_THEMES = {
 /**
  * QuickActionTile
  *
- * Vertical action tile matching the 4-column row in the reference mockup:
+ * Mobile-optimized vertical action tile for the 4-column row:
+ * - Fits smoothly on any phone screen down to 320px
  * - Circular vibrant icon at top
- * - Two-line centered title in the middle
- * - Right arrow (→) at bottom
+ * - Two-line centered title
+ * - Bottom arrow indicator
  */
 export function QuickActionTile({ item }: QuickActionTileProps) {
   const currentTheme = ACTION_THEMES[item.theme];
@@ -78,10 +79,10 @@ export function QuickActionTile({ item }: QuickActionTileProps) {
 
       {/* Two-Line Centered Label */}
       <View style={styles.labelContainer}>
-        <Text style={[styles.labelText, { color: currentTheme.text }]}>
+        <Text style={[styles.labelText, { color: currentTheme.text }]} numberOfLines={1}>
           {item.labelLine1}
         </Text>
-        <Text style={[styles.labelText, { color: currentTheme.text }]}>
+        <Text style={[styles.labelText, { color: currentTheme.text }]} numberOfLines={1}>
           {item.labelLine2}
         </Text>
       </View>
@@ -97,12 +98,12 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderRadius: BorderRadius.xl,
-    paddingVertical: 14,
-    paddingHorizontal: 4,
+    borderRadius: BorderRadius.lg,
+    paddingVertical: 10,
+    paddingHorizontal: 2,
     borderWidth: 1,
-    minHeight: 118,
-    gap: 8,
+    minHeight: 104,
+    gap: 4,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.02,
@@ -114,14 +115,14 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.96 }],
   },
   iconCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     alignItems: 'center',
     justifyContent: 'center',
   },
   iconText: {
-    fontSize: 18,
+    fontSize: 16,
     color: '#FFFFFF',
   },
   labelContainer: {
@@ -129,13 +130,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   labelText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
     textAlign: 'center',
-    lineHeight: 15,
+    lineHeight: 14,
   },
   arrow: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '800',
   },
 });

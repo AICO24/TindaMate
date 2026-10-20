@@ -26,13 +26,13 @@ import { supabase } from '@/lib/supabase';
 /**
  * TindaMate Main Dashboard Screen
  *
- * 100% faithful implementation of the official Dashboard reference mockup:
- * 1. Top Header with TindaMate brand emblem and white circular profile avatar
- * 2. Welcoming hero banner with greeting, user name, store pill, and 3D market stall
- * 3. Store Overview (4 horizontal summary cards: Today's Sales, Products, Low Stock, Utang)
+ * Mobile-First Responsive Dashboard:
+ * 1. Top Header with TindaMate brand emblem and profile avatar
+ * 2. Responsive hero banner with greeting, user name, store pill, and 3D market stall
+ * 3. Store Overview (2x2 grid of horizontal summary cards: Today's Sales, Products, Low Stock, Utang)
  * 4. Quick Actions (4-column row: Add Product, Record Sale, Add Expense, Record Utang)
- * 5. Recent Activity (checklist card with sparkling guidance)
- * 6. Bottom Navigation bar (Home with green underline, Products, Sales, Utang, More)
+ * 5. Recent Activity (checklist card with transaction guidance)
+ * 6. Bottom Navigation (pure vector line icons: Home with underline, Products, Sales, Utang, More)
  */
 export default function AuthenticatedDashboardScreen() {
   const [user, setUser] = useState<User | null>(null);
@@ -164,7 +164,7 @@ export default function AuthenticatedDashboardScreen() {
     user?.email?.split('@')[0] ||
     'Store Partner';
 
-  // Four Store Overview Cards (Matching reference horizontal layout)
+  // Four Store Overview Cards
   const overviewItems: OverviewItem[] = [
     {
       id: 'sales',
@@ -204,7 +204,7 @@ export default function AuthenticatedDashboardScreen() {
     },
   ];
 
-  // Four Quick Action Tiles (4-column row matching mockup)
+  // Four Quick Action Tiles (4-column row)
   const quickActions: QuickActionItem[] = [
     {
       id: 'add_product',
@@ -248,7 +248,7 @@ export default function AuthenticatedDashboardScreen() {
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}>
-          {/* Top Section with Pale Green Wave Backdrop */}
+          {/* Top Section */}
           <View style={styles.topSectionWrapper}>
             {/* 1. Header Row */}
             <DashboardHeader
@@ -401,20 +401,20 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: Spacing.four,
+    paddingHorizontal: 14,
     paddingTop: 0,
     paddingBottom: Spacing.four,
-    maxWidth: 520,
+    maxWidth: 480,
     width: '100%',
     alignSelf: 'center',
-    gap: Spacing.four,
+    gap: 12,
   },
   topSectionWrapper: {
     backgroundColor: '#FFFFFF',
-    paddingTop: Spacing.two,
+    paddingTop: Spacing.one,
   },
   section: {
-    gap: 12,
+    gap: 10,
   },
   sectionHeaderRow: {
     flexDirection: 'row',
@@ -422,7 +422,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '800',
     color: '#0F172A',
     letterSpacing: -0.3,
@@ -431,12 +431,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
     borderRadius: BorderRadius.full,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    gap: 5,
+    gap: 4,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.03,
@@ -444,30 +444,30 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   calendarIcon: {
-    fontSize: 12,
+    fontSize: 11,
   },
   filterPillText: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '700',
     color: '#334155',
   },
   filterChevron: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '800',
     color: '#64748B',
   },
   quickActionsSubtitle: {
-    fontSize: 11.5,
+    fontSize: 11,
     color: '#64748B',
     fontWeight: '500',
   },
   gridRow: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 8,
   },
   quickActionsRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
     justifyContent: 'space-between',
   },
   // Profile Modal Styling

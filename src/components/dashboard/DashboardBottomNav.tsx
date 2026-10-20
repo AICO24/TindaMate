@@ -1,6 +1,13 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import {
+  NavHomeIcon,
+  NavMoreIcon,
+  NavProductsIcon,
+  NavSalesIcon,
+  NavUtangIcon,
+} from './DashboardNavIcons';
 import { Spacing } from '@/constants/theme';
 
 export type NavTab = 'home' | 'products' | 'sales' | 'utang' | 'more';
@@ -10,35 +17,51 @@ interface DashboardBottomNavProps {
   onTabPress: (tab: NavTab) => void;
 }
 
-interface TabConfig {
-  key: NavTab;
-  label: string;
-  icon: string;
-}
-
-const TABS: TabConfig[] = [
-  { key: 'home', label: 'Home', icon: '🏠' },
-  { key: 'products', label: 'Products', icon: '📦' },
-  { key: 'sales', label: 'Sales', icon: '🧾' },
-  { key: 'utang', label: 'Utang', icon: '👛' },
-  { key: 'more', label: 'More', icon: '☰' },
-];
-
 /**
  * DashboardBottomNav
  *
- * Bottom navigation bar matching the reference mockup:
- * - 5 items: Home (active green with underline bar), Products, Sales, Utang, More
- * - Pure white surface with subtle top separator
+ * Professional bottom navigation matching the reference mockup:
+ * - Pure vector line/fill icons (ZERO emoji, no red roofs or pink purses)
+ * - Home has active deep green icon (#064E3B) and green underline bar
+ * - Products, Sales, Utang, More in subtle slate (#64748B)
  */
 export function DashboardBottomNav({
   activeTab,
   onTabPress,
 }: DashboardBottomNavProps) {
+  const tabs: { key: NavTab; label: string; renderIcon: (color: string) => React.ReactNode }[] = [
+    {
+      key: 'home',
+      label: 'Home',
+      renderIcon: (color) => <NavHomeIcon color={color} />,
+    },
+    {
+      key: 'products',
+      label: 'Products',
+      renderIcon: (color) => <NavProductsIcon color={color} />,
+    },
+    {
+      key: 'sales',
+      label: 'Sales',
+      renderIcon: (color) => <NavSalesIcon color={color} />,
+    },
+    {
+      key: 'utang',
+      label: 'Utang',
+      renderIcon: (color) => <NavUtangIcon color={color} />,
+    },
+    {
+      key: 'more',
+      label: 'More',
+      renderIcon: (color) => <NavMoreIcon color={color} />,
+    },
+  ];
+
   return (
     <View style={styles.navBar}>
-      {TABS.map((tab) => {
+      {tabs.map((tab) => {
         const isActive = activeTab === tab.key;
+        const iconColor = isActive ? '#064E3B' : '#64748B';
 
         return (
           <Pressable
@@ -47,15 +70,15 @@ export function DashboardBottomNav({
             accessibilityState={{ selected: isActive }}
             accessibilityLabel={`${tab.label} tab`}
             onPress={() => onTabPress(tab.key)}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
             style={({ pressed }) => [
               styles.tabItem,
               pressed && styles.tabItemPressed,
             ]}>
-            {/* Icon */}
-            <Text style={[styles.tabIcon, isActive && styles.activeTabIcon]}>
-              {tab.icon}
-            </Text>
+            {/* Vector Icon */}
+            <View style={styles.iconWrapper}>
+              {tab.renderIcon(iconColor)}
+            </View>
 
             {/* Label */}
             <Text style={[styles.tabLabel, isActive && styles.activeTabLabel]}>
@@ -83,9 +106,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderTopColor: '#E2E8F0',
-    paddingTop: 10,
-    paddingBottom: 8,
-    paddingHorizontal: Spacing.two,
+    paddingTop: 8,
+    paddingBottom: 6,
+    paddingHorizontal: Spacing.one,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.04,
@@ -95,20 +118,16 @@ const styles = StyleSheet.create({
   tabItem: {
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 58,
+    flex: 1,
     gap: 3,
   },
   tabItemPressed: {
     opacity: 0.7,
   },
-  tabIcon: {
-    fontSize: 21,
-    opacity: 0.6,
-    color: '#64748B',
-  },
-  activeTabIcon: {
-    opacity: 1,
-    color: '#064E3B',
+  iconWrapper: {
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   tabLabel: {
     fontSize: 11,

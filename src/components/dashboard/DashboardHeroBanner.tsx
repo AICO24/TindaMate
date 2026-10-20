@@ -21,11 +21,11 @@ interface DashboardHeroBannerProps {
 /**
  * DashboardHeroBanner
  *
- * Exact replica of the reference dashboard banner:
- * - Left side: Dynamic time-based greeting ("Good morning,"), bold user name,
- *   supporting text, and the white "TindaMate Store >" pill button.
- * - Right side: Authentic 3D market stall illustration with awning, fruit crates,
- *   lush green leaves, and chalkboard ("Small Store. Big Dreams.").
+ * Mobile-responsive banner matching the reference mockup:
+ * - Left side: Dynamic time-based greeting, bold user name,
+ *   supporting text, and the white "TindaMate Store ›" pill button.
+ * - Right side: Responsive 3D market stall illustration that fits
+ *   cleanly on any phone size without squishing the text.
  */
 export function DashboardHeroBanner({
   displayName,
@@ -42,13 +42,15 @@ export function DashboardHeroBanner({
 
   // Dimensions for extracting the exact 3D market stall illustration
   const { width: windowWidth } = Dimensions.get('window');
-  const baseWidth = Math.min(windowWidth - 32, 380);
+  const baseWidth = Math.min(windowWidth - 28, 380);
   const baseHeight = baseWidth * 2.16;
 
-  const illustrationBoxWidth = 165;
-  const illustrationBoxHeight = 135;
+  // Responsive illustration box size tailored for mobile phone widths
+  const isSmallPhone = windowWidth < 380;
+  const illustrationBoxWidth = isSmallPhone ? 130 : 155;
+  const illustrationBoxHeight = isSmallPhone ? 115 : 130;
   const illustrationTopOffset = -baseHeight * 0.106;
-  const illustrationLeftOffset = -baseWidth * 0.50;
+  const illustrationLeftOffset = -baseWidth * (isSmallPhone ? 0.54 : 0.51);
 
   return (
     <View style={styles.card}>
@@ -60,7 +62,7 @@ export function DashboardHeroBanner({
             {displayName}!
           </Text>
 
-          <Text style={styles.greetingSubtext}>
+          <Text style={styles.greetingSubtext} numberOfLines={2}>
             Here's what's happening with your store today.
           </Text>
 
@@ -83,7 +85,7 @@ export function DashboardHeroBanner({
           </Pressable>
         </View>
 
-        {/* Right Side: Authentic 3D Market Stall Illustration */}
+        {/* Right Side: Responsive 3D Market Stall Illustration */}
         <View
           style={[
             styles.illustrationBox,
@@ -109,7 +111,7 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: '#F2F9F4',
     borderRadius: BorderRadius.xl,
-    paddingLeft: Spacing.four,
+    paddingLeft: Spacing.three,
     paddingTop: Spacing.three,
     paddingBottom: Spacing.three,
     paddingRight: 0,
@@ -129,41 +131,41 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   leftColumn: {
-    flex: 1,
-    gap: 4,
-    paddingRight: 8,
+    flex: 1.15,
+    gap: 3,
+    paddingRight: 4,
     zIndex: 2,
   },
   greetingGreeting: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
     color: '#334155',
   },
   displayNameText: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '800',
     color: '#064E3B',
     letterSpacing: -0.3,
-    lineHeight: 26,
-    marginBottom: 2,
+    lineHeight: 24,
+    marginBottom: 1,
   },
   greetingSubtext: {
-    fontSize: 12,
+    fontSize: 11.5,
     color: '#64748B',
-    lineHeight: 16,
-    marginBottom: 6,
+    lineHeight: 15,
+    marginBottom: 4,
   },
   storePill: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: BorderRadius.full,
     borderWidth: 1,
     borderColor: '#D1FAE5',
-    gap: 6,
+    gap: 5,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
@@ -175,23 +177,23 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.98 }],
   },
   storeIconCircle: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     backgroundColor: '#DCFCE7',
     alignItems: 'center',
     justifyContent: 'center',
   },
   storeIcon: {
-    fontSize: 12,
+    fontSize: 11,
   },
   storePillText: {
-    fontSize: 12.5,
+    fontSize: 11.5,
     fontWeight: '700',
     color: '#064E3B',
   },
   storePillChevron: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '800',
     color: '#064E3B',
   },
