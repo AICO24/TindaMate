@@ -94,7 +94,8 @@ export async function performOAuthSignIn(
   provider: OAuthProvider
 ): Promise<OAuthResult> {
   try {
-    const redirectUrl = Linking.createURL('/home');
+    // In Expo, use clean route path without leading double-slash
+    const redirectUrl = Linking.createURL('home');
 
     const options: {
       redirectTo: string;
