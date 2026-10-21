@@ -12,28 +12,36 @@ import {
 
 interface RecentActivitySectionProps {
   onViewAll?: () => void;
+  hasActivity?: boolean;
+  activityCount?: number;
 }
 
 /**
  * RecentActivitySection
  *
  * Visually polished empty state card using the TindaMate Design System:
- * - Reusable SectionHeader ("Recent Activity" + "View All ›")
+ * - Reusable SectionHeader ("Recent Activity", conditional "View All ›" only when activity exists)
  * - Full-width horizontal card with soft mint/slate surface
  * - Pure React Native vector checklist pad with warm orange sparkle rays (zero OS emojis)
  * - Friendly, non-alarming empty state guidance
  */
-export function RecentActivitySection({ onViewAll }: RecentActivitySectionProps) {
+export function RecentActivitySection({
+  onViewAll,
+  hasActivity = false,
+  activityCount = 0,
+}: RecentActivitySectionProps) {
   const { width: windowWidth } = useWindowDimensions();
   const isCompactPhone = windowWidth < 375;
 
+  const showViewAll = (hasActivity || activityCount > 0) && !!onViewAll;
+
   return (
     <View style={styles.container}>
-      {/* Reusable Design-System Section Header */}
+      {/* Reusable Design-System Section Header (hides View All when empty) */}
       <SectionHeader
         title="Recent Activity"
-        actionLabel={onViewAll ? 'View All' : undefined}
-        onActionPress={onViewAll}
+        actionLabel={showViewAll ? 'View All' : undefined}
+        onActionPress={showViewAll ? onViewAll : undefined}
       />
 
       {/* Empty State Card */}

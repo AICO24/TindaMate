@@ -28,6 +28,7 @@ export interface OverviewItem {
 
 interface StoreOverviewCardProps {
   item: OverviewItem;
+  isLoading?: boolean;
 }
 
 const OVERVIEW_THEME_MAP = {
@@ -47,8 +48,9 @@ const VECTOR_IDS = new Set(['sales', 'products', 'low_stock', 'utang']);
  * - Clear 3-tier hierarchy: KPI Label -> Primary KPI Value -> Supporting helper text
  * - Soft pastel or calm neutral background & border from centralized Colors.pastel tokens
  * - Responsive circular badge with crisp white vector icon
+ * - Supports inline skeleton loading state (isLoading) with zero layout shift
  */
-export function StoreOverviewCard({ item }: StoreOverviewCardProps) {
+export function StoreOverviewCard({ item, isLoading = false }: StoreOverviewCardProps) {
   const currentTheme = OVERVIEW_THEME_MAP[item.theme];
   const hasVectorIcon = VECTOR_IDS.has(item.id);
   const { width: windowWidth } = useWindowDimensions();
@@ -60,9 +62,14 @@ export function StoreOverviewCard({ item }: StoreOverviewCardProps) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${item.title}: ${item.value}. ${item.subtitle}`}
+      accessibilityLabel={
+        isLoading
+          ? `${item.title}, loading data`
+          : `${item.title}: ${item.value}. ${item.subtitle}`
+      }
       accessibilityHint={`Views detailed ${item.title} summary`}
-      onPress={item.onPress}
+      onPress={isLoading ? undefined : item.onPress}
+      disabled={isLoading}
       style={({ pressed }) => [
         styles.card,
         isCompactPhone && styles.cardCompact,
@@ -71,7 +78,7 @@ export function StoreOverviewCard({ item }: StoreOverviewCardProps) {
           backgroundColor: currentTheme.bg,
           borderColor: currentTheme.border,
         },
-        pressed && styles.cardPressed,
+        pressed && !isLoading && styles.cardPressed,
       ]}>
       {/* Left: Prominent Round Themed Icon */}
       <View
@@ -106,25 +113,44 @@ export function StoreOverviewCard({ item }: StoreOverviewCardProps) {
           maxFontSizeMultiplier={1.25}>
           {item.title}
         </Text>
-        <Text
-          style={[
-            styles.value,
-            isCompactPhone && styles.valueCompact,
-            isNarrowPhone && styles.valueNarrow,
-            { color: currentTheme.text },
-          ]}
-          numberOfLines={1}
-          adjustsFontSizeToFit
-          minimumFontScale={0.82}
-          maxFontSizeMultiplier={1.25}>
-          {item.value}
-        </Text>
-        <Text
-          style={styles.subtitle}
-          numberOfLines={1}
-          maxFontSizeMultiplier={1.25}>
-          {item.subtitle}
-        </Text>
+        {isLoading ? (
+          <View style={styles.skeletonContainer}>
+            <View
+              style={[
+                styles.skeletonPillValue,
+                { backgroundColor: currentTheme.border },
+              ]}
+            />
+            <View
+              style={[
+                styles.skeletonPillSubtitle,
+                { backgroundColor: currentTheme.border },
+              ]}
+            />
+          </View>
+        ) : (
+          <>
+            <Text
+              style={[
+                styles.value,
+                isCompactPhone && styles.valueCompact,
+                isNarrowPhone && styles.valueNarrow,
+                { color: currentTheme.text },
+              ]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.82}
+              maxFontSizeMultiplier={1.25}>
+              {item.value}
+            </Text>
+            <Text
+              style={styles.subtitle}
+              numberOfLines={1}
+              maxFontSizeMultiplier={1.25}>
+              {item.subtitle}
+            </Text>
+          </>
+        )}
       </View>
 
       {/* Right: Chevron */}
@@ -206,6 +232,23 @@ const styles = StyleSheet.create({
     fontSize: Typography.sizes.base,
     fontWeight: Typography.weights.extraBold,
     paddingLeft: Spacing.xxs,
+  },
+  skeletonContainer: {
+    gap: 4,
+    marginTop: 3,
+    marginBottom: 2,
+  },
+  skeletonPillValue: {
+    width: '65%',
+    height: 14,
+    borderRadius: BorderRadius.xs,
+    opacity: 0.65,
+  },
+  skeletonPillSubtitle: {
+    width: '85%',
+    height: 10,
+    borderRadius: BorderRadius.xs,
+    opacity: 0.45,
   },
 });
 

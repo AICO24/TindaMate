@@ -5,6 +5,7 @@ import {
   Modal,
   Platform,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -20,6 +21,7 @@ import {
   NavTab,
   resolveActiveNavTab,
 } from '@/components/dashboard/DashboardBottomNav';
+import { DashboardErrorBanner } from '@/components/dashboard/DashboardErrorBanner';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { DashboardHeroBanner } from '@/components/dashboard/DashboardHeroBanner';
 import { CalendarFilterIcon } from '@/components/dashboard/DashboardNavIcons';
@@ -60,6 +62,9 @@ export default function AuthenticatedDashboardScreen() {
 
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isCardLoading, setIsCardLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isProfileModalVisible, setIsProfileModalVisible] = useState(false);
 
@@ -109,6 +114,38 @@ export default function AuthenticatedDashboardScreen() {
    */
   const handleCloseProfileModal = () => {
     setIsProfileModalVisible(false);
+  };
+
+  /**
+   * Pull-to-refresh handler
+   * Re-validates active session, clears errors, and simulates brief store metrics refresh
+   */
+  const handleRefresh = async () => {
+    try {
+      setIsRefreshing(true);
+      setIsCardLoading(true);
+      setErrorMessage(null);
+
+      // Verify active session with Supabase
+      const { data, error } = await supabase.auth.getSession();
+      if (error) {
+        setErrorMessage('Unable to connect to Supabase. Check your connection and retry.');
+        return;
+      }
+
+      if (!data.session) {
+        router.replace('/');
+        return;
+      }
+
+      setUser(data.session.user);
+    } catch (err) {
+      console.warn('[Dashboard Refresh Exception]:', err);
+      setErrorMessage('Network connection lost. Tap Retry to reconnect.');
+    } finally {
+      setIsRefreshing(false);
+      setIsCardLoading(false);
+    }
   };
 
   /**
@@ -281,7 +318,16 @@ export default function AuthenticatedDashboardScreen() {
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}>
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={handleRefresh}
+              tintColor={Colors.primary}
+              colors={[Colors.primary]}
+              progressBackgroundColor={Colors.surface}
+            />
+          }>
           {/* 1. Full-Bleed Hero Zone with Warm Backdrop */}
           <View style={styles.fullBleedHeroZone}>
             <View style={styles.heroInnerContainer}>
@@ -302,6 +348,15 @@ export default function AuthenticatedDashboardScreen() {
 
           {/* 2. Main Body Content */}
           <View style={styles.bodyContentContainer}>
+            {/* Error Banner Slot */}
+            {errorMessage ? (
+              <DashboardErrorBanner
+                message={errorMessage}
+                onRetry={handleRefresh}
+                onDismiss={() => setErrorMessage(null)}
+              />
+            ) : null}
+
             {/* 3. Store Overview Section */}
             <View style={styles.section}>
               <SectionHeader
@@ -330,12 +385,24 @@ export default function AuthenticatedDashboardScreen() {
 
               {/* 2x2 Overview Cards Grid */}
               <View style={[styles.gridRow, isNarrowPhone && styles.gridRowNarrow]}>
-                <StoreOverviewCard item={overviewItems[0]} />
-                <StoreOverviewCard item={overviewItems[1]} />
+                <StoreOverviewCard
+                  item={overviewItems[0]}
+                  isLoading={isCardLoading}
+                />
+                <StoreOverviewCard
+                  item={overviewItems[1]}
+                  isLoading={isCardLoading}
+                />
               </View>
               <View style={[styles.gridRow, isNarrowPhone && styles.gridRowNarrow]}>
-                <StoreOverviewCard item={overviewItems[2]} />
-                <StoreOverviewCard item={overviewItems[3]} />
+                <StoreOverviewCard
+                  item={overviewItems[2]}
+                  isLoading={isCardLoading}
+                />
+                <StoreOverviewCard
+                  item={overviewItems[3]}
+                  isLoading={isCardLoading}
+                />
               </View>
             </View>
 
@@ -358,6 +425,7 @@ export default function AuthenticatedDashboardScreen() {
             {/* 5. Recent Activity Section */}
             <RecentActivitySection
               onViewAll={() => handleModuleClick('Recent Activity', 'Batch 3')}
+              hasActivity={false}
             />
           </View>
         </ScrollView>
