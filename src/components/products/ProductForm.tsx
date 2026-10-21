@@ -8,6 +8,10 @@ import {
 } from 'react-native';
 
 import { DashboardErrorBanner } from '@/components/dashboard/DashboardErrorBanner';
+import {
+  PickedImageAsset,
+  ProductImagePicker,
+} from '@/components/products/ProductImagePicker';
 import { StockStatusBadge } from '@/components/products/StockStatusBadge';
 import { TindaMateButton } from '@/components/ui/TindaMateButton';
 import { TindaMateInput } from '@/components/ui/TindaMateInput';
@@ -18,7 +22,11 @@ import {
   Spacing,
   Typography,
 } from '@/constants/theme';
-import { getProductStockStatus, validateProductForm } from '@/lib/products';
+import {
+  getProductStockStatus,
+  uploadProductImage,
+  validateProductForm,
+} from '@/lib/products';
 import {
   COMMON_PRODUCT_UNITS,
   DEFAULT_LOW_STOCK_THRESHOLD,
@@ -85,6 +93,10 @@ export function ProductForm({
   });
 
   const [errors, setErrors] = useState<ProductFormErrors>({});
+  const [pendingImageAsset, setPendingImageAsset] = useState<PickedImageAsset | null>(null);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [photoUploadError, setPhotoUploadError] = useState<string | null>(null);
+  const [showManualUrlInput, setShowManualUrlInput] = useState(false);
 
   const updateField = <K extends keyof ProductFormValues>(
     field: K,
@@ -97,6 +109,18 @@ export function ProductForm({
     if (submitError && onClearSubmitError) {
       onClearSubmitError();
     }
+  };
+
+  const handleImageSelected = (asset: PickedImageAsset) => {
+    setPendingImageAsset(asset);
+    setPhotoUploadError(null);
+    updateField('imageUrl', asset.uri);
+  };
+
+  const handleImageRemoved = () => {
+    setPendingImageAsset(null);
+    setPhotoUploadError(null);
+    updateField('imageUrl', '');
   };
 
   // Compute live preview of Stock Status from current numeric inputs
@@ -112,7 +136,7 @@ export function ProductForm({
   );
 
   const handleSavePress = async () => {
-    if (isSubmitting) return;
+    if (isSubmitting || isUploadingPhoto) return;
 
     const validation = validateProductForm(values);
     if (!validation.isValid || !validation.sanitized) {
@@ -121,7 +145,36 @@ export function ProductForm({
     }
 
     setErrors({});
-    await onSubmit(validation.sanitized);
+
+    let finalImageUrl = validation.sanitized.image_url;
+
+    // If vendor snapped or selected a new local image, upload to Supabase Storage first
+    if (pendingImageAsset) {
+      try {
+        setIsUploadingPhoto(true);
+        setPhotoUploadError(null);
+        finalImageUrl = await uploadProductImage(
+          pendingImageAsset.uri,
+          pendingImageAsset.base64,
+          pendingImageAsset.mimeType
+        );
+      } catch (uploadErr: unknown) {
+        const msg =
+          uploadErr instanceof Error
+            ? uploadErr.message
+            : 'Hindi mai-upload ang litrato sa storage. Pakisuri ang internet connection.';
+        setPhotoUploadError(msg);
+        setIsUploadingPhoto(false);
+        return;
+      } finally {
+        setIsUploadingPhoto(false);
+      }
+    }
+
+    await onSubmit({
+      ...validation.sanitized,
+      image_url: finalImageUrl,
+    });
   };
 
   return (
@@ -202,17 +255,51 @@ export function ProductForm({
           </View>
         </View>
 
-        <TindaMateInput
-          label="Product Image URL (Optional)"
-          placeholder="https://example.com/product.jpg"
-          value={values.imageUrl}
-          onChangeText={(text) => updateField('imageUrl', text)}
-          autoCapitalize="none"
-          keyboardType="default"
-          returnKeyType="next"
-          errorMessage={errors.imageUrl}
-          accessibilityLabel="Product Image URL, optional"
+        {/* Photo Upload Error Banner if storage fails */}
+        {photoUploadError ? (
+          <DashboardErrorBanner
+            message={photoUploadError}
+            onDismiss={() => setPhotoUploadError(null)}
+          />
+        ) : null}
+
+        {/* Senior-friendly Camera & Gallery Photo Picker */}
+        <ProductImagePicker
+          currentImageUrl={values.imageUrl}
+          onImageSelected={handleImageSelected}
+          onImageRemoved={handleImageRemoved}
+          disabled={isSubmitting || isUploadingPhoto}
         />
+
+        {/* Optional Manual URL Link Input Toggle */}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Toggle manual image web link input"
+          onPress={() => setShowManualUrlInput((prev) => !prev)}
+          style={styles.manualUrlToggle}>
+          <Text style={styles.manualUrlToggleText}>
+            {showManualUrlInput
+              ? '▾ Hide manual URL link'
+              : '▸ Or paste image URL from web (Optional)'}
+          </Text>
+        </Pressable>
+
+        {showManualUrlInput ? (
+          <TindaMateInput
+            label="Image Web URL (Optional)"
+            placeholder="https://example.com/product.jpg"
+            value={values.imageUrl}
+            onChangeText={(text) => {
+              setPendingImageAsset(null);
+              updateField('imageUrl', text);
+            }}
+            autoCapitalize="none"
+            keyboardType="default"
+            returnKeyType="next"
+            errorMessage={errors.imageUrl}
+            accessibilityLabel="Product Image URL, optional"
+          />
+        ) : null}
       </View>
 
       {/* Section 2: Pricing */}
@@ -363,10 +450,16 @@ export function ProductForm({
       {/* Form Actions */}
       <View style={styles.actionsBlock}>
         <TindaMateButton
-          title={isSubmitting ? submittingLabel : submitLabel}
+          title={
+            isUploadingPhoto
+              ? 'Uploading photo...'
+              : isSubmitting
+              ? submittingLabel
+              : submitLabel
+          }
           variant="primary"
-          loading={isSubmitting}
-          disabled={isSubmitting}
+          loading={isSubmitting || isUploadingPhoto}
+          disabled={isSubmitting || isUploadingPhoto}
           onPress={handleSavePress}
           accessibilityLabel={submitLabel}
         />
@@ -375,7 +468,7 @@ export function ProductForm({
           <TindaMateButton
             title="Cancel"
             variant="ghost"
-            disabled={isSubmitting}
+            disabled={isSubmitting || isUploadingPhoto}
             onPress={onCancel}
             accessibilityLabel="Cancel and go back"
           />
@@ -493,6 +586,15 @@ const styles = StyleSheet.create({
   },
   boldText: {
     fontWeight: Typography.weights.extraBold,
+  },
+  manualUrlToggle: {
+    paddingVertical: Spacing.one,
+    paddingHorizontal: Spacing.half,
+  },
+  manualUrlToggleText: {
+    fontSize: Typography.sizes.xs,
+    color: Colors.primaryDark,
+    fontWeight: Typography.weights.bold,
   },
   actionsBlock: {
     gap: Spacing.two,

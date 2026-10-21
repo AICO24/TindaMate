@@ -532,3 +532,92 @@ export async function fetchStoreProductSummary(): Promise<StoreProductSummary> {
   return computeStoreProductSummary(normalizedRows);
 }
 
+/**
+ * Decodes a base64 string into a standard ArrayBuffer for Supabase Storage uploads.
+ */
+export function decodeBase64ToArrayBuffer(base64String: string): ArrayBuffer {
+  const cleaned = base64String.replace(/^data:image\/[a-zA-Z]+;base64,/, '').trim();
+
+  if (typeof atob === 'function') {
+    const binaryString = atob(cleaned);
+    const len = binaryString.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes.buffer;
+  }
+
+  // Pure JavaScript base64 decode fallback
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+  let bufferLength = cleaned.length * 0.75;
+  if (cleaned.endsWith('=')) bufferLength--;
+  if (cleaned.endsWith('==')) bufferLength--;
+
+  const arrayBuffer = new ArrayBuffer(bufferLength);
+  const bytes = new Uint8Array(arrayBuffer);
+
+  let p = 0;
+  for (let i = 0; i < cleaned.length; i += 4) {
+    const enc1 = chars.indexOf(cleaned[i]);
+    const enc2 = chars.indexOf(cleaned[i + 1]);
+    const enc3 = chars.indexOf(cleaned[i + 2]);
+    const enc4 = chars.indexOf(cleaned[i + 3]);
+
+    bytes[p++] = (enc1 << 2) | (enc2 >> 4);
+    if (enc3 !== 64 && enc3 !== -1) {
+      bytes[p++] = ((enc2 & 15) << 4) | (enc3 >> 2);
+    }
+    if (enc4 !== 64 && enc4 !== -1) {
+      bytes[p++] = ((enc3 & 3) << 6) | enc4;
+    }
+  }
+
+  return arrayBuffer;
+}
+
+/**
+ * Uploads a local product image file (captured via camera or selected from gallery)
+ * to Supabase Storage bucket ('products') and returns its public URL.
+ */
+export async function uploadProductImage(
+  localUri: string,
+  base64?: string | null,
+  mimeType = 'image/jpeg'
+): Promise<string> {
+  const storeId = await getAuthenticatedStoreId();
+  const fileExt = mimeType.includes('png') ? 'png' : 'jpg';
+  const filePath = `${storeId}/${Date.now()}-${Math.random().toString(36).substring(2, 7)}.${fileExt}`;
+
+  let uploadPayload: Blob | ArrayBuffer;
+
+  if (base64) {
+    uploadPayload = decodeBase64ToArrayBuffer(base64);
+  } else {
+    const response = await fetch(localUri);
+    uploadPayload = await response.blob();
+  }
+
+  const { data, error } = await supabase.storage
+    .from('products')
+    .upload(filePath, uploadPayload, {
+      contentType: mimeType,
+      upsert: true,
+    });
+
+  if (error || !data) {
+    throw new Error(
+      mapProductDatabaseError(
+        error,
+        'Could not upload product photo. Ensure the "products" storage bucket exists in Supabase.'
+      )
+    );
+  }
+
+  const { data: publicUrlData } = supabase.storage
+    .from('products')
+    .getPublicUrl(data.path);
+
+  return publicUrlData.publicUrl;
+}
+
