@@ -1,10 +1,11 @@
 import React from 'react';
 import {
-  Alert,
-  Platform,
+  ActivityIndicator,
   Pressable,
+  StyleProp,
   StyleSheet,
   Text,
+  ViewStyle,
 } from 'react-native';
 
 import { GoogleGIcon } from './AuthIcons';
@@ -17,44 +18,49 @@ import {
   Typography,
 } from '@/constants/theme';
 
-interface GoogleSignInButtonProps {
-  onPress?: () => void;
+export interface GoogleSignInButtonProps {
+  onPress: () => void;
+  loading?: boolean;
+  disabled?: boolean;
+  label?: string;
+  style?: StyleProp<ViewStyle>;
 }
 
 /**
  * GoogleSignInButton
  *
- * Renders the "Continue with Google" pill button matching TindaMateButton's
- * geometry and elevation tokens.
- * UI only - notifies the user that third-party authentication will be available in an upcoming release.
+ * Renders the official "Continue with Google" pill button matching TindaMateButton's
+ * geometry and elevation tokens with real authentication integration.
  */
-export function GoogleSignInButton({ onPress }: GoogleSignInButtonProps) {
-  const handlePress = () => {
-    if (onPress) {
-      onPress();
-      return;
-    }
-
-    const message =
-      'Google authentication is a UI-only preview in Batch 3A and will be connected in a future update.';
-    if (Platform.OS === 'web') {
-      window.alert(message);
-    } else {
-      Alert.alert('Google Sign-In', message, [{ text: 'Understood' }]);
-    }
-  };
+export function GoogleSignInButton({
+  onPress,
+  loading = false,
+  disabled = false,
+  label = 'Continue with Google',
+  style,
+}: GoogleSignInButtonProps) {
+  const isInteractive = !loading && !disabled;
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel="Continue with Google"
-      onPress={handlePress}
+      accessibilityLabel={label}
+      onPress={onPress}
+      disabled={!isInteractive}
       style={({ pressed }) => [
         styles.button,
-        pressed && styles.buttonPressed,
+        style,
+        pressed && isInteractive && styles.buttonPressed,
+        !isInteractive && styles.buttonDisabled,
       ]}>
-      <GoogleGIcon size={IconSizes.md} />
-      <Text style={styles.buttonText}>Continue with Google</Text>
+      {loading ? (
+        <ActivityIndicator size="small" color={Colors.primary} />
+      ) : (
+        <>
+          <GoogleGIcon size={IconSizes.md} />
+          <Text style={styles.buttonText}>{label}</Text>
+        </>
+      )}
     </Pressable>
   );
 }
@@ -80,11 +86,12 @@ const styles = StyleSheet.create({
     borderColor: Colors.disabled,
     transform: [{ scale: 0.985 }],
   },
+  buttonDisabled: {
+    opacity: 0.65,
+  },
   buttonText: {
     color: Colors.textPrimary,
     fontSize: Typography.sizes.body,
     fontWeight: Typography.weights.semiBold,
   },
 });
-
-

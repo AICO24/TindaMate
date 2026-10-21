@@ -16,6 +16,7 @@ import { AuthDivider } from '@/components/ui/AuthDivider';
 import { AuthErrorBanner } from '@/components/ui/AuthErrorBanner';
 import { AuthHeader } from '@/components/ui/AuthHeader';
 import { CheckIcon, LockIcon, MailIcon } from '@/components/ui/AuthIcons';
+import { FacebookSignInButton } from '@/components/ui/FacebookSignInButton';
 import { GoogleSignInButton } from '@/components/ui/GoogleSignInButton';
 import { TindaMateButton } from '@/components/ui/TindaMateButton';
 import { TindaMateInput } from '@/components/ui/TindaMateInput';
@@ -27,6 +28,7 @@ import {
   Spacing,
   Typography,
 } from '@/constants/theme';
+import { performOAuthSignIn } from '@/lib/oauth';
 import { supabase } from '@/lib/supabase';
 
 export default function LoginScreen() {
@@ -37,6 +39,7 @@ export default function LoginScreen() {
 
   // Submission & Error State
   const [isLoading, setIsLoading] = useState(false);
+  const [oauthLoadingProvider, setOauthLoadingProvider] = useState<'google' | 'facebook' | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
 
   // Field-level Validation Error State
@@ -154,6 +157,30 @@ export default function LoginScreen() {
     }
   };
 
+  /**
+   * Handle OAuth Sign In (Google & Facebook)
+   */
+  const handleOAuthSignIn = async (provider: 'google' | 'facebook') => {
+    if (isLoading || oauthLoadingProvider) return;
+    setAuthError(null);
+    setOauthLoadingProvider(provider);
+
+    try {
+      const result = await performOAuthSignIn(provider);
+      if (result.success) {
+        router.replace('/home');
+      } else if (result.error) {
+        setAuthError(mapAuthError(result.error));
+      }
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error ? err.message : 'Social sign-in failed. Please try again.';
+      setAuthError(msg);
+    } finally {
+      setOauthLoadingProvider(null);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
@@ -263,8 +290,20 @@ export default function LoginScreen() {
             {/* Divider: OR */}
             <AuthDivider label="OR" />
 
-            {/* Secondary CTA: Continue with Google */}
-            <GoogleSignInButton />
+            {/* Social Logins: Google & Facebook */}
+            <View style={styles.socialButtonsContainer}>
+              <GoogleSignInButton
+                onPress={() => handleOAuthSignIn('google')}
+                loading={oauthLoadingProvider === 'google'}
+                disabled={isLoading || Boolean(oauthLoadingProvider)}
+              />
+
+              <FacebookSignInButton
+                onPress={() => handleOAuthSignIn('facebook')}
+                loading={oauthLoadingProvider === 'facebook'}
+                disabled={isLoading || Boolean(oauthLoadingProvider)}
+              />
+            </View>
 
             {/* Bottom Navigation: Don't have an account? Register */}
             <View style={styles.bottomNavContainer}>
@@ -389,6 +428,10 @@ const styles = StyleSheet.create({
   bottomNavAction: {
     color: Colors.primary,
     fontWeight: Typography.weights.extraBold,
+  },
+  socialButtonsContainer: {
+    width: '100%',
+    gap: Spacing.twoHalf,
   },
 });
 

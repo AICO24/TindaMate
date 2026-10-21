@@ -1,10 +1,12 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import * as Linking from 'expo-linking';
 import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
+import { parseAndApplyOAuthTokens } from '@/lib/oauth';
 import { supabase } from '@/lib/supabase';
 
 SplashScreen.preventAutoHideAsync();
@@ -38,6 +40,32 @@ export default function RootLayout() {
 
       verifySupabaseConnectivity();
     }
+
+    // Capture OAuth tokens if launched or resumed via deep link
+    const handleInitialUrl = async () => {
+      try {
+        const initialUrl = await Linking.getInitialURL();
+        if (
+          initialUrl &&
+          (initialUrl.includes('access_token=') || initialUrl.includes('code='))
+        ) {
+          await parseAndApplyOAuthTokens(initialUrl);
+        }
+      } catch (err) {
+        console.warn('[OAuth Initial URL Error]:', err);
+      }
+    };
+    handleInitialUrl();
+
+    const linkingSubscription = Linking.addEventListener('url', async ({ url }) => {
+      if (url && (url.includes('access_token=') || url.includes('code='))) {
+        await parseAndApplyOAuthTokens(url);
+      }
+    });
+
+    return () => {
+      linkingSubscription.remove();
+    };
   }, []);
 
   return (

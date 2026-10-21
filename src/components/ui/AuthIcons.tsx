@@ -14,6 +14,7 @@ const ICONS = {
   eye: require('@/assets/images/auth/eye.png'),
   eyeOff: require('@/assets/images/auth/eye-off.png'),
   google: require('@/assets/images/auth/google.png'),
+  facebook: require('@/assets/images/auth/facebook.png'),
 };
 
 /**
@@ -186,6 +187,21 @@ export function GoogleGIcon({ size = 20 }: { size?: number }) {
     <View style={[styles.center, { width: size, height: size }]}>
       <Image
         source={ICONS.google}
+        style={{ width: size, height: size }}
+        resizeMode="contain"
+      />
+    </View>
+  );
+}
+
+/**
+ * Authentic Official Facebook Logo matching reference styling
+ */
+export function FacebookIcon({ size = 20 }: { size?: number }) {
+  return (
+    <View style={[styles.center, { width: size, height: size }]}>
+      <Image
+        source={ICONS.facebook}
         style={{ width: size, height: size }}
         resizeMode="contain"
       />

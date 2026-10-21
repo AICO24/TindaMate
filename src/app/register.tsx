@@ -12,9 +12,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AuthDivider } from '@/components/ui/AuthDivider';
 import { AuthErrorBanner } from '@/components/ui/AuthErrorBanner';
 import { AuthHeader } from '@/components/ui/AuthHeader';
 import { LockIcon, MailIcon, UserIcon } from '@/components/ui/AuthIcons';
+import { FacebookSignInButton } from '@/components/ui/FacebookSignInButton';
+import { GoogleSignInButton } from '@/components/ui/GoogleSignInButton';
 import { PasswordStrengthMeter } from '@/components/ui/PasswordStrengthMeter';
 import { TindaMateButton } from '@/components/ui/TindaMateButton';
 import { TindaMateInput } from '@/components/ui/TindaMateInput';
@@ -25,6 +28,7 @@ import {
   Spacing,
   Typography,
 } from '@/constants/theme';
+import { performOAuthSignIn } from '@/lib/oauth';
 import { supabase } from '@/lib/supabase';
 
 export default function RegisterScreen() {
@@ -36,6 +40,7 @@ export default function RegisterScreen() {
 
   // Submission & Error State
   const [isLoading, setIsLoading] = useState(false);
+  const [oauthLoadingProvider, setOauthLoadingProvider] = useState<'google' | 'facebook' | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
 
   // Field-level Validation Error State
@@ -190,6 +195,30 @@ export default function RegisterScreen() {
     }
   };
 
+  /**
+   * Handle OAuth Registration / Sign In (Google & Facebook)
+   */
+  const handleOAuthSignIn = async (provider: 'google' | 'facebook') => {
+    if (isLoading || oauthLoadingProvider) return;
+    setAuthError(null);
+    setOauthLoadingProvider(provider);
+
+    try {
+      const result = await performOAuthSignIn(provider);
+      if (result.success) {
+        router.replace('/home');
+      } else if (result.error) {
+        setAuthError(mapAuthError(result.error));
+      }
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error ? err.message : 'Social registration failed. Please try again.';
+      setAuthError(msg);
+    } finally {
+      setOauthLoadingProvider(null);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
@@ -311,6 +340,26 @@ export default function RegisterScreen() {
               />
             </View>
 
+            {/* Divider: OR */}
+            <AuthDivider label="OR" />
+
+            {/* Social Logins: Google & Facebook */}
+            <View style={styles.socialButtonsContainer}>
+              <GoogleSignInButton
+                label="Sign up with Google"
+                onPress={() => handleOAuthSignIn('google')}
+                loading={oauthLoadingProvider === 'google'}
+                disabled={isLoading || Boolean(oauthLoadingProvider)}
+              />
+
+              <FacebookSignInButton
+                label="Sign up with Facebook"
+                onPress={() => handleOAuthSignIn('facebook')}
+                loading={oauthLoadingProvider === 'facebook'}
+                disabled={isLoading || Boolean(oauthLoadingProvider)}
+              />
+            </View>
+
             {/* Bottom Navigation: Already have an account? Login */}
             <View style={styles.bottomNavContainer}>
               <Pressable
@@ -398,6 +447,10 @@ const styles = StyleSheet.create({
   bottomNavAction: {
     color: Colors.primary,
     fontWeight: Typography.weights.extraBold,
+  },
+  socialButtonsContainer: {
+    width: '100%',
+    gap: Spacing.twoHalf,
   },
 });
 
