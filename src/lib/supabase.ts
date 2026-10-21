@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
 
 /**
@@ -39,15 +40,14 @@ if (!supabasePublishableKey) {
 
 /**
  * Singleton Supabase client instance for the TindaMate mobile app.
- * Used for database queries, real-time subscriptions, and authentication.
- *
- * Note: persistSession is set to false for now until AsyncStorage/SecureStore
- * is configured in an upcoming batch, preventing localStorage crashes on React Native.
+ * Configured with AsyncStorage for robust session persistence across app launches,
+ * OAuth PKCE callbacks, and deep linking navigation.
  */
 export const supabase = createClient(supabaseUrl, supabasePublishableKey, {
   auth: {
-    persistSession: false,
-    autoRefreshToken: false,
+    storage: AsyncStorage,
+    autoRefreshToken: true,
+    persistSession: true,
     detectSessionInUrl: Platform.OS === 'web',
   },
 });

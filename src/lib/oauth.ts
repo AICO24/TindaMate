@@ -18,6 +18,13 @@ export interface OAuthResult {
  */
 export async function parseAndApplyOAuthTokens(url: string): Promise<OAuthResult> {
   try {
+    // Dismiss any open browser tabs on mobile so UI doesn't hang
+    if (Platform.OS !== 'web') {
+      try {
+        WebBrowser.dismissBrowser();
+      } catch {}
+    }
+
     console.log('[OAuth Tokens] Parsing URL:', url);
     // 1. Check for error parameters
     if (url.includes('error=')) {

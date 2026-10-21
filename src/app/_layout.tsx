@@ -68,8 +68,17 @@ export default function RootLayout() {
       }
     });
 
+    const {
+      data: { subscription: authSubscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session && event === 'SIGNED_IN') {
+        router.replace('/home');
+      }
+    });
+
     return () => {
       linkingSubscription.remove();
+      authSubscription.unsubscribe();
     };
   }, []);
 

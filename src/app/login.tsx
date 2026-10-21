@@ -127,6 +127,15 @@ export default function LoginScreen() {
       if (data.session) {
         // Successful login: navigate to authenticated home screen
         router.replace('/home');
+      } else {
+        const unconfirmedMsg =
+          'Please confirm your email address before logging in, or check your credentials.';
+        setAuthError(unconfirmedMsg);
+        if (Platform.OS === 'web') {
+          window.alert(unconfirmedMsg);
+        } else {
+          Alert.alert('Sign In Needed', unconfirmedMsg, [{ text: 'OK' }]);
+        }
       }
     } catch (err: unknown) {
       const rawMsg = err instanceof Error ? err.message : String(err);
