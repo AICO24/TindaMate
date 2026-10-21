@@ -30,6 +30,7 @@ import { RecentActivitySection } from '@/components/dashboard/RecentActivitySect
 import { OverviewItem, StoreOverviewCard } from '@/components/dashboard/StoreOverviewCard';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { TindaMateButton } from '@/components/ui/TindaMateButton';
+import { LogoutConfirmModal } from '@/components/ui/LogoutConfirmModal';
 import {
   BorderRadius,
   Colors,
@@ -77,6 +78,7 @@ export default function AuthenticatedDashboardScreen() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isProfileModalVisible, setIsProfileModalVisible] = useState(false);
+  const [isLogoutModalVisible, setIsLogoutModalVisible] = useState(false);
 
   /**
    * Fetches real store product counts (Products & Low Stock) from Supabase
@@ -230,38 +232,41 @@ export default function AuthenticatedDashboardScreen() {
   };
 
   /**
-   * Handle user sign out
+   * Opens custom branded logout confirmation modal
    */
-  const handleLogout = async () => {
+  const handleOpenLogoutModal = () => {
+    setIsProfileModalVisible(false);
+    setIsLogoutModalVisible(true);
+  };
+
+  /**
+   * Closes logout confirmation modal safely
+   */
+  const handleCloseLogoutModal = () => {
+    if (isLoggingOut) return;
+    setIsLogoutModalVisible(false);
+  };
+
+  /**
+   * Performs user sign out when confirmed in modal
+   */
+  const handleConfirmLogout = async () => {
     if (isLoggingOut) return;
 
-    const performSignOut = async () => {
-      try {
-        setIsLoggingOut(true);
-        setIsProfileModalVisible(false);
-        const { error } = await supabase.auth.signOut();
-        if (error) {
-          console.warn('[SignOut Error]:', error.message);
-        }
-        router.replace('/');
-      } catch (err) {
-        console.warn('[SignOut Exception]:', err);
-        router.replace('/');
-      } finally {
-        setIsLoggingOut(false);
+    try {
+      setIsLoggingOut(true);
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.warn('[SignOut Error]:', error.message);
       }
-    };
-
-    if (Platform.OS === 'web') {
-      const confirmLogout = window.confirm('Are you sure you want to log out of TindaMate?');
-      if (confirmLogout) {
-        await performSignOut();
-      }
-    } else {
-      Alert.alert('Log Out', 'Are you sure you want to log out of TindaMate?', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Log Out', style: 'destructive', onPress: performSignOut },
-      ]);
+      setIsLogoutModalVisible(false);
+      router.replace('/');
+    } catch (err) {
+      console.warn('[SignOut Exception]:', err);
+      setIsLogoutModalVisible(false);
+      router.replace('/');
+    } finally {
+      setIsLoggingOut(false);
     }
   };
 
@@ -678,11 +683,9 @@ export default function AuthenticatedDashboardScreen() {
               </View>
             ) : (
               <TindaMateButton
-                title={isLoggingOut ? 'Signing Out...' : 'Log Out of Account'}
+                title="Log Out of Account"
                 variant="danger"
-                loading={isLoggingOut}
-                disabled={isLoggingOut}
-                onPress={handleLogout}
+                onPress={handleOpenLogoutModal}
                 accessibilityLabel="Log out of TindaMate"
                 style={styles.modalLogoutButton}
               />
@@ -690,6 +693,15 @@ export default function AuthenticatedDashboardScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      {/* Branded Logout Confirmation Modal */}
+      <LogoutConfirmModal
+        visible={isLogoutModalVisible}
+        onConfirm={handleConfirmLogout}
+        onCancel={handleCloseLogoutModal}
+        isLoading={isLoggingOut}
+        accountName={displayName || user?.email || undefined}
+      />
     </SafeAreaView>
   );
 }
