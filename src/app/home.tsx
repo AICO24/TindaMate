@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -13,7 +13,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router, useLocalSearchParams, usePathname } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams, usePathname } from 'expo-router';
 import { User } from '@supabase/supabase-js';
 
 import {
@@ -39,7 +39,9 @@ import {
   Spacing,
   Typography,
 } from '@/constants/theme';
+import { fetchStoreProductSummary } from '@/lib/products';
 import { supabase } from '@/lib/supabase';
+import { StoreProductSummary } from '@/types/product';
 
 /**
  * TindaMate Main Dashboard Screen
@@ -63,6 +65,12 @@ export default function AuthenticatedDashboardScreen() {
   const isGuestMode = params.guest === '1';
 
   const [user, setUser] = useState<User | null>(null);
+  const [productSummary, setProductSummary] = useState<StoreProductSummary>({
+    totalProducts: 0,
+    inStockCount: 0,
+    lowStockCount: 0,
+    outOfStockCount: 0,
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isCardLoading, setIsCardLoading] = useState(false);
@@ -70,16 +78,57 @@ export default function AuthenticatedDashboardScreen() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isProfileModalVisible, setIsProfileModalVisible] = useState(false);
 
+  /**
+   * Fetches real store product counts (Products & Low Stock) from Supabase
+   * using the centralized `getProductStockStatus` rule.
+   */
+  const loadProductSummary = useCallback(async () => {
+    if (isGuestMode) {
+      setProductSummary({
+        totalProducts: 0,
+        inStockCount: 0,
+        lowStockCount: 0,
+        outOfStockCount: 0,
+      });
+      return;
+    }
+
+    try {
+      const summary = await fetchStoreProductSummary();
+      setProductSummary(summary);
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : 'Unable to load store product counts.';
+      setErrorMessage(msg);
+    }
+  }, [isGuestMode]);
+
   useEffect(() => {
     let isMounted = true;
 
     // Verify session on mount (supports guest preview without session bounce)
     const checkSession = async () => {
       try {
-        const { data, error } = await supabase.auth.getSession();
+        const { data } = await supabase.auth.getSession();
         if (data?.session) {
           if (isMounted) {
             setUser(data.session.user);
+          }
+          try {
+            const summary = await fetchStoreProductSummary();
+            if (isMounted) {
+              setProductSummary(summary);
+            }
+          } catch (summaryErr: unknown) {
+            if (isMounted) {
+              setErrorMessage(
+                summaryErr instanceof Error
+                  ? summaryErr.message
+                  : 'Unable to load store product counts.'
+              );
+            }
           }
         } else {
           // If no active session, allow entry only if explicitly in guest mode
@@ -125,6 +174,15 @@ export default function AuthenticatedDashboardScreen() {
     };
   }, [isGuestMode]);
 
+  // Refresh store product counts whenever the user returns to Home from Products or Add Product
+  useFocusEffect(
+    useCallback(() => {
+      if (!isGuestMode && !isLoading) {
+        loadProductSummary();
+      }
+    }, [isGuestMode, isLoading, loadProductSummary])
+  );
+
   /**
    * Close Profile/Store Account modal and restore route-derived active tab
    */
@@ -134,7 +192,7 @@ export default function AuthenticatedDashboardScreen() {
 
   /**
    * Pull-to-refresh handler
-   * Re-validates active session, clears errors, and simulates brief store metrics refresh
+   * Re-validates active session, clears errors, and refreshes real store product metrics
    */
   const handleRefresh = async () => {
     try {
@@ -161,6 +219,7 @@ export default function AuthenticatedDashboardScreen() {
       }
 
       setUser(data.session.user);
+      await loadProductSummary();
     } catch (err) {
       console.warn('[Dashboard Refresh Exception]:', err);
       setErrorMessage('Network connection lost. Tap Retry to reconnect.');
@@ -245,6 +304,15 @@ export default function AuthenticatedDashboardScreen() {
       return;
     }
 
+    if (tab === 'products') {
+      if (isGuestMode) {
+        handleModuleClick('Products Catalog', 'Batch 3');
+        return;
+      }
+      router.push('/products');
+      return;
+    }
+
     if (tab === 'more') {
       setIsProfileModalVisible(true);
       return;
@@ -275,8 +343,9 @@ export default function AuthenticatedDashboardScreen() {
       user?.email?.split('@')[0] ||
       'Store Partner';
 
-  // Truthful empty store counts (will come from Supabase in future data batch)
-  const lowStockCount: number = 0;
+  // Real store product counts from Supabase (centralized stock-status rule)
+  const totalProductsCount: number = isGuestMode ? 0 : productSummary.totalProducts;
+  const lowStockCount: number = isGuestMode ? 0 : productSummary.lowStockCount;
   const isLowStockWarning = lowStockCount > 0;
 
   // Four Store Overview KPI Cards (Label -> Primary Value -> Supporting Subtitle)
@@ -287,15 +356,24 @@ export default function AuthenticatedDashboardScreen() {
       value: '₱0.00',
       subtitle: 'No sales recorded yet',
       theme: 'green',
-      onPress: () => handleModuleClick("Today's Sales", 'Batch 3'),
+      onPress: () => handleModuleClick("Today's Sales", 'Batch 4'),
     },
     {
       id: 'products',
       title: 'Products',
-      value: '0 items',
-      subtitle: 'No products added yet',
+      value: `${totalProductsCount} ${totalProductsCount === 1 ? 'item' : 'items'}`,
+      subtitle:
+        totalProductsCount === 0
+          ? 'No products added yet'
+          : `${productSummary.inStockCount} in stock`,
       theme: 'blue',
-      onPress: () => handleModuleClick('Product Inventory', 'Batch 3'),
+      onPress: () => {
+        if (isGuestMode) {
+          handleModuleClick('Product Inventory', 'Batch 3');
+          return;
+        }
+        router.push('/products');
+      },
     },
     {
       id: 'low_stock',
@@ -303,7 +381,13 @@ export default function AuthenticatedDashboardScreen() {
       value: `${lowStockCount} ${lowStockCount === 1 ? 'item' : 'items'}`,
       subtitle: isLowStockWarning ? 'Needs restocking soon' : 'No low-stock items',
       theme: isLowStockWarning ? 'amber' : 'neutral',
-      onPress: () => handleModuleClick('Stock Alerts', 'Batch 3'),
+      onPress: () => {
+        if (isGuestMode) {
+          handleModuleClick('Stock Alerts', 'Batch 3');
+          return;
+        }
+        router.push('/products');
+      },
     },
     {
       id: 'utang',
@@ -323,14 +407,20 @@ export default function AuthenticatedDashboardScreen() {
       labelLine2: 'Sale',
       theme: 'orange',
       isPrimary: true,
-      onPress: () => handleModuleClick('Record Sale', 'Batch 3'),
+      onPress: () => handleModuleClick('Record Sale', 'Batch 4'),
     },
     {
       id: 'add_product',
       labelLine1: 'Add',
       labelLine2: 'Product',
       theme: 'green',
-      onPress: () => handleModuleClick('Add Product', 'Batch 3'),
+      onPress: () => {
+        if (isGuestMode) {
+          handleModuleClick('Add Product', 'Batch 3');
+          return;
+        }
+        router.push('/products/add');
+      },
     },
     {
       id: 'record_utang',

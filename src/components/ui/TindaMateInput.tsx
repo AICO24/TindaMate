@@ -83,10 +83,12 @@ export function TindaMateInput({
 
   const hasError = Boolean(errorMessage);
 
-  // Modern inputMode for rock-solid stability on Android & Web
+  /** Modern inputMode for rock-solid stability on Android & Web */
   const computedInputMode =
     keyboardType === 'email-address'
       ? 'email'
+      : keyboardType === 'decimal-pad'
+      ? 'decimal'
       : keyboardType === 'numeric' || keyboardType === 'number-pad'
       ? 'numeric'
       : 'text';
