@@ -1,5 +1,4 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
-import { Stack } from 'expo-router';
+import { DarkTheme, DefaultTheme, ThemeProvider, Stack, router } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Linking from 'expo-linking';
 import { useEffect } from 'react';
@@ -49,7 +48,10 @@ export default function RootLayout() {
           initialUrl &&
           (initialUrl.includes('access_token=') || initialUrl.includes('code='))
         ) {
-          await parseAndApplyOAuthTokens(initialUrl);
+          const result = await parseAndApplyOAuthTokens(initialUrl);
+          if (result.success) {
+            router.replace('/home');
+          }
         }
       } catch (err) {
         console.warn('[OAuth Initial URL Error]:', err);
@@ -59,7 +61,10 @@ export default function RootLayout() {
 
     const linkingSubscription = Linking.addEventListener('url', async ({ url }) => {
       if (url && (url.includes('access_token=') || url.includes('code='))) {
-        await parseAndApplyOAuthTokens(url);
+        const result = await parseAndApplyOAuthTokens(url);
+        if (result.success) {
+          router.replace('/home');
+        }
       }
     });
 

@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import * as Linking from 'expo-linking';
 import React, { useState } from 'react';
 import {
   Alert,
@@ -133,6 +134,7 @@ export default function RegisterScreen() {
     try {
       setIsLoading(true);
 
+      const redirectUrl = Linking.createURL('home');
       const { data, error } = await supabase.auth.signUp({
         email: trimmedEmail,
         password: password,
@@ -140,6 +142,7 @@ export default function RegisterScreen() {
           data: {
             full_name: trimmedName,
           },
+          emailRedirectTo: redirectUrl,
         },
       });
 
