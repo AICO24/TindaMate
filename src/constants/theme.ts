@@ -104,6 +104,13 @@ export const Colors = {
       text: '#581C87',
       accent: '#7C3AED',
     },
+    neutral: {
+      bg: '#F8FAFC',
+      border: '#E2E8F0',
+      iconBg: '#64748B',
+      text: '#334155',
+      accent: '#64748B',
+    },
   },
 
   // Template Theme Colors (preserved for backward compatibility with template components)

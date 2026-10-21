@@ -1,5 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { usePathname } from 'expo-router';
 
 import {
   NavHomeIcon,
@@ -18,14 +19,30 @@ import {
 export type NavTab = 'home' | 'products' | 'sales' | 'utang' | 'more';
 
 interface DashboardBottomNavProps {
-  activeTab: NavTab;
+  /** Optional explicit tab override (e.g., when a sheet/sub-view is active on the current route) */
+  activeTab?: NavTab;
   onTabPress: (tab: NavTab) => void;
+}
+
+/**
+ * Derives the active bottom navigation tab from the current Expo Router pathname.
+ */
+export function resolveActiveNavTab(pathname: string): NavTab {
+  const normalized = pathname.toLowerCase();
+  if (normalized.startsWith('/products')) return 'products';
+  if (normalized.startsWith('/sales')) return 'sales';
+  if (normalized.startsWith('/utang')) return 'utang';
+  if (normalized.startsWith('/more') || normalized.startsWith('/profile') || normalized.startsWith('/settings')) {
+    return 'more';
+  }
+  return 'home';
 }
 
 /**
  * DashboardBottomNav
  *
- * Persistent bottom navigation bar using the TindaMate Design System:
+ * Route-aware persistent bottom navigation bar using the TindaMate Design System:
+ * - Derives active tab from Expo Router's `usePathname()` (with optional controlled `activeTab` override)
  * - Pure vector icons with standardized IconSizes.nav (22px)
  * - Active tab highlighted in Colors.primaryDark with bottom indicator bar
  * - Inactive tabs in Colors.textMuted
@@ -34,6 +51,9 @@ export function DashboardBottomNav({
   activeTab,
   onTabPress,
 }: DashboardBottomNavProps) {
+  const pathname = usePathname();
+  const currentTab = activeTab ?? resolveActiveNavTab(pathname);
+
   const tabs: { key: NavTab; label: string; renderIcon: (color: string) => React.ReactNode }[] = [
     {
       key: 'home',
@@ -65,7 +85,7 @@ export function DashboardBottomNav({
   return (
     <View style={styles.navBar} accessibilityRole="tablist">
       {tabs.map((tab) => {
-        const isActive = activeTab === tab.key;
+        const isActive = currentTab === tab.key;
         const iconColor = isActive ? Colors.primaryDark : Colors.textMuted;
 
         return (
@@ -73,7 +93,7 @@ export function DashboardBottomNav({
             key={tab.key}
             accessibilityRole="tab"
             accessibilityState={{ selected: isActive }}
-            accessibilityLabel={`${tab.label} tab`}
+            accessibilityLabel={`${tab.label} tab${isActive ? ', selected' : ''}`}
             onPress={() => onTabPress(tab.key)}
             hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
             style={({ pressed }) => [
@@ -86,7 +106,9 @@ export function DashboardBottomNav({
             </View>
 
             {/* Label */}
-            <Text style={[styles.tabLabel, isActive && styles.activeTabLabel]}>
+            <Text
+              style={[styles.tabLabel, isActive && styles.activeTabLabel]}
+              numberOfLines={1}>
               {tab.label}
             </Text>
 
@@ -102,6 +124,7 @@ export function DashboardBottomNav({
     </View>
   );
 }
+
 
 const styles = StyleSheet.create({
   navBar: {

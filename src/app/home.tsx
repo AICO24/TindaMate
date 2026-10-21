@@ -11,10 +11,14 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, usePathname } from 'expo-router';
 import { User } from '@supabase/supabase-js';
 
-import { DashboardBottomNav, NavTab } from '@/components/dashboard/DashboardBottomNav';
+import {
+  DashboardBottomNav,
+  NavTab,
+  resolveActiveNavTab,
+} from '@/components/dashboard/DashboardBottomNav';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { DashboardHeroBanner } from '@/components/dashboard/DashboardHeroBanner';
 import { CalendarFilterIcon } from '@/components/dashboard/DashboardNavIcons';
@@ -42,16 +46,18 @@ import { supabase } from '@/lib/supabase';
  *    - Prominent TindaMate brand emblem & circular vector profile avatar
  *    - Strong greeting typography ("Good morning,", large bold name, store pill)
  *    - Vibrant pure React Native market stall illustration
- * 2. Store Overview (2x2 grid of horizontal summary cards: Today's Sales, Products, Low Stock, Utang)
- * 3. Quick Actions (4-column row: Add Product, Record Sale, Add Expense, Record Utang)
+ * 2. Store Overview (2x2 grid of horizontal KPI cards with clear Label -> Value -> Helper hierarchy)
+ * 3. Quick Actions (4-column row with Record Sale prioritized first)
  * 4. Recent Activity (Polished empty state card with transaction guidance)
- * 5. Persistent Bottom Navigation bar (Vector line icons: Home, Products, Sales, Utang, More)
+ * 5. Route-aware Persistent Bottom Navigation bar (Home, Products, Sales, Utang, More)
  */
 export default function AuthenticatedDashboardScreen() {
+  const pathname = usePathname();
+  const routeTab = resolveActiveNavTab(pathname);
+
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [activeTab, setActiveTab] = useState<NavTab>('home');
   const [isProfileModalVisible, setIsProfileModalVisible] = useState(false);
 
   useEffect(() => {
@@ -94,6 +100,13 @@ export default function AuthenticatedDashboardScreen() {
       subscription.unsubscribe();
     };
   }, []);
+
+  /**
+   * Close Profile/Store Account modal and restore route-derived active tab
+   */
+  const handleCloseProfileModal = () => {
+    setIsProfileModalVisible(false);
+  };
 
   /**
    * Handle user sign out
@@ -147,12 +160,18 @@ export default function AuthenticatedDashboardScreen() {
    * Handle bottom tab switching
    */
   const handleTabPress = (tab: NavTab) => {
-    setActiveTab(tab);
-    if (tab === 'home') return;
+    if (tab === 'home') {
+      if (pathname !== '/home') {
+        router.replace('/home');
+      }
+      return;
+    }
+
     if (tab === 'more') {
       setIsProfileModalVisible(true);
       return;
     }
+
     const tabNames: Record<NavTab, string> = {
       home: 'Home',
       products: 'Products Catalog',
@@ -177,14 +196,17 @@ export default function AuthenticatedDashboardScreen() {
     user?.email?.split('@')[0] ||
     'Store Partner';
 
-  // Four Store Overview Cards
+  // Truthful empty store counts (will come from Supabase in future data batch)
+  const lowStockCount: number = 0;
+  const isLowStockWarning = lowStockCount > 0;
+
+  // Four Store Overview KPI Cards (Label -> Primary Value -> Supporting Subtitle)
   const overviewItems: OverviewItem[] = [
     {
       id: 'sales',
       title: "Today's Sales",
       value: '₱0.00',
       subtitle: 'No sales recorded yet',
-      iconSymbol: '₱',
       theme: 'green',
       onPress: () => handleModuleClick("Today's Sales", 'Batch 3'),
     },
@@ -192,18 +214,16 @@ export default function AuthenticatedDashboardScreen() {
       id: 'products',
       title: 'Products',
       value: '0 items',
-      subtitle: '0 products',
-      iconSymbol: '📦',
+      subtitle: 'No products added yet',
       theme: 'blue',
       onPress: () => handleModuleClick('Product Inventory', 'Batch 3'),
     },
     {
       id: 'low_stock',
       title: 'Low Stock',
-      value: 'All Good',
-      subtitle: 'No low-stock items',
-      iconSymbol: '⚠️',
-      theme: 'amber',
+      value: `${lowStockCount} ${lowStockCount === 1 ? 'item' : 'items'}`,
+      subtitle: isLowStockWarning ? 'Needs restocking soon' : 'No low-stock items',
+      theme: isLowStockWarning ? 'amber' : 'neutral',
       onPress: () => handleModuleClick('Stock Alerts', 'Batch 3'),
     },
     {
@@ -211,47 +231,45 @@ export default function AuthenticatedDashboardScreen() {
       title: 'Outstanding Utang',
       value: '₱0.00',
       subtitle: 'No outstanding balance',
-      iconSymbol: '📄',
       theme: 'purple',
       onPress: () => handleModuleClick('Utang Tracker', 'Batch 4'),
     },
   ];
 
-  // Four Quick Action Tiles (4-column row)
+  // Four Quick Action Tiles (Record Sale prioritized first with primary emphasis)
   const quickActions: QuickActionItem[] = [
-    {
-      id: 'add_product',
-      labelLine1: 'Add',
-      labelLine2: 'Product',
-      icon: '📦',
-      theme: 'green',
-      onPress: () => handleModuleClick('Add Product', 'Batch 3'),
-    },
     {
       id: 'record_sale',
       labelLine1: 'Record',
       labelLine2: 'Sale',
-      icon: '🧾',
       theme: 'orange',
+      isPrimary: true,
       onPress: () => handleModuleClick('Record Sale', 'Batch 3'),
     },
     {
-      id: 'add_expense',
+      id: 'add_product',
       labelLine1: 'Add',
-      labelLine2: 'Expense',
-      icon: '💳',
-      theme: 'blue',
-      onPress: () => handleModuleClick('Add Expense', 'Batch 4'),
+      labelLine2: 'Product',
+      theme: 'green',
+      onPress: () => handleModuleClick('Add Product', 'Batch 3'),
     },
     {
       id: 'record_utang',
       labelLine1: 'Record',
       labelLine2: 'Utang',
-      icon: '👥',
       theme: 'purple',
       onPress: () => handleModuleClick('Record Utang', 'Batch 4'),
     },
+    {
+      id: 'add_expense',
+      labelLine1: 'Add',
+      labelLine2: 'Expense',
+      theme: 'blue',
+      onPress: () => handleModuleClick('Add Expense', 'Batch 4'),
+    },
   ];
+
+  const activeNavTab: NavTab = isProfileModalVisible ? 'more' : routeTab;
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -337,7 +355,7 @@ export default function AuthenticatedDashboardScreen() {
 
         {/* 6. Persistent Bottom Navigation Bar */}
         <DashboardBottomNav
-          activeTab={activeTab}
+          activeTab={activeNavTab}
           onTabPress={handleTabPress}
         />
       </View>
@@ -347,10 +365,10 @@ export default function AuthenticatedDashboardScreen() {
         visible={isProfileModalVisible}
         transparent={true}
         animationType="slide"
-        onRequestClose={() => setIsProfileModalVisible(false)}>
+        onRequestClose={handleCloseProfileModal}>
         <Pressable
           style={styles.modalOverlay}
-          onPress={() => setIsProfileModalVisible(false)}>
+          onPress={handleCloseProfileModal}>
           <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
             {/* Modal Header */}
             <View style={styles.modalHeader}>
@@ -360,7 +378,7 @@ export default function AuthenticatedDashboardScreen() {
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="Close Store Account modal"
-                onPress={() => setIsProfileModalVisible(false)}
+                onPress={handleCloseProfileModal}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                 <Text style={styles.modalCloseText}>✕</Text>
               </Pressable>

@@ -1,11 +1,18 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 
 import { DashboardBadgeVectorIcon } from './DashboardNavIcons';
 import {
   BorderRadius,
   Colors,
   Shadows,
+  Spacing,
   Typography,
 } from '@/constants/theme';
 
@@ -14,8 +21,8 @@ export interface OverviewItem {
   title: string;
   value: string;
   subtitle: string;
-  iconSymbol: string;
-  theme: 'green' | 'blue' | 'amber' | 'purple';
+  iconSymbol?: string;
+  theme: 'green' | 'blue' | 'amber' | 'purple' | 'neutral';
   onPress?: () => void;
 }
 
@@ -28,6 +35,7 @@ const OVERVIEW_THEME_MAP = {
   blue: Colors.pastel.blue,
   amber: Colors.pastel.orange,
   purple: Colors.pastel.purple,
+  neutral: Colors.pastel.neutral,
 } as const;
 
 const VECTOR_IDS = new Set(['sales', 'products', 'low_stock', 'utang']);
@@ -35,22 +43,27 @@ const VECTOR_IDS = new Set(['sales', 'products', 'low_stock', 'utang']);
 /**
  * StoreOverviewCard
  *
- * Visually substantial summary card using the TindaMate Design System:
- * - Soft pastel background & border from centralized Colors.pastel tokens
- * - 42px circular badge with crisp white vector icon
- * - Brand-colored title & readable secondary subtitle
+ * Visually substantial KPI summary card using the TindaMate Design System:
+ * - Clear 3-tier hierarchy: KPI Label -> Primary KPI Value -> Supporting helper text
+ * - Soft pastel or calm neutral background & border from centralized Colors.pastel tokens
+ * - Responsive circular badge with crisp white vector icon
  */
 export function StoreOverviewCard({ item }: StoreOverviewCardProps) {
   const currentTheme = OVERVIEW_THEME_MAP[item.theme];
   const hasVectorIcon = VECTOR_IDS.has(item.id);
+  const { width: windowWidth } = useWindowDimensions();
+  const isCompactPhone = windowWidth < 375;
+
+  const iconCircleSize = isCompactPhone ? 36 : 40;
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${item.title}: ${item.subtitle}`}
+      accessibilityLabel={`${item.title}: ${item.value}. ${item.subtitle}`}
       onPress={item.onPress}
       style={({ pressed }) => [
         styles.card,
+        isCompactPhone && styles.cardCompact,
         {
           backgroundColor: currentTheme.bg,
           borderColor: currentTheme.border,
@@ -58,7 +71,16 @@ export function StoreOverviewCard({ item }: StoreOverviewCardProps) {
         pressed && styles.cardPressed,
       ]}>
       {/* Left: Prominent Round Themed Icon */}
-      <View style={[styles.iconCircle, { backgroundColor: currentTheme.iconBg }]}>
+      <View
+        style={[
+          styles.iconCircle,
+          {
+            width: iconCircleSize,
+            height: iconCircleSize,
+            borderRadius: iconCircleSize / 2,
+            backgroundColor: currentTheme.iconBg,
+          },
+        ]}>
         {hasVectorIcon ? (
           <DashboardBadgeVectorIcon
             type={item.id as 'sales' | 'products' | 'low_stock' | 'utang'}
@@ -71,10 +93,23 @@ export function StoreOverviewCard({ item }: StoreOverviewCardProps) {
         )}
       </View>
 
-      {/* Middle: Title & Subtitle */}
+      {/* Middle: KPI Label -> Primary Value -> Helper Text */}
       <View style={styles.textColumn}>
-        <Text style={[styles.title, { color: currentTheme.text }]} numberOfLines={1}>
+        <Text
+          style={[styles.title, { color: currentTheme.text }]}
+          numberOfLines={1}>
           {item.title}
+        </Text>
+        <Text
+          style={[
+            styles.value,
+            isCompactPhone && styles.valueCompact,
+            { color: currentTheme.text },
+          ]}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.85}>
+          {item.value}
         </Text>
         <Text style={styles.subtitle} numberOfLines={1}>
           {item.subtitle}
@@ -82,7 +117,11 @@ export function StoreOverviewCard({ item }: StoreOverviewCardProps) {
       </View>
 
       {/* Right: Chevron */}
-      <Text style={[styles.chevron, { color: currentTheme.accent }]}>›</Text>
+      <Text
+        style={[styles.chevron, { color: currentTheme.accent }]}
+        importantForAccessibility="no">
+        ›
+      </Text>
     </Pressable>
   );
 }
@@ -90,40 +129,51 @@ export function StoreOverviewCard({ item }: StoreOverviewCardProps) {
 const styles = StyleSheet.create({
   card: {
     flex: 1,
-    minWidth: '47%',
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: BorderRadius.lg,
-    paddingVertical: 14,
-    paddingHorizontal: 12,
+    paddingVertical: Spacing.twoHalf,
+    paddingHorizontal: Spacing.twoHalf,
     borderWidth: 1,
-    minHeight: 78,
-    gap: 10,
+    minHeight: 84,
+    gap: Spacing.two,
     ...Shadows.xs,
+  },
+  cardCompact: {
+    paddingHorizontal: Spacing.two,
+    paddingVertical: 10,
+    gap: 6,
   },
   cardPressed: {
     opacity: 0.88,
     transform: [{ scale: 0.98 }],
   },
   iconCircle: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
     alignItems: 'center',
     justifyContent: 'center',
   },
   iconSymbol: {
-    fontSize: 19,
+    fontSize: Typography.sizes.sectionHeading,
     fontWeight: Typography.weights.extraBold,
   },
   textColumn: {
     flex: 1,
-    gap: 2,
+    gap: 1,
+    justifyContent: 'center',
   },
   title: {
-    fontSize: Typography.sizes.bodySm,
+    fontSize: Typography.sizes.xs,
+    fontWeight: Typography.weights.bold,
+    letterSpacing: -0.1,
+  },
+  value: {
+    fontSize: Typography.sizes.base,
     fontWeight: Typography.weights.extraBold,
-    letterSpacing: -0.2,
+    letterSpacing: -0.3,
+    lineHeight: Typography.lineHeights.normal,
+  },
+  valueCompact: {
+    fontSize: Typography.sizes.body,
   },
   subtitle: {
     fontSize: Typography.sizes.caption,
@@ -131,9 +181,10 @@ const styles = StyleSheet.create({
     fontWeight: Typography.weights.medium,
   },
   chevron: {
-    fontSize: 22,
+    fontSize: Typography.sizes.lg,
     fontWeight: Typography.weights.extraBold,
-    paddingLeft: 2,
+    paddingLeft: Spacing.xxs,
   },
 });
+
 

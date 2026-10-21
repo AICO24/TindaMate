@@ -376,9 +376,72 @@ export function DashboardBadgeVectorIcon({
       );
 
     case 'utang':
+      return (
+        <View style={[styles.center, { width: IconSizes.lg, height: IconSizes.lg }]}>
+          {/* Customer Credit Ledger / Notebook with Person Badge */}
+          <View
+            style={{
+              width: 17,
+              height: 20,
+              borderWidth: 1.8,
+              borderColor: color,
+              borderRadius: 3,
+              alignItems: 'center',
+              justifyContent: 'center',
+              position: 'relative',
+            }}>
+            {/* Ledger Binding Ticks on Left */}
+            <View
+              style={{
+                position: 'absolute',
+                left: -3,
+                top: 4,
+                width: 4,
+                height: 1.8,
+                backgroundColor: color,
+                borderRadius: 1,
+              }}
+            />
+            <View
+              style={{
+                position: 'absolute',
+                left: -3,
+                bottom: 4,
+                width: 4,
+                height: 1.8,
+                backgroundColor: color,
+                borderRadius: 1,
+              }}
+            />
+            {/* Mini Person Silhouette Inside Ledger */}
+            <View
+              style={{
+                width: 5,
+                height: 5,
+                borderRadius: 2.5,
+                backgroundColor: color,
+                marginBottom: 1.5,
+              }}
+            />
+            <View
+              style={{
+                width: 9,
+                height: 4.5,
+                backgroundColor: color,
+                borderTopLeftRadius: 4.5,
+                borderTopRightRadius: 4.5,
+                borderBottomLeftRadius: 1,
+                borderBottomRightRadius: 1,
+              }}
+            />
+          </View>
+        </View>
+      );
+
     case 'record_sale':
       return (
         <View style={[styles.center, { width: IconSizes.lg, height: IconSizes.lg }]}>
+          {/* Transaction Receipt Slip + Plus Badge */}
           <View
             style={{
               width: 16,
@@ -393,17 +456,16 @@ export function DashboardBadgeVectorIcon({
             <View style={{ width: '100%', height: 1.8, backgroundColor: color, borderRadius: 1 }} />
             <View style={{ width: '60%', height: 1.8, backgroundColor: color, borderRadius: 1 }} />
           </View>
-          {type === 'record_sale' && (
-            <View style={[styles.plusBadge, { backgroundColor: Colors.pastel.orange.iconBg }]}>
-              <Text style={styles.plusBadgeText}>+</Text>
-            </View>
-          )}
+          <View style={[styles.plusBadge, { backgroundColor: Colors.pastel.orange.iconBg }]}>
+            <Text style={styles.plusBadgeText}>+</Text>
+          </View>
         </View>
       );
 
     case 'add_expense':
       return (
         <View style={[styles.center, { width: IconSizes.lg, height: IconSizes.lg }]}>
+          {/* Expense Payment-Out Card with Outflow Badge */}
           <View
             style={{
               width: 19,
@@ -411,20 +473,21 @@ export function DashboardBadgeVectorIcon({
               borderWidth: 1.8,
               borderColor: color,
               borderRadius: 3,
-              position: 'relative',
-              justifyContent: 'center',
+              overflow: 'hidden',
+              justifyContent: 'flex-start',
             }}>
+            {/* Top Card Stripe */}
             <View
               style={{
-                position: 'absolute',
-                right: -1,
-                width: 6,
-                height: 6,
-                borderWidth: 1.5,
-                borderColor: color,
-                borderRadius: 2,
+                width: '100%',
+                height: 3.5,
+                backgroundColor: color,
+                marginTop: 2,
               }}
             />
+          </View>
+          <View style={[styles.plusBadge, { backgroundColor: Colors.pastel.blue.iconBg }]}>
+            <Text style={styles.plusBadgeText}>↑</Text>
           </View>
         </View>
       );
@@ -432,7 +495,7 @@ export function DashboardBadgeVectorIcon({
     case 'record_utang':
       return (
         <View style={[styles.center, { width: IconSizes.lg, height: IconSizes.lg }]}>
-          {/* Dual Customer Silhouette */}
+          {/* Dual Customer Silhouette + Plus Badge */}
           <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 1 }}>
             <View style={{ alignItems: 'center' }}>
               <View
@@ -478,6 +541,9 @@ export function DashboardBadgeVectorIcon({
                 }}
               />
             </View>
+          </View>
+          <View style={[styles.plusBadge, { backgroundColor: Colors.pastel.purple.iconBg }]}>
+            <Text style={styles.plusBadgeText}>+</Text>
           </View>
         </View>
       );
