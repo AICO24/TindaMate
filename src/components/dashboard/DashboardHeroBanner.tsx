@@ -48,12 +48,13 @@ export function DashboardHeroBanner({
   };
 
   const { width: windowWidth } = useWindowDimensions();
-  const isSmallPhone = windowWidth < 375;
+  const isNarrowPhone = windowWidth < 350;
+  const isSmallPhone = windowWidth < 380;
   const isLargePhone = windowWidth >= 414;
 
   // Responsive illustration size occupying right 35-45% of banner
-  const illustrationWidth = isSmallPhone ? 138 : isLargePhone ? 168 : 154;
-  const illustrationHeight = isSmallPhone ? 126 : isLargePhone ? 150 : 140;
+  const illustrationWidth = isNarrowPhone ? 124 : isSmallPhone ? 138 : isLargePhone ? 166 : 152;
+  const illustrationHeight = isNarrowPhone ? 114 : isSmallPhone ? 126 : isLargePhone ? 150 : 138;
 
   // Responsive typography for long names
   const nameFontSize =
@@ -63,8 +64,10 @@ export function DashboardHeroBanner({
       ? isSmallPhone ? 20 : 22
       : isSmallPhone ? 22 : Typography.sizes.displaySm;
 
+  const nameLineHeight = nameFontSize >= 24 ? Typography.lineHeights.heading : nameFontSize + 4;
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isNarrowPhone && styles.containerNarrow]}>
       <View style={styles.contentRow}>
         {/* Left Side: Text Hierarchy & Store Badge (55-65% width) */}
         <View style={styles.leftColumn}>
@@ -73,7 +76,10 @@ export function DashboardHeroBanner({
 
           {/* 2. User Name - large / bold / responsive */}
           <Text
-            style={[styles.displayNameText, { fontSize: nameFontSize }]}
+            style={[
+              styles.displayNameText,
+              { fontSize: nameFontSize, lineHeight: nameLineHeight },
+            ]}
             numberOfLines={2}>
             {displayName}!
           </Text>
@@ -95,7 +101,12 @@ export function DashboardHeroBanner({
             <View style={styles.storeIconCircle}>
               <StorePillIcon size={IconSizes.xs} color={Colors.textInverse} />
             </View>
-            <Text style={styles.storePillText} numberOfLines={1}>
+            <Text
+              style={[
+                styles.storePillText,
+                { maxWidth: isNarrowPhone ? 105 : 140 },
+              ]}
+              numberOfLines={1}>
               {storeName}
             </Text>
             <Text style={styles.storePillChevron}>›</Text>
@@ -117,9 +128,13 @@ export function DashboardHeroBanner({
 const styles = StyleSheet.create({
   container: {
     paddingTop: Spacing.one,
-    paddingBottom: Spacing.three,
-    minHeight: 162,
+    paddingBottom: Spacing.twoHalf,
+    minHeight: 160,
     justifyContent: 'center',
+  },
+  containerNarrow: {
+    minHeight: 146,
+    paddingBottom: Spacing.two,
   },
   contentRow: {
     flexDirection: 'row',
@@ -142,7 +157,6 @@ const styles = StyleSheet.create({
     fontWeight: Typography.weights.extraBold,
     color: Colors.primaryDark,
     letterSpacing: -0.4,
-    lineHeight: Typography.lineHeights.heading,
     marginBottom: 2,
   },
   greetingSubtext: {
@@ -157,9 +171,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     alignSelf: 'flex-start',
     backgroundColor: Colors.surface,
-    paddingLeft: 8,
-    paddingRight: 12,
-    paddingVertical: 6,
+    paddingLeft: Spacing.two,
+    paddingRight: Spacing.twoHalf,
+    paddingVertical: 5,
     borderRadius: BorderRadius.full,
     borderWidth: 1,
     borderColor: Colors.primaryBorder,
@@ -171,20 +185,20 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.98 }],
   },
   storeIconCircle: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 22,
+    height: 22,
+    borderRadius: BorderRadius.full,
     backgroundColor: Colors.pastel.green.iconBg,
     alignItems: 'center',
     justifyContent: 'center',
   },
   storePillText: {
-    fontSize: Typography.sizes.sm,
+    fontSize: Typography.sizes.xs,
     fontWeight: Typography.weights.bold,
     color: Colors.primaryDark,
   },
   storePillChevron: {
-    fontSize: 16,
+    fontSize: Typography.sizes.sm,
     fontWeight: Typography.weights.extraBold,
     color: Colors.primary,
     marginTop: -1,

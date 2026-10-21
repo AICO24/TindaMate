@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import {
@@ -24,6 +24,9 @@ interface RecentActivitySectionProps {
  * - Friendly, non-alarming empty state guidance
  */
 export function RecentActivitySection({ onViewAll }: RecentActivitySectionProps) {
+  const { width: windowWidth } = useWindowDimensions();
+  const isCompactPhone = windowWidth < 375;
+
   return (
     <View style={styles.container}>
       {/* Reusable Design-System Section Header */}
@@ -34,7 +37,7 @@ export function RecentActivitySection({ onViewAll }: RecentActivitySectionProps)
       />
 
       {/* Empty State Card */}
-      <View style={styles.emptyCard}>
+      <View style={[styles.emptyCard, isCompactPhone && styles.emptyCardCompact]}>
         {/* Vector Checklist Card with Warm Sparkle Rays */}
         <View style={styles.illustrationContainer}>
           {/* Left Warm Sparkle Rays */}
@@ -78,13 +81,11 @@ export function RecentActivitySection({ onViewAll }: RecentActivitySectionProps)
 const styles = StyleSheet.create({
   container: {
     gap: Spacing.twoHalf,
-    marginTop: Spacing.one,
-    marginBottom: Spacing.three,
   },
   emptyCard: {
     backgroundColor: Colors.primarySoft,
     borderRadius: BorderRadius.lg,
-    paddingVertical: 18,
+    paddingVertical: Spacing.three,
     paddingHorizontal: Spacing.three,
     borderWidth: 1,
     borderColor: Colors.pastel.green.border,
@@ -92,6 +93,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.three,
     ...Shadows.xs,
+  },
+  emptyCardCompact: {
+    paddingVertical: Spacing.twoHalf,
+    paddingHorizontal: Spacing.twoHalf,
+    gap: Spacing.twoHalf,
   },
   illustrationContainer: {
     width: 72,

@@ -51,7 +51,12 @@ export function SectionHeader({
           <Text style={styles.actionText}>{actionLabel}  ›</Text>
         </Pressable>
       ) : subtitle ? (
-        <Text style={styles.subtitle}>{subtitle}</Text>
+        <Text
+          style={styles.subtitle}
+          numberOfLines={1}
+          ellipsizeMode="tail">
+          {subtitle}
+        </Text>
       ) : null}
     </View>
   );
@@ -71,9 +76,12 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
   },
   subtitle: {
+    flexShrink: 1,
     fontSize: Typography.sizes.xs,
     color: Colors.textMuted,
     fontWeight: Typography.weights.medium,
+    textAlign: 'right',
+    marginLeft: Spacing.two,
   },
   actionButton: {
     paddingVertical: 2,

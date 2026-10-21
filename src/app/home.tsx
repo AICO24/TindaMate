@@ -8,6 +8,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -54,6 +55,8 @@ import { supabase } from '@/lib/supabase';
 export default function AuthenticatedDashboardScreen() {
   const pathname = usePathname();
   const routeTab = resolveActiveNavTab(pathname);
+  const { width: windowWidth } = useWindowDimensions();
+  const isNarrowPhone = windowWidth < 350;
 
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -272,7 +275,7 @@ export default function AuthenticatedDashboardScreen() {
   const activeNavTab: NavTab = isProfileModalVisible ? 'more' : routeTab;
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <View style={styles.mainContainer}>
         {/* Main Scrollable Dashboard Content */}
         <ScrollView
@@ -320,11 +323,11 @@ export default function AuthenticatedDashboardScreen() {
               />
 
               {/* 2x2 Overview Cards Grid */}
-              <View style={styles.gridRow}>
+              <View style={[styles.gridRow, isNarrowPhone && styles.gridRowNarrow]}>
                 <StoreOverviewCard item={overviewItems[0]} />
                 <StoreOverviewCard item={overviewItems[1]} />
               </View>
-              <View style={styles.gridRow}>
+              <View style={[styles.gridRow, isNarrowPhone && styles.gridRowNarrow]}>
                 <StoreOverviewCard item={overviewItems[2]} />
                 <StoreOverviewCard item={overviewItems[3]} />
               </View>
@@ -338,7 +341,7 @@ export default function AuthenticatedDashboardScreen() {
               />
 
               {/* 4-Column Action Tiles Row */}
-              <View style={styles.quickActionsRow}>
+              <View style={[styles.quickActionsRow, isNarrowPhone && styles.quickActionsRowNarrow]}>
                 <QuickActionTile item={quickActions[0]} />
                 <QuickActionTile item={quickActions[1]} />
                 <QuickActionTile item={quickActions[2]} />
@@ -445,7 +448,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   scrollContent: {
-    paddingBottom: Spacing.four,
+    paddingBottom: Spacing.five,
   },
   // Full-bleed integrated top hero zone
   fullBleedHeroZone: {
@@ -469,8 +472,8 @@ const styles = StyleSheet.create({
     maxWidth: DashboardMaxContentWidth,
     alignSelf: 'center',
     paddingHorizontal: Spacing.three,
-    paddingTop: Spacing.threeHalf,
-    gap: Spacing.threeHalf,
+    paddingTop: Spacing.four,
+    gap: Spacing.four,
   },
   section: {
     gap: Spacing.twoHalf,
@@ -479,12 +482,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.surface,
-    paddingHorizontal: 11,
-    paddingVertical: 5,
+    paddingHorizontal: Spacing.twoHalf,
+    paddingVertical: 6,
     borderRadius: BorderRadius.full,
     borderWidth: 1,
     borderColor: Colors.border,
-    gap: 5,
+    gap: Spacing.xs,
     ...Shadows.xs,
   },
   filterPillPressed: {
@@ -503,12 +506,18 @@ const styles = StyleSheet.create({
   },
   gridRow: {
     flexDirection: 'row',
-    gap: 10,
+    gap: Spacing.twoHalf,
+  },
+  gridRowNarrow: {
+    gap: Spacing.two,
   },
   quickActionsRow: {
     flexDirection: 'row',
     gap: Spacing.two,
     justifyContent: 'space-between',
+  },
+  quickActionsRowNarrow: {
+    gap: Spacing.one,
   },
   // Profile Modal Styling
   modalOverlay: {
@@ -544,7 +553,7 @@ const styles = StyleSheet.create({
   userProfileInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
+    gap: Spacing.three,
     backgroundColor: Colors.backgroundAlt,
     padding: Spacing.three,
     borderRadius: BorderRadius.lg,
@@ -554,7 +563,7 @@ const styles = StyleSheet.create({
   modalAvatar: {
     width: 48,
     height: 48,
-    borderRadius: 24,
+    borderRadius: BorderRadius.full,
     backgroundColor: Colors.primaryBrand,
     alignItems: 'center',
     justifyContent: 'center',
@@ -582,10 +591,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: Colors.successLight,
     paddingHorizontal: Spacing.two,
-    paddingVertical: 2,
+    paddingVertical: 3,
     borderRadius: BorderRadius.full,
-    gap: 5,
-    marginTop: 4,
+    gap: Spacing.one,
+    marginTop: Spacing.xs,
     alignSelf: 'flex-start',
   },
   statusDot: {
@@ -595,7 +604,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.success,
   },
   statusText: {
-    fontSize: 10,
+    fontSize: Typography.sizes.caption,
     fontWeight: Typography.weights.bold,
     color: Colors.successText,
   },

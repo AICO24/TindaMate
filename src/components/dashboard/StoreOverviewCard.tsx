@@ -52,9 +52,10 @@ export function StoreOverviewCard({ item }: StoreOverviewCardProps) {
   const currentTheme = OVERVIEW_THEME_MAP[item.theme];
   const hasVectorIcon = VECTOR_IDS.has(item.id);
   const { width: windowWidth } = useWindowDimensions();
-  const isCompactPhone = windowWidth < 375;
+  const isNarrowPhone = windowWidth < 350;
+  const isCompactPhone = windowWidth < 380;
 
-  const iconCircleSize = isCompactPhone ? 36 : 40;
+  const iconCircleSize = isNarrowPhone ? 34 : isCompactPhone ? 36 : 40;
 
   return (
     <Pressable
@@ -64,6 +65,7 @@ export function StoreOverviewCard({ item }: StoreOverviewCardProps) {
       style={({ pressed }) => [
         styles.card,
         isCompactPhone && styles.cardCompact,
+        isNarrowPhone && styles.cardNarrow,
         {
           backgroundColor: currentTheme.bg,
           borderColor: currentTheme.border,
@@ -104,11 +106,12 @@ export function StoreOverviewCard({ item }: StoreOverviewCardProps) {
           style={[
             styles.value,
             isCompactPhone && styles.valueCompact,
+            isNarrowPhone && styles.valueNarrow,
             { color: currentTheme.text },
           ]}
           numberOfLines={1}
           adjustsFontSizeToFit
-          minimumFontScale={0.85}>
+          minimumFontScale={0.82}>
           {item.value}
         </Text>
         <Text style={styles.subtitle} numberOfLines={1}>
@@ -141,8 +144,15 @@ const styles = StyleSheet.create({
   },
   cardCompact: {
     paddingHorizontal: Spacing.two,
-    paddingVertical: 10,
+    paddingVertical: Spacing.two,
+    minHeight: 80,
     gap: 6,
+  },
+  cardNarrow: {
+    paddingHorizontal: 6,
+    paddingVertical: 7,
+    minHeight: 76,
+    gap: 5,
   },
   cardPressed: {
     opacity: 0.88,
@@ -173,7 +183,11 @@ const styles = StyleSheet.create({
     lineHeight: Typography.lineHeights.normal,
   },
   valueCompact: {
-    fontSize: Typography.sizes.body,
+    fontSize: Typography.sizes.bodySm,
+  },
+  valueNarrow: {
+    fontSize: Typography.sizes.sm,
+    lineHeight: 18,
   },
   subtitle: {
     fontSize: Typography.sizes.caption,
@@ -181,7 +195,7 @@ const styles = StyleSheet.create({
     fontWeight: Typography.weights.medium,
   },
   chevron: {
-    fontSize: Typography.sizes.lg,
+    fontSize: Typography.sizes.base,
     fontWeight: Typography.weights.extraBold,
     paddingLeft: Spacing.xxs,
   },

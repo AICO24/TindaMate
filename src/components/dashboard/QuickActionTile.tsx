@@ -52,11 +52,14 @@ export function QuickActionTile({ item }: QuickActionTileProps) {
   const currentTheme = Colors.pastel[item.theme];
   const hasVectorIcon = ACTION_VECTOR_IDS.has(item.id);
   const { width: windowWidth } = useWindowDimensions();
-  const isCompactPhone = windowWidth < 375;
+  const isNarrowPhone = windowWidth < 350;
+  const isCompactPhone = windowWidth < 380;
 
-  const iconCircleSize = isCompactPhone
+  const iconCircleSize = isNarrowPhone
+    ? item.isPrimary ? 38 : 36
+    : isCompactPhone
     ? item.isPrimary ? 42 : 40
-    : item.isPrimary ? 48 : 44;
+    : item.isPrimary ? 46 : 42;
 
   return (
     <Pressable
@@ -70,6 +73,7 @@ export function QuickActionTile({ item }: QuickActionTileProps) {
       style={({ pressed }) => [
         styles.tile,
         isCompactPhone && styles.tileCompact,
+        isNarrowPhone && styles.tileNarrow,
         {
           backgroundColor: currentTheme.bg,
           borderColor: item.isPrimary ? currentTheme.accent : currentTheme.border,
@@ -110,23 +114,27 @@ export function QuickActionTile({ item }: QuickActionTileProps) {
         <Text
           style={[
             styles.labelText,
+            isNarrowPhone && styles.labelTextNarrow,
             item.isPrimary && styles.labelTextPrimary,
+            item.isPrimary && isNarrowPhone && styles.labelTextPrimaryNarrow,
             { color: currentTheme.text },
           ]}
           numberOfLines={1}
           adjustsFontSizeToFit
-          minimumFontScale={0.85}>
+          minimumFontScale={0.8}>
           {item.labelLine1}
         </Text>
         <Text
           style={[
             styles.labelText,
+            isNarrowPhone && styles.labelTextNarrow,
             item.isPrimary && styles.labelTextPrimary,
+            item.isPrimary && isNarrowPhone && styles.labelTextPrimaryNarrow,
             { color: currentTheme.text },
           ]}
           numberOfLines={1}
           adjustsFontSizeToFit
-          minimumFontScale={0.85}>
+          minimumFontScale={0.8}>
           {item.labelLine2}
         </Text>
       </View>
@@ -138,7 +146,14 @@ export function QuickActionTile({ item }: QuickActionTileProps) {
           item.isPrimary && { backgroundColor: currentTheme.border },
         ]}
         importantForAccessibility="no">
-        <Text style={[styles.arrow, { color: currentTheme.accent }]}>→</Text>
+        <Text
+          style={[
+            styles.arrow,
+            isNarrowPhone && styles.arrowNarrow,
+            { color: currentTheme.accent },
+          ]}>
+          →
+        </Text>
       </View>
     </Pressable>
   );
@@ -158,9 +173,16 @@ const styles = StyleSheet.create({
     ...Shadows.xs,
   },
   tileCompact: {
-    paddingVertical: 10,
+    paddingVertical: Spacing.two,
     paddingHorizontal: Spacing.xxs,
-    minHeight: 116,
+    minHeight: 118,
+    gap: 5,
+  },
+  tileNarrow: {
+    paddingVertical: 7,
+    paddingHorizontal: 1,
+    minHeight: 114,
+    gap: 4,
   },
   tilePrimary: {
     borderWidth: 1.8,
@@ -195,10 +217,18 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 15,
   },
+  labelTextNarrow: {
+    fontSize: Typography.sizes.caption,
+    lineHeight: 13,
+  },
   labelTextPrimary: {
     fontSize: Typography.sizes.sm,
     fontWeight: Typography.weights.extraBold,
     lineHeight: 16,
+  },
+  labelTextPrimaryNarrow: {
+    fontSize: Typography.sizes.xs,
+    lineHeight: 14,
   },
   arrowContainer: {
     paddingHorizontal: 6,
@@ -210,6 +240,9 @@ const styles = StyleSheet.create({
   arrow: {
     fontSize: Typography.sizes.bodySm,
     fontWeight: Typography.weights.extraBold,
+  },
+  arrowNarrow: {
+    fontSize: Typography.sizes.xs,
   },
 });
 

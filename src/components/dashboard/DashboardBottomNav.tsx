@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { usePathname } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
   NavHomeIcon,
@@ -52,7 +53,11 @@ export function DashboardBottomNav({
   onTabPress,
 }: DashboardBottomNavProps) {
   const pathname = usePathname();
+  const insets = useSafeAreaInsets();
   const currentTab = activeTab ?? resolveActiveNavTab(pathname);
+
+  // Flow the clean white surface through the bottom safe area on devices with a home indicator bar
+  const bottomInsetPadding = insets.bottom > 0 ? insets.bottom : Spacing.two;
 
   const tabs: { key: NavTab; label: string; renderIcon: (color: string) => React.ReactNode }[] = [
     {
@@ -83,7 +88,9 @@ export function DashboardBottomNav({
   ];
 
   return (
-    <View style={styles.navBar} accessibilityRole="tablist">
+    <View
+      style={[styles.navBar, { paddingBottom: bottomInsetPadding }]}
+      accessibilityRole="tablist">
       {tabs.map((tab) => {
         const isActive = currentTab === tab.key;
         const iconColor = isActive ? Colors.primaryDark : Colors.textMuted;
