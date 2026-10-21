@@ -310,14 +310,20 @@ export default function AuthenticatedDashboardScreen() {
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel="Date range filter: Today"
+                    accessibilityHint="Changes date filter range for store overview metrics"
                     onPress={() => handleModuleClick('Date Filter', 'Batch 5')}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     style={({ pressed }) => [
                       styles.filterPill,
                       pressed && styles.filterPillPressed,
                     ]}>
                     <CalendarFilterIcon size={IconSizes.xs} color={Colors.primaryDark} />
-                    <Text style={styles.filterPillText}>Today</Text>
-                    <Text style={styles.filterChevron}>⌵</Text>
+                    <Text style={styles.filterPillText} maxFontSizeMultiplier={1.25}>
+                      Today
+                    </Text>
+                    <Text style={styles.filterChevron} importantForAccessibility="no">
+                      ⌵
+                    </Text>
                   </Pressable>
                 }
               />
@@ -381,25 +387,35 @@ export default function AuthenticatedDashboardScreen() {
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="Close Store Account modal"
+                accessibilityHint="Dismisses store account modal"
                 onPress={handleCloseProfileModal}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
                 <Text style={styles.modalCloseText}>✕</Text>
               </Pressable>
             </View>
 
             {/* User Info */}
             <View style={styles.userProfileInfo}>
-              <View style={styles.modalAvatar}>
+              <View
+                style={styles.modalAvatar}
+                accessible={false}
+                importantForAccessibility="no-hide-descendants">
                 <Text style={styles.modalAvatarText}>
                   {user?.email?.charAt(0).toUpperCase() || 'U'}
                 </Text>
               </View>
               <View style={styles.userInfoText}>
-                <Text style={styles.userFullName}>{displayName}</Text>
-                <Text style={styles.userEmailText}>{user?.email}</Text>
+                <Text style={styles.userFullName} maxFontSizeMultiplier={1.3}>
+                  {displayName}
+                </Text>
+                <Text style={styles.userEmailText} maxFontSizeMultiplier={1.3}>
+                  {user?.email}
+                </Text>
                 <View style={styles.statusBadge}>
                   <View style={styles.statusDot} />
-                  <Text style={styles.statusText}>Supabase Connected</Text>
+                  <Text style={styles.statusText} maxFontSizeMultiplier={1.3}>
+                    Supabase Connected
+                  </Text>
                 </View>
               </View>
             </View>

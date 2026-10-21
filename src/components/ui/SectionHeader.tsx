@@ -32,7 +32,10 @@ export function SectionHeader({
 }: SectionHeaderProps) {
   return (
     <View style={styles.row}>
-      <Text style={styles.title} accessibilityRole="header">
+      <Text
+        style={styles.title}
+        accessibilityRole="header"
+        maxFontSizeMultiplier={1.3}>
         {title}
       </Text>
 
@@ -42,19 +45,23 @@ export function SectionHeader({
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={`${actionLabel} ${title}`}
+          accessibilityHint={`Navigates to full ${title.toLowerCase()} screen`}
           onPress={onActionPress}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           style={({ pressed }) => [
             styles.actionButton,
             pressed && styles.actionButtonPressed,
           ]}>
-          <Text style={styles.actionText}>{actionLabel}  ›</Text>
+          <Text style={styles.actionText} maxFontSizeMultiplier={1.3}>
+            {actionLabel}  ›
+          </Text>
         </Pressable>
       ) : subtitle ? (
         <Text
           style={styles.subtitle}
           numberOfLines={1}
-          ellipsizeMode="tail">
+          ellipsizeMode="tail"
+          maxFontSizeMultiplier={1.3}>
           {subtitle}
         </Text>
       ) : null}

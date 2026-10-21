@@ -69,7 +69,9 @@ export function QuickActionTile({ item }: QuickActionTileProps) {
           ? `${item.labelLine1} ${item.labelLine2}, primary action`
           : `${item.labelLine1} ${item.labelLine2}`
       }
+      accessibilityHint={`Opens quick action to ${item.labelLine1.toLowerCase()} ${item.labelLine2.toLowerCase()}`}
       onPress={item.onPress}
+      hitSlop={{ top: 4, bottom: 4, left: 2, right: 2 }}
       style={({ pressed }) => [
         styles.tile,
         isCompactPhone && styles.tileCompact,
@@ -92,7 +94,9 @@ export function QuickActionTile({ item }: QuickActionTileProps) {
             backgroundColor: currentTheme.iconBg,
           },
           item.isPrimary && styles.iconCirclePrimary,
-        ]}>
+        ]}
+        accessible={false}
+        importantForAccessibility="no-hide-descendants">
         {hasVectorIcon ? (
           <DashboardBadgeVectorIcon
             type={
@@ -121,7 +125,8 @@ export function QuickActionTile({ item }: QuickActionTileProps) {
           ]}
           numberOfLines={1}
           adjustsFontSizeToFit
-          minimumFontScale={0.8}>
+          minimumFontScale={0.8}
+          maxFontSizeMultiplier={1.25}>
           {item.labelLine1}
         </Text>
         <Text
@@ -134,7 +139,8 @@ export function QuickActionTile({ item }: QuickActionTileProps) {
           ]}
           numberOfLines={1}
           adjustsFontSizeToFit
-          minimumFontScale={0.8}>
+          minimumFontScale={0.8}
+          maxFontSizeMultiplier={1.25}>
           {item.labelLine2}
         </Text>
       </View>

@@ -24,7 +24,11 @@ export function DashboardMarketIllustration({
   height = 140,
 }: DashboardMarketIllustrationProps) {
   return (
-    <View style={[styles.container, { width, height }]}>
+    <View
+      style={[styles.container, { width, height }]}
+      accessible={false}
+      accessibilityElementsHidden={true}
+      importantForAccessibility="no-hide-descendants">
       {/* Soft warm circular backdrop glow */}
       <View style={styles.backdropHalo} />
 

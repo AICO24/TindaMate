@@ -72,7 +72,9 @@ export function DashboardHeroBanner({
         {/* Left Side: Text Hierarchy & Store Badge (55-65% width) */}
         <View style={styles.leftColumn}>
           {/* 1. Greeting - semibold */}
-          <Text style={styles.greetingTitle}>{getGreeting()}</Text>
+          <Text style={styles.greetingTitle} maxFontSizeMultiplier={1.3}>
+            {getGreeting()}
+          </Text>
 
           {/* 2. User Name - large / bold / responsive */}
           <Text
@@ -80,12 +82,16 @@ export function DashboardHeroBanner({
               styles.displayNameText,
               { fontSize: nameFontSize, lineHeight: nameLineHeight },
             ]}
-            numberOfLines={2}>
+            numberOfLines={2}
+            maxFontSizeMultiplier={1.3}>
             {displayName}!
           </Text>
 
           {/* 3. Supporting sentence */}
-          <Text style={styles.greetingSubtext} numberOfLines={2}>
+          <Text
+            style={styles.greetingSubtext}
+            numberOfLines={2}
+            maxFontSizeMultiplier={1.3}>
             Here&apos;s what&apos;s happening with your store today.
           </Text>
 
@@ -93,12 +99,17 @@ export function DashboardHeroBanner({
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={`Active store: ${storeName}`}
+            accessibilityHint="Opens store account and profile settings"
             onPress={onStorePress}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             style={({ pressed }) => [
               styles.storePill,
               pressed && styles.storePillPressed,
             ]}>
-            <View style={styles.storeIconCircle}>
+            <View
+              style={styles.storeIconCircle}
+              accessible={false}
+              importantForAccessibility="no-hide-descendants">
               <StorePillIcon size={IconSizes.xs} color={Colors.textInverse} />
             </View>
             <Text
@@ -106,10 +117,13 @@ export function DashboardHeroBanner({
                 styles.storePillText,
                 { maxWidth: isNarrowPhone ? 105 : 140 },
               ]}
-              numberOfLines={1}>
+              numberOfLines={1}
+              maxFontSizeMultiplier={1.3}>
               {storeName}
             </Text>
-            <Text style={styles.storePillChevron}>›</Text>
+            <Text style={styles.storePillChevron} importantForAccessibility="no">
+              ›
+            </Text>
           </Pressable>
         </View>
 

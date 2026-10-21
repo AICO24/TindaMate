@@ -101,6 +101,7 @@ export function DashboardBottomNav({
             accessibilityRole="tab"
             accessibilityState={{ selected: isActive }}
             accessibilityLabel={`${tab.label} tab${isActive ? ', selected' : ''}`}
+            accessibilityHint={`Navigates to ${tab.label} screen`}
             onPress={() => onTabPress(tab.key)}
             hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
             style={({ pressed }) => [
@@ -108,22 +109,26 @@ export function DashboardBottomNav({
               pressed && styles.tabItemPressed,
             ]}>
             {/* Vector Icon */}
-            <View style={styles.iconWrapper}>
+            <View
+              style={styles.iconWrapper}
+              accessible={false}
+              importantForAccessibility="no-hide-descendants">
               {tab.renderIcon(iconColor)}
             </View>
 
             {/* Label */}
             <Text
               style={[styles.tabLabel, isActive && styles.activeTabLabel]}
-              numberOfLines={1}>
+              numberOfLines={1}
+              maxFontSizeMultiplier={1.25}>
               {tab.label}
             </Text>
 
             {/* Active Green Underline Bar */}
             {isActive ? (
-              <View style={styles.activeIndicatorBar} />
+              <View style={styles.activeIndicatorBar} importantForAccessibility="no" />
             ) : (
-              <View style={styles.inactiveIndicatorBar} />
+              <View style={styles.inactiveIndicatorBar} importantForAccessibility="no" />
             )}
           </Pressable>
         );

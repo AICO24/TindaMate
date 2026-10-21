@@ -39,7 +39,10 @@ export function RecentActivitySection({ onViewAll }: RecentActivitySectionProps)
       {/* Empty State Card */}
       <View style={[styles.emptyCard, isCompactPhone && styles.emptyCardCompact]}>
         {/* Vector Checklist Card with Warm Sparkle Rays */}
-        <View style={styles.illustrationContainer}>
+        <View
+          style={styles.illustrationContainer}
+          accessible={false}
+          importantForAccessibility="no-hide-descendants">
           {/* Left Warm Sparkle Rays */}
           <View style={styles.raysLeft}>
             <View style={[styles.ray, styles.rayTopLeft]} />
@@ -67,8 +70,10 @@ export function RecentActivitySection({ onViewAll }: RecentActivitySectionProps)
 
         {/* Text Details */}
         <View style={styles.textGroup}>
-          <Text style={styles.emptyTitle}>No recent activity yet.</Text>
-          <Text style={styles.emptyDescription}>
+          <Text style={styles.emptyTitle} maxFontSizeMultiplier={1.3}>
+            No recent activity yet.
+          </Text>
+          <Text style={styles.emptyDescription} maxFontSizeMultiplier={1.3}>
             Your <Text style={styles.boldWord}>transactions</Text> and updates will
             appear here once you start using the app.
           </Text>

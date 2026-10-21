@@ -37,8 +37,9 @@ export function DashboardHeader({
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Open user profile and store settings"
+        accessibilityHint="Opens store account and profile modal"
         onPress={onProfilePress}
-        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         style={({ pressed }) => [
           styles.avatarButton,
           pressed && styles.avatarButtonPressed,

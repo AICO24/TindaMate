@@ -61,6 +61,7 @@ export function StoreOverviewCard({ item }: StoreOverviewCardProps) {
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`${item.title}: ${item.value}. ${item.subtitle}`}
+      accessibilityHint={`Views detailed ${item.title} summary`}
       onPress={item.onPress}
       style={({ pressed }) => [
         styles.card,
@@ -82,7 +83,9 @@ export function StoreOverviewCard({ item }: StoreOverviewCardProps) {
             borderRadius: iconCircleSize / 2,
             backgroundColor: currentTheme.iconBg,
           },
-        ]}>
+        ]}
+        accessible={false}
+        importantForAccessibility="no-hide-descendants">
         {hasVectorIcon ? (
           <DashboardBadgeVectorIcon
             type={item.id as 'sales' | 'products' | 'low_stock' | 'utang'}
@@ -99,7 +102,8 @@ export function StoreOverviewCard({ item }: StoreOverviewCardProps) {
       <View style={styles.textColumn}>
         <Text
           style={[styles.title, { color: currentTheme.text }]}
-          numberOfLines={1}>
+          numberOfLines={1}
+          maxFontSizeMultiplier={1.25}>
           {item.title}
         </Text>
         <Text
@@ -111,10 +115,14 @@ export function StoreOverviewCard({ item }: StoreOverviewCardProps) {
           ]}
           numberOfLines={1}
           adjustsFontSizeToFit
-          minimumFontScale={0.82}>
+          minimumFontScale={0.82}
+          maxFontSizeMultiplier={1.25}>
           {item.value}
         </Text>
-        <Text style={styles.subtitle} numberOfLines={1}>
+        <Text
+          style={styles.subtitle}
+          numberOfLines={1}
+          maxFontSizeMultiplier={1.25}>
           {item.subtitle}
         </Text>
       </View>
