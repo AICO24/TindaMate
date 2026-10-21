@@ -13,7 +13,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router, usePathname } from 'expo-router';
+import { router, useLocalSearchParams, usePathname } from 'expo-router';
 import { User } from '@supabase/supabase-js';
 
 import {
@@ -59,6 +59,8 @@ export default function AuthenticatedDashboardScreen() {
   const routeTab = resolveActiveNavTab(pathname);
   const { width: windowWidth } = useWindowDimensions();
   const isNarrowPhone = windowWidth < 350;
+  const params = useLocalSearchParams<{ guest?: string }>();
+  const isGuestMode = params.guest === '1';
 
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -71,20 +73,30 @@ export default function AuthenticatedDashboardScreen() {
   useEffect(() => {
     let isMounted = true;
 
-    // Verify session on mount
+    // Verify session on mount (supports guest preview without session bounce)
     const checkSession = async () => {
       try {
         const { data, error } = await supabase.auth.getSession();
-        if (error || !data.session) {
-          if (isMounted) router.replace('/');
-          return;
-        }
-        if (isMounted) {
-          setUser(data.session.user);
+        if (data?.session) {
+          if (isMounted) {
+            setUser(data.session.user);
+          }
+        } else {
+          // If no active session, allow entry only if explicitly in guest mode
+          if (isGuestMode) {
+            if (isMounted) {
+              setUser(null);
+            }
+          } else {
+            if (isMounted) router.replace('/');
+            return;
+          }
         }
       } catch (err) {
         console.warn('[Dashboard Session Error]:', err);
-        if (isMounted) router.replace('/');
+        if (!isGuestMode && isMounted) {
+          router.replace('/');
+        }
       } finally {
         if (isMounted) setIsLoading(false);
       }
@@ -97,7 +109,11 @@ export default function AuthenticatedDashboardScreen() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!session && isMounted) {
-        router.replace('/');
+        if (!isGuestMode) {
+          router.replace('/');
+        } else {
+          setUser(null);
+        }
       } else if (session && isMounted) {
         setUser(session.user);
       }
@@ -107,7 +123,7 @@ export default function AuthenticatedDashboardScreen() {
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, []);
+  }, [isGuestMode]);
 
   /**
    * Close Profile/Store Account modal and restore route-derived active tab
@@ -125,6 +141,12 @@ export default function AuthenticatedDashboardScreen() {
       setIsRefreshing(true);
       setIsCardLoading(true);
       setErrorMessage(null);
+
+      if (isGuestMode) {
+        // In guest preview mode, brief visual pulse without Supabase auth redirect
+        await new Promise((resolve) => setTimeout(resolve, 600));
+        return;
+      }
 
       // Verify active session with Supabase
       const { data, error } = await supabase.auth.getSession();
@@ -185,9 +207,25 @@ export default function AuthenticatedDashboardScreen() {
   };
 
   /**
-   * Placeholder handler for coming soon modules
+   * Module click handler: in guest preview mode, guides user to log in; otherwise shows batch roadmap notice
    */
   const handleModuleClick = (moduleName: string, batchNote: string) => {
+    if (isGuestMode) {
+      const message = `${moduleName} is part of the full TindaMate store manager. Would you like to log in or create an account to start managing your store?`;
+      if (Platform.OS === 'web') {
+        const wantsAuth = window.confirm(message);
+        if (wantsAuth) {
+          router.push('/login');
+        }
+      } else {
+        Alert.alert('Guest Preview', message, [
+          { text: 'Explore More', style: 'cancel' },
+          { text: 'Log In', onPress: () => router.push('/login') },
+        ]);
+      }
+      return;
+    }
+
     const message = `${moduleName} will be connected to your Supabase store database in ${batchNote}!`;
     if (Platform.OS === 'web') {
       window.alert(message);
@@ -202,7 +240,7 @@ export default function AuthenticatedDashboardScreen() {
   const handleTabPress = (tab: NavTab) => {
     if (tab === 'home') {
       if (pathname !== '/home') {
-        router.replace('/home');
+        router.replace(isGuestMode ? { pathname: '/home', params: { guest: '1' } } : '/home');
       }
       return;
     }
@@ -231,10 +269,11 @@ export default function AuthenticatedDashboardScreen() {
     );
   }
 
-  const displayName =
-    user?.user_metadata?.full_name ||
-    user?.email?.split('@')[0] ||
-    'Store Partner';
+  const displayName = isGuestMode
+    ? 'Guest Vendor'
+    : user?.user_metadata?.full_name ||
+      user?.email?.split('@')[0] ||
+      'Store Partner';
 
   // Truthful empty store counts (will come from Supabase in future data batch)
   const lowStockCount: number = 0;
@@ -333,9 +372,28 @@ export default function AuthenticatedDashboardScreen() {
             <View style={styles.heroInnerContainer}>
               {/* Header: Prominent Logo + Profile Circle */}
               <DashboardHeader
-                userEmail={user?.email}
+                userEmail={isGuestMode ? undefined : user?.email}
                 onProfilePress={() => setIsProfileModalVisible(true)}
               />
+
+              {/* Guest Preview Notification Pill */}
+              {isGuestMode ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Guest preview mode active. Tap to log in or register."
+                  accessibilityHint="Navigates to login screen"
+                  onPress={() => router.push('/login')}
+                  style={({ pressed }) => [
+                    styles.guestBanner,
+                    pressed && styles.guestBannerPressed,
+                  ]}>
+                  <View style={styles.guestBadgeDot} />
+                  <Text style={styles.guestBannerText} maxFontSizeMultiplier={1.25}>
+                    Guest Preview Mode —{' '}
+                    <Text style={styles.guestBannerActionText}>Log in to save data ›</Text>
+                  </Text>
+                </Pressable>
+              ) : null}
 
               {/* Greeting + Marketplace Illustration */}
               <DashboardHeroBanner
@@ -465,11 +523,14 @@ export default function AuthenticatedDashboardScreen() {
             {/* User Info */}
             <View style={styles.userProfileInfo}>
               <View
-                style={styles.modalAvatar}
+                style={[
+                  styles.modalAvatar,
+                  isGuestMode && { backgroundColor: Colors.accent },
+                ]}
                 accessible={false}
                 importantForAccessibility="no-hide-descendants">
                 <Text style={styles.modalAvatarText}>
-                  {user?.email?.charAt(0).toUpperCase() || 'U'}
+                  {isGuestMode ? 'G' : user?.email?.charAt(0).toUpperCase() || 'U'}
                 </Text>
               </View>
               <View style={styles.userInfoText}>
@@ -477,27 +538,65 @@ export default function AuthenticatedDashboardScreen() {
                   {displayName}
                 </Text>
                 <Text style={styles.userEmailText} maxFontSizeMultiplier={1.3}>
-                  {user?.email}
+                  {isGuestMode ? 'Browsing as Guest' : user?.email}
                 </Text>
-                <View style={styles.statusBadge}>
-                  <View style={styles.statusDot} />
-                  <Text style={styles.statusText} maxFontSizeMultiplier={1.3}>
-                    Supabase Connected
+                <View
+                  style={[
+                    styles.statusBadge,
+                    isGuestMode && { backgroundColor: Colors.accentLight },
+                  ]}>
+                  <View
+                    style={[
+                      styles.statusDot,
+                      isGuestMode && { backgroundColor: Colors.accent },
+                    ]}
+                  />
+                  <Text
+                    style={[
+                      styles.statusText,
+                      isGuestMode && { color: Colors.accent },
+                    ]}
+                    maxFontSizeMultiplier={1.3}>
+                    {isGuestMode ? 'Guest Preview Mode' : 'Supabase Connected'}
                   </Text>
                 </View>
               </View>
             </View>
 
-            {/* Logout Action using TindaMateButton danger variant */}
-            <TindaMateButton
-              title={isLoggingOut ? 'Signing Out...' : 'Log Out of Account'}
-              variant="danger"
-              loading={isLoggingOut}
-              disabled={isLoggingOut}
-              onPress={handleLogout}
-              accessibilityLabel="Log out of TindaMate"
-              style={styles.modalLogoutButton}
-            />
+            {/* Actions: Log In & Exit Guest in Guest Mode, or Sign Out in Auth Mode */}
+            {isGuestMode ? (
+              <View style={styles.guestModalActions}>
+                <TindaMateButton
+                  title="Log In to Store"
+                  variant="primary"
+                  onPress={() => {
+                    handleCloseProfileModal();
+                    router.push('/login');
+                  }}
+                  accessibilityLabel="Log in to your store account"
+                  style={styles.modalLogoutButton}
+                />
+                <TindaMateButton
+                  title="Exit Guest Mode"
+                  variant="ghost"
+                  onPress={() => {
+                    handleCloseProfileModal();
+                    router.replace('/');
+                  }}
+                  accessibilityLabel="Exit guest mode and return to welcome screen"
+                />
+              </View>
+            ) : (
+              <TindaMateButton
+                title={isLoggingOut ? 'Signing Out...' : 'Log Out of Account'}
+                variant="danger"
+                loading={isLoggingOut}
+                disabled={isLoggingOut}
+                onPress={handleLogout}
+                accessibilityLabel="Log out of TindaMate"
+                style={styles.modalLogoutButton}
+              />
+            )}
           </Pressable>
         </Pressable>
       </Modal>
@@ -693,6 +792,43 @@ const styles = StyleSheet.create({
     color: Colors.successText,
   },
   modalLogoutButton: {
+    marginTop: Spacing.one,
+  },
+  guestBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.accentLight,
+    borderColor: Colors.accentBorder,
+    borderWidth: 1,
+    borderRadius: BorderRadius.full,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: 5,
+    gap: Spacing.two,
+    alignSelf: 'center',
+    marginBottom: Spacing.one,
+    ...Shadows.xs,
+  },
+  guestBannerPressed: {
+    opacity: 0.8,
+    transform: [{ scale: 0.98 }],
+  },
+  guestBadgeDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: Colors.accent,
+  },
+  guestBannerText: {
+    fontSize: Typography.sizes.xs,
+    color: Colors.accent,
+    fontWeight: Typography.weights.medium,
+  },
+  guestBannerActionText: {
+    fontWeight: Typography.weights.bold,
+    textDecorationLine: 'underline',
+  },
+  guestModalActions: {
+    gap: Spacing.two,
     marginTop: Spacing.one,
   },
 });

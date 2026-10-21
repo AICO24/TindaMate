@@ -85,7 +85,7 @@ export default function WelcomeScreen() {
   };
 
   const handleGuest = () => {
-    router.push('/home');
+    router.push({ pathname: '/home', params: { guest: '1' } });
   };
 
   if (isCheckingSession) {
