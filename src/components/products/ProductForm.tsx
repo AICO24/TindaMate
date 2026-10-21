@@ -75,6 +75,7 @@ export function ProductForm({
   const [values, setValues] = useState<ProductFormValues>({
     name: initialValues?.name ?? '',
     category: initialValues?.category ?? '',
+    imageUrl: initialValues?.imageUrl ?? '',
     sellingPrice: initialValues?.sellingPrice ?? '',
     costPrice: initialValues?.costPrice ?? '',
     stockQuantity: initialValues?.stockQuantity ?? '0',
@@ -200,6 +201,18 @@ export function ProductForm({
             })}
           </View>
         </View>
+
+        <TindaMateInput
+          label="Product Image URL (Optional)"
+          placeholder="https://example.com/product.jpg"
+          value={values.imageUrl}
+          onChangeText={(text) => updateField('imageUrl', text)}
+          autoCapitalize="none"
+          keyboardType="default"
+          returnKeyType="next"
+          errorMessage={errors.imageUrl}
+          accessibilityLabel="Product Image URL, optional"
+        />
       </View>
 
       {/* Section 2: Pricing */}

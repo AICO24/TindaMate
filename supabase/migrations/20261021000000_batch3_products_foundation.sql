@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS public.products (
   store_id uuid NOT NULL DEFAULT auth.uid() REFERENCES auth.users(id) ON DELETE CASCADE,
   name text NOT NULL,
   category text,
+  image_url text,
   selling_price numeric(12, 2) NOT NULL DEFAULT 0.00,
   cost_price numeric(12, 2),
   stock_quantity integer NOT NULL DEFAULT 0,
@@ -36,6 +37,9 @@ CREATE TABLE IF NOT EXISTS public.products (
   CONSTRAINT products_unit_not_empty CHECK (char_length(btrim(unit)) > 0),
   CONSTRAINT products_status_valid CHECK (status IN ('In Stock', 'Low Stock', 'Out of Stock'))
 );
+
+-- Ensure image_url column exists if table was already created
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS image_url text;
 
 -- 2. Indexes for fast store-scoped queries and sorting
 CREATE INDEX IF NOT EXISTS idx_products_store_id

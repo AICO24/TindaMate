@@ -6,6 +6,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import { Image } from 'expo-image';
 
 import { DashboardBadgeVectorIcon } from '@/components/dashboard/DashboardNavIcons';
 import { StockStatusBadge } from '@/components/products/StockStatusBadge';
@@ -61,30 +62,40 @@ export function ProductCard({ product, onPress }: ProductCardProps) {
         isCompactPhone && styles.cardCompact,
         pressed && styles.cardPressed,
       ]}>
-      {/* Top Row: Icon + Name/Category + Status Badge */}
+      {/* Top Row: Icon/Image + Name/Category + Status Badge */}
       <View style={styles.topRow}>
-        <View
-          style={[
-            styles.iconBox,
-            status === 'Out of Stock'
-              ? { backgroundColor: Colors.errorLight, borderColor: Colors.errorBorder }
-              : status === 'Low Stock'
-              ? { backgroundColor: Colors.pastel.orange.bg, borderColor: Colors.pastel.orange.border }
-              : { backgroundColor: Colors.pastel.green.bg, borderColor: Colors.pastel.green.border },
-          ]}
-          importantForAccessibility="no-hide-descendants"
-          accessible={false}>
-          <DashboardBadgeVectorIcon
-            type="products"
-            color={
-              status === 'Out of Stock'
-                ? Colors.error
-                : status === 'Low Stock'
-                ? Colors.pastel.orange.iconBg
-                : Colors.primary
-            }
+        {product.image_url ? (
+          <Image
+            source={{ uri: product.image_url }}
+            style={styles.productThumbnail}
+            contentFit="cover"
+            transition={200}
+            accessibilityLabel={`${product.name} photo`}
           />
-        </View>
+        ) : (
+          <View
+            style={[
+              styles.iconBox,
+              status === 'Out of Stock'
+                ? { backgroundColor: Colors.errorLight, borderColor: Colors.errorBorder }
+                : status === 'Low Stock'
+                ? { backgroundColor: Colors.pastel.orange.bg, borderColor: Colors.pastel.orange.border }
+                : { backgroundColor: Colors.pastel.green.bg, borderColor: Colors.pastel.green.border },
+            ]}
+            importantForAccessibility="no-hide-descendants"
+            accessible={false}>
+            <DashboardBadgeVectorIcon
+              type="products"
+              color={
+                status === 'Out of Stock'
+                  ? Colors.error
+                  : status === 'Low Stock'
+                  ? Colors.pastel.orange.iconBg
+                  : Colors.primary
+              }
+            />
+          </View>
+        )}
 
         <View style={styles.titleColumn}>
           <Text
@@ -189,12 +200,20 @@ const styles = StyleSheet.create({
     gap: Spacing.twoHalf,
   },
   iconBox: {
-    width: 40,
-    height: 40,
-    borderRadius: BorderRadius.sm,
+    width: 44,
+    height: 44,
+    borderRadius: BorderRadius.md,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  productThumbnail: {
+    width: 44,
+    height: 44,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.backgroundAlt,
   },
   titleColumn: {
     flex: 1,

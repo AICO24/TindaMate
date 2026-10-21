@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { Image } from 'expo-image';
 
 import { DashboardErrorBanner } from '@/components/dashboard/DashboardErrorBanner';
 import { ProductScreenHeader } from '@/components/products/ProductScreenHeader';
@@ -196,6 +197,18 @@ export default function ProductDetailsScreen() {
               <>
                 {/* 1. Primary Product Identity Card */}
                 <View style={styles.heroCard}>
+                  {product.image_url ? (
+                    <View style={styles.heroImageContainer}>
+                      <Image
+                        source={{ uri: product.image_url }}
+                        style={styles.heroImage}
+                        contentFit="cover"
+                        transition={200}
+                        accessibilityLabel={`${product.name} photo`}
+                      />
+                    </View>
+                  ) : null}
+
                   <View style={styles.badgeRow}>
                     <View style={styles.categoryBadge}>
                       <Text style={styles.categoryBadgeText} numberOfLines={1}>
@@ -442,6 +455,20 @@ const styles = StyleSheet.create({
     padding: Spacing.threeHalf,
     gap: Spacing.two,
     ...Shadows.xs,
+  },
+  heroImageContainer: {
+    width: '100%',
+    height: 180,
+    borderRadius: BorderRadius.md,
+    overflow: 'hidden',
+    backgroundColor: Colors.backgroundAlt,
+    borderWidth: 1,
+    borderColor: Colors.borderSubtle,
+    marginBottom: Spacing.one,
+  },
+  heroImage: {
+    width: '100%',
+    height: '100%',
   },
   badgeRow: {
     flexDirection: 'row',

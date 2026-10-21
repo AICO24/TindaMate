@@ -93,11 +93,15 @@ function normalizeProductRow(row: Record<string, unknown>): Product {
   const categoryRaw =
     typeof row.category === 'string' ? row.category.trim() : '';
 
+  const imageUrlRaw =
+    typeof row.image_url === 'string' ? row.image_url.trim() : '';
+
   return {
     id: String(row.id ?? ''),
     store_id: String(row.store_id ?? ''),
     name: typeof row.name === 'string' ? row.name.trim() : '',
     category: categoryRaw.length > 0 ? categoryRaw : null,
+    image_url: imageUrlRaw.length > 0 ? imageUrlRaw : null,
     selling_price: sellingPrice,
     cost_price: costPrice,
     stock_quantity: stockQuantity,
@@ -132,6 +136,16 @@ export function validateProductForm(values: ProductFormValues): {
   const trimmedCategory = values.category.trim();
   if (trimmedCategory.length > 80) {
     errors.category = 'Category must be 80 characters or less.';
+  }
+
+  // 2b. Image URL: Optional, trim whitespace, basic URL format validation if entered
+  const trimmedImageUrl = values.imageUrl.trim();
+  if (trimmedImageUrl.length > 0) {
+    if (!/^https?:\/\/.+/i.test(trimmedImageUrl)) {
+      errors.imageUrl = 'Image link must start with http:// or https://';
+    } else if (trimmedImageUrl.length > 500) {
+      errors.imageUrl = 'Image link is too long (max 500 characters).';
+    }
   }
 
   // 3. Selling Price: Required, valid non-negative number (up to 2 decimal places)
@@ -232,6 +246,7 @@ export function validateProductForm(values: ProductFormValues): {
     sanitized: {
       name: trimmedName,
       category: trimmedCategory.length > 0 ? trimmedCategory : null,
+      image_url: trimmedImageUrl.length > 0 ? trimmedImageUrl : null,
       selling_price: normalizedSellingPrice,
       cost_price: parsedCostPrice,
       stock_quantity: parsedStockQuantity,
@@ -301,7 +316,7 @@ export async function fetchStoreProducts(): Promise<Product[]> {
   const { data, error } = await supabase
     .from('products')
     .select(
-      'id, store_id, name, category, selling_price, cost_price, stock_quantity, low_stock_threshold, unit, status, created_at, updated_at'
+      'id, store_id, name, category, image_url, selling_price, cost_price, stock_quantity, low_stock_threshold, unit, status, created_at, updated_at'
     )
     .eq('store_id', storeId)
     .order('name', { ascending: true })
@@ -330,7 +345,7 @@ export async function fetchStoreProductById(productId: string): Promise<Product 
   const { data, error } = await supabase
     .from('products')
     .select(
-      'id, store_id, name, category, selling_price, cost_price, stock_quantity, low_stock_threshold, unit, status, created_at, updated_at'
+      'id, store_id, name, category, image_url, selling_price, cost_price, stock_quantity, low_stock_threshold, unit, status, created_at, updated_at'
     )
     .eq('id', productId)
     .eq('store_id', storeId)
@@ -372,6 +387,7 @@ export async function createStoreProduct(
       store_id: storeId,
       name: input.name,
       category: input.category,
+      image_url: input.image_url,
       selling_price: input.selling_price,
       cost_price: input.cost_price,
       stock_quantity: input.stock_quantity,
@@ -380,7 +396,7 @@ export async function createStoreProduct(
       status: computedStatus,
     })
     .select(
-      'id, store_id, name, category, selling_price, cost_price, stock_quantity, low_stock_threshold, unit, status, created_at, updated_at'
+      'id, store_id, name, category, image_url, selling_price, cost_price, stock_quantity, low_stock_threshold, unit, status, created_at, updated_at'
     )
     .single();
 
@@ -416,6 +432,7 @@ export async function updateStoreProduct(
     .update({
       name: input.name,
       category: input.category,
+      image_url: input.image_url,
       selling_price: input.selling_price,
       cost_price: input.cost_price,
       stock_quantity: input.stock_quantity,
@@ -427,7 +444,7 @@ export async function updateStoreProduct(
     .eq('id', productId)
     .eq('store_id', storeId)
     .select(
-      'id, store_id, name, category, selling_price, cost_price, stock_quantity, low_stock_threshold, unit, status, created_at, updated_at'
+      'id, store_id, name, category, image_url, selling_price, cost_price, stock_quantity, low_stock_threshold, unit, status, created_at, updated_at'
     )
     .single();
 

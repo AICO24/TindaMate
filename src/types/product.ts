@@ -17,6 +17,7 @@ export interface Product {
   store_id: string;
   name: string;
   category: string | null;
+  image_url: string | null;
   selling_price: number;
   cost_price: number | null;
   stock_quantity: number;
@@ -33,6 +34,7 @@ export interface Product {
 export interface ProductFormValues {
   name: string;
   category: string;
+  imageUrl: string;
   sellingPrice: string;
   costPrice: string;
   stockQuantity: string;
@@ -46,6 +48,7 @@ export interface ProductFormValues {
 export interface ProductFormErrors {
   name?: string;
   category?: string;
+  imageUrl?: string;
   sellingPrice?: string;
   costPrice?: string;
   stockQuantity?: string;
@@ -59,6 +62,7 @@ export interface ProductFormErrors {
 export interface ValidatedProductInput {
   name: string;
   category: string | null;
+  image_url: string | null;
   selling_price: number;
   cost_price: number | null;
   stock_quantity: number;

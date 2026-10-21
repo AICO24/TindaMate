@@ -166,6 +166,7 @@ export default function EditProductScreen() {
                 initialValues={{
                   name: product.name,
                   category: product.category ?? '',
+                  imageUrl: product.image_url ?? '',
                   sellingPrice: product.selling_price.toFixed(2),
                   costPrice:
                     product.cost_price !== null
