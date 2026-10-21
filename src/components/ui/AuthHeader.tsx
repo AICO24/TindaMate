@@ -3,8 +3,15 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 
 import { ChevronLeftIcon } from './AuthIcons';
-import { StorefrontLogo } from './StorefrontLogo';
-import { Spacing } from '@/constants/theme';
+import { TindaMateCartLogo } from './TindaMateCartLogo';
+import {
+  AuthMaxContentWidth,
+  BorderRadius,
+  Colors,
+  IconSizes,
+  Shadows,
+  Spacing,
+} from '@/constants/theme';
 
 interface AuthHeaderProps {
   /** Optional custom back handler */
@@ -16,8 +23,10 @@ interface AuthHeaderProps {
 /**
  * AuthHeader
  *
- * Renders the top navigation bar with the back arrow button and the centered
- * TindaMate storefront logo, wordmark, and tagline matching the reference image.
+ * Unified authentication navigation header used across Login and Register screens:
+ * - Warm soft backdrop curve connecting Welcome, Login, Register, and Dashboard
+ * - Accessible circular back button on the left
+ * - Centered official TindaMate Cart & Sprouting Leaves emblem + tagline
  */
 export function AuthHeader({ onBack, showBack = true }: AuthHeaderProps) {
   const handleBack = () => {
@@ -34,58 +43,78 @@ export function AuthHeader({ onBack, showBack = true }: AuthHeaderProps) {
   };
 
   return (
-    <View style={styles.container}>
-      {/* Back Button Area */}
-      <View style={styles.sideSlot}>
-        {showBack && (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Go back"
-            onPress={handleBack}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            style={({ pressed }) => [styles.backButton, pressed && styles.backButtonPressed]}>
-            <ChevronLeftIcon size={22} color="#1F2937" />
-          </Pressable>
-        )}
-      </View>
+    <View style={styles.outerWrapper}>
+      <View style={styles.container}>
+        {/* Back Button Area */}
+        <View style={styles.sideSlot}>
+          {showBack && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Go back"
+              onPress={handleBack}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              style={({ pressed }) => [
+                styles.backButton,
+                pressed && styles.backButtonPressed,
+              ]}>
+              <ChevronLeftIcon size={IconSizes.nav} color={Colors.primaryDark} />
+            </Pressable>
+          )}
+        </View>
 
-      {/* Centered Storefront Logo & Wordmark */}
-      <View style={styles.centerSlot}>
-        <StorefrontLogo scale={0.95} />
-      </View>
+        {/* Centered Official TindaMate Cart Logo & Tagline */}
+        <View style={styles.centerSlot}>
+          <TindaMateCartLogo scale={0.95} showTagline={true} />
+        </View>
 
-      {/* Right spacer to balance the back button */}
-      <View style={styles.sideSlot} />
+        {/* Right spacer to balance the back button */}
+        <View style={styles.sideSlot} />
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  outerWrapper: {
+    width: '100%',
+    backgroundColor: Colors.backgroundWarm,
+    borderBottomLeftRadius: BorderRadius.xl,
+    borderBottomRightRadius: BorderRadius.xl,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borderSubtle,
+  },
   container: {
     width: '100%',
+    maxWidth: AuthMaxContentWidth + Spacing.four * 2,
+    alignSelf: 'center',
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.two,
+    paddingTop: Spacing.twoHalf,
     paddingBottom: Spacing.three,
   },
   sideSlot: {
-    width: 44,
-    height: 44,
-    justifyContent: 'flex-start',
+    width: 42,
+    height: 42,
+    justifyContent: 'center',
     alignItems: 'flex-start',
-    paddingTop: 4,
   },
   backButton: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: BorderRadius.full,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
     justifyContent: 'center',
     alignItems: 'center',
+    ...Shadows.xs,
   },
   backButtonPressed: {
-    backgroundColor: '#F1F5F9',
+    backgroundColor: Colors.primaryLight,
+    borderColor: Colors.primaryBorder,
+    transform: [{ scale: 0.96 }],
   },
   centerSlot: {
     flex: 1,
@@ -93,4 +122,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 });
+
 

@@ -1,6 +1,8 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { Colors, Typography } from '@/constants/theme';
+
 interface StorefrontLogoProps {
   /** Size scale factor, default 1 */
   scale?: number;
@@ -96,14 +98,14 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 7,
     overflow: 'hidden',
     borderWidth: 1.6,
-    borderColor: '#064E3B',
+    borderColor: Colors.primaryDark,
   },
   stripe: {
     flex: 1,
     height: '100%',
   },
   greenStripe: {
-    backgroundColor: '#0D7A4D',
+    backgroundColor: Colors.primary,
   },
   yellowStripe: {
     backgroundColor: '#FDE047',
@@ -122,19 +124,19 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 3,
   },
   greenValance: {
-    backgroundColor: '#0D7A4D',
+    backgroundColor: Colors.primary,
   },
   yellowValance: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: Colors.accentWarm,
   },
   storeBody: {
     width: '88%',
     height: '46%',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: Colors.backgroundAlt,
     borderLeftWidth: 1.6,
     borderRightWidth: 1.6,
     borderBottomWidth: 1.6,
-    borderColor: '#064E3B',
+    borderColor: Colors.primaryDark,
     borderBottomLeftRadius: 5,
     borderBottomRightRadius: 5,
     alignItems: 'center',
@@ -147,7 +149,7 @@ const styles = StyleSheet.create({
     height: '75%',
     backgroundColor: '#E0F2FE',
     borderWidth: 1.2,
-    borderColor: '#0D7A4D',
+    borderColor: Colors.primary,
     borderRadius: 3,
     alignItems: 'center',
     justifyContent: 'center',
@@ -165,23 +167,23 @@ const styles = StyleSheet.create({
     bottom: 2,
     width: '100%',
     height: 1.2,
-    backgroundColor: '#0D7A4D',
+    backgroundColor: Colors.primary,
   },
   wordmark: {
     fontSize: 26,
-    fontWeight: '800',
+    fontWeight: Typography.weights.extraBold,
     letterSpacing: -0.5,
   },
   wordmarkGreen: {
-    color: '#0D7A4D',
+    color: Colors.primaryBrand,
   },
   wordmarkOrange: {
-    color: '#F59E0B',
+    color: Colors.accent,
   },
   tagline: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#64748B',
+    fontSize: Typography.sizes.sm,
+    fontWeight: Typography.weights.medium,
+    color: Colors.textMuted,
     marginTop: 2,
     textAlign: 'center',
   },

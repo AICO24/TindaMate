@@ -1,28 +1,40 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { Colors, Typography } from '@/constants/theme';
+
 interface TindaMateCartLogoProps {
   /** Size multiplier (default: 1) */
   scale?: number;
-  /** Whether to show the "Local Vendors. Better Choices." tagline */
+  /** Whether to show the tagline below the wordmark */
   showTagline?: boolean;
+  /** Custom tagline text (default: "Local Vendors. Better Choices.") */
+  taglineText?: string;
+  /** Horizontal alignment of the logo and tagline (default: 'center') */
+  align?: 'center' | 'left';
 }
 
 /**
  * TindaMateCartLogo
  *
- * Renders the authentic TindaMate brand emblem matching the reference mockup:
- * - Rounded chunky forest green shopping cart (#105B48)
+ * Official TindaMate brand emblem used across Welcome, Auth, and Dashboard screens:
+ * - Rounded chunky forest green shopping cart (Colors.primaryBrand)
  * - Two leafy sprouts extending upward from inside the cart
- * - Dual-color wordmark: "Tinda" in forest green (#105B48) + "Mate" in warm orange (#EA580C)
+ * - Dual-color wordmark: "Tinda" in deep forest green + "Mate" in warm market orange
  * - Tagline: "Local Vendors. Better Choices."
  */
 export function TindaMateCartLogo({
   scale = 1,
   showTagline = true,
+  taglineText = 'Local Vendors. Better Choices.',
+  align = 'center',
 }: TindaMateCartLogoProps) {
   return (
-    <View style={styles.container}>
+    <View
+      style={[
+        styles.container,
+        align === 'left' && styles.containerLeft,
+      ]}>
       {/* Brand Row: Cart Emblem + Wordmark */}
       <View style={styles.brandRow}>
         {/* Shopping Cart with Sprouting Leaves */}
@@ -54,7 +66,7 @@ export function TindaMateCartLogo({
         </View>
 
         {/* Wordmark: Tinda (Forest Green) + Mate (Warm Orange) */}
-        <Text style={[styles.wordmark, { fontSize: 31 * scale }]}>
+        <Text style={[styles.wordmark, { fontSize: Math.round(31 * scale) }]}>
           <Text style={styles.wordmarkGreen}>Tinda</Text>
           <Text style={styles.wordmarkOrange}>Mate</Text>
         </Text>
@@ -62,8 +74,13 @@ export function TindaMateCartLogo({
 
       {/* Official Tagline */}
       {showTagline && (
-        <Text style={[styles.tagline, { fontSize: 12.5 * scale }]}>
-          Local Vendors. Better Choices.
+        <Text
+          style={[
+            styles.tagline,
+            { fontSize: Math.max(11, Math.round(12.5 * scale)) },
+            align === 'left' && styles.taglineLeft,
+          ]}>
+          {taglineText}
         </Text>
       )}
     </View>
@@ -74,6 +91,9 @@ const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  containerLeft: {
+    alignItems: 'flex-start',
   },
   brandRow: {
     flexDirection: 'row',
@@ -102,7 +122,7 @@ const styles = StyleSheet.create({
     top: 2,
     width: 12,
     height: 12,
-    backgroundColor: '#105B48',
+    backgroundColor: Colors.primaryBrand,
     borderTopLeftRadius: 11,
     borderBottomRightRadius: 11,
     transform: [{ rotate: '-25deg' }],
@@ -124,7 +144,7 @@ const styles = StyleSheet.create({
     borderLeftWidth: 3.5,
     borderBottomWidth: 3.5,
     borderRightWidth: 2.8,
-    borderColor: '#105B48',
+    borderColor: Colors.primaryBrand,
     borderBottomLeftRadius: 5,
     borderBottomRightRadius: 4,
     position: 'relative',
@@ -136,7 +156,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 2.5,
-    backgroundColor: '#105B48',
+    backgroundColor: Colors.primaryBrand,
   },
   cartGridBar: {
     position: 'absolute',
@@ -144,7 +164,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 2,
-    backgroundColor: '#105B48',
+    backgroundColor: Colors.primaryBrand,
   },
   cartHandle: {
     position: 'absolute',
@@ -152,7 +172,7 @@ const styles = StyleSheet.create({
     top: 9,
     width: 7,
     height: 3.5,
-    backgroundColor: '#105B48',
+    backgroundColor: Colors.primaryBrand,
     borderRadius: 2,
   },
   wheelsRow: {
@@ -165,23 +185,27 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#105B48',
+    backgroundColor: Colors.primaryBrand,
   },
   wordmark: {
-    fontWeight: '800',
+    fontWeight: Typography.weights.extraBold,
     letterSpacing: -0.5,
   },
   wordmarkGreen: {
-    color: '#105B48',
+    color: Colors.primaryBrand,
   },
   wordmarkOrange: {
-    color: '#EA580C',
+    color: Colors.accent,
   },
   tagline: {
-    color: '#475569',
-    fontWeight: '600',
-    letterSpacing: 0.35,
+    color: Colors.textSecondary,
+    fontWeight: Typography.weights.semiBold,
+    letterSpacing: 0.3,
     marginTop: 3,
     textAlign: 'center',
+  },
+  taglineLeft: {
+    textAlign: 'left',
+    marginLeft: 2,
   },
 });

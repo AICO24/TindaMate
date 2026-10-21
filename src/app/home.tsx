@@ -17,24 +17,35 @@ import { User } from '@supabase/supabase-js';
 import { DashboardBottomNav, NavTab } from '@/components/dashboard/DashboardBottomNav';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { DashboardHeroBanner } from '@/components/dashboard/DashboardHeroBanner';
+import { CalendarFilterIcon } from '@/components/dashboard/DashboardNavIcons';
 import { QuickActionItem, QuickActionTile } from '@/components/dashboard/QuickActionTile';
 import { RecentActivitySection } from '@/components/dashboard/RecentActivitySection';
 import { OverviewItem, StoreOverviewCard } from '@/components/dashboard/StoreOverviewCard';
-import { BorderRadius, Spacing } from '@/constants/theme';
+import { SectionHeader } from '@/components/ui/SectionHeader';
+import { TindaMateButton } from '@/components/ui/TindaMateButton';
+import {
+  BorderRadius,
+  Colors,
+  DashboardMaxContentWidth,
+  IconSizes,
+  Shadows,
+  Spacing,
+  Typography,
+} from '@/constants/theme';
 import { supabase } from '@/lib/supabase';
 
 /**
  * TindaMate Main Dashboard Screen
  *
- * Visually Enhanced, Mobile-First Dashboard matching the official reference mockup:
- * 1. Full-bleed Hero Zone (#F0F8F3 with rounded bottom corners):
- *    - Prominent TindaMate brand emblem & white circular profile avatar
+ * Visually Unified, Mobile-First Dashboard using the TindaMate Design System:
+ * 1. Full-bleed Hero Zone (Colors.backgroundWarm with rounded bottom corners):
+ *    - Prominent TindaMate brand emblem & circular vector profile avatar
  *    - Strong greeting typography ("Good morning,", large bold name, store pill)
- *    - Large, vibrant 3D market stall illustration
+ *    - Vibrant pure React Native market stall illustration
  * 2. Store Overview (2x2 grid of horizontal summary cards: Today's Sales, Products, Low Stock, Utang)
- * 3. Quick Actions (Large 4-column row: Add Product, Record Sale, Add Expense, Record Utang)
+ * 3. Quick Actions (4-column row: Add Product, Record Sale, Add Expense, Record Utang)
  * 4. Recent Activity (Polished empty state card with transaction guidance)
- * 5. Persistent Bottom Navigation bar (Vector line icons: Home with green underline, Products, Sales, Utang, More)
+ * 5. Persistent Bottom Navigation bar (Vector line icons: Home, Products, Sales, Utang, More)
  */
 export default function AuthenticatedDashboardScreen() {
   const [user, setUser] = useState<User | null>(null);
@@ -155,7 +166,7 @@ export default function AuthenticatedDashboardScreen() {
   if (isLoading) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#064E3B" />
+        <ActivityIndicator size="large" color={Colors.primaryDark} />
         <Text style={styles.loadingText}>Loading TindaMate Dashboard...</Text>
       </SafeAreaView>
     );
@@ -166,7 +177,7 @@ export default function AuthenticatedDashboardScreen() {
     user?.email?.split('@')[0] ||
     'Store Partner';
 
-  // Four Store Overview Cards (Matching reference horizontal layout)
+  // Four Store Overview Cards
   const overviewItems: OverviewItem[] = [
     {
       id: 'sales',
@@ -206,7 +217,7 @@ export default function AuthenticatedDashboardScreen() {
     },
   ];
 
-  // Four Quick Action Tiles (4-column row matching mockup)
+  // Four Quick Action Tiles (4-column row)
   const quickActions: QuickActionItem[] = [
     {
       id: 'add_product',
@@ -250,7 +261,7 @@ export default function AuthenticatedDashboardScreen() {
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}>
-          {/* 1. Full-Bleed Hero Zone with Soft Mint Backdrop (#F0F8F3) */}
+          {/* 1. Full-Bleed Hero Zone with Warm Backdrop */}
           <View style={styles.fullBleedHeroZone}>
             <View style={styles.heroInnerContainer}>
               {/* Header: Prominent Logo + Profile Circle */}
@@ -259,7 +270,7 @@ export default function AuthenticatedDashboardScreen() {
                 onProfilePress={() => setIsProfileModalVisible(true)}
               />
 
-              {/* Greeting + 3D Market Stall Illustration */}
+              {/* Greeting + Marketplace Illustration */}
               <DashboardHeroBanner
                 displayName={displayName}
                 storeName="TindaMate Store"
@@ -268,19 +279,27 @@ export default function AuthenticatedDashboardScreen() {
             </View>
           </View>
 
-          {/* 2. Main White Body Content */}
+          {/* 2. Main Body Content */}
           <View style={styles.bodyContentContainer}>
             {/* 3. Store Overview Section */}
             <View style={styles.section}>
-              <View style={styles.sectionHeaderRow}>
-                <Text style={styles.sectionTitle}>Store Overview</Text>
-                {/* Date Filter Pill matching reference */}
-                <View style={styles.filterPill}>
-                  <Text style={styles.calendarIcon}>📅</Text>
-                  <Text style={styles.filterPillText}>Today</Text>
-                  <Text style={styles.filterChevron}>⌵</Text>
-                </View>
-              </View>
+              <SectionHeader
+                title="Store Overview"
+                rightElement={
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Date range filter: Today"
+                    onPress={() => handleModuleClick('Date Filter', 'Batch 5')}
+                    style={({ pressed }) => [
+                      styles.filterPill,
+                      pressed && styles.filterPillPressed,
+                    ]}>
+                    <CalendarFilterIcon size={IconSizes.xs} color={Colors.primaryDark} />
+                    <Text style={styles.filterPillText}>Today</Text>
+                    <Text style={styles.filterChevron}>⌵</Text>
+                  </Pressable>
+                }
+              />
 
               {/* 2x2 Overview Cards Grid */}
               <View style={styles.gridRow}>
@@ -293,12 +312,12 @@ export default function AuthenticatedDashboardScreen() {
               </View>
             </View>
 
-            {/* 4. Quick Actions Section (4-column row matching mockup) */}
+            {/* 4. Quick Actions Section */}
             <View style={styles.section}>
-              <View style={styles.sectionHeaderRow}>
-                <Text style={styles.sectionTitle}>Quick Actions</Text>
-                <Text style={styles.quickActionsSubtitle}>Manage your store, faster.</Text>
-              </View>
+              <SectionHeader
+                title="Quick Actions"
+                subtitle="Manage your store, faster."
+              />
 
               {/* 4-Column Action Tiles Row */}
               <View style={styles.quickActionsRow}>
@@ -335,8 +354,12 @@ export default function AuthenticatedDashboardScreen() {
           <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
             {/* Modal Header */}
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Store Account</Text>
+              <Text style={styles.modalTitle} accessibilityRole="header">
+                Store Account
+              </Text>
               <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Close Store Account modal"
                 onPress={() => setIsProfileModalVisible(false)}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                 <Text style={styles.modalCloseText}>✕</Text>
@@ -360,23 +383,16 @@ export default function AuthenticatedDashboardScreen() {
               </View>
             </View>
 
-            {/* Logout Action */}
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Log out of TindaMate"
-              onPress={handleLogout}
+            {/* Logout Action using TindaMateButton danger variant */}
+            <TindaMateButton
+              title={isLoggingOut ? 'Signing Out...' : 'Log Out of Account'}
+              variant="danger"
+              loading={isLoggingOut}
               disabled={isLoggingOut}
-              style={({ pressed }) => [
-                styles.modalLogoutButton,
-                pressed && styles.modalLogoutButtonPressed,
-                isLoggingOut && styles.modalLogoutButtonDisabled,
-              ]}>
-              {isLoggingOut ? (
-                <ActivityIndicator size="small" color="#DC2626" />
-              ) : (
-                <Text style={styles.modalLogoutText}>Log Out of Account</Text>
-              )}
-            </Pressable>
+              onPress={handleLogout}
+              accessibilityLabel="Log out of TindaMate"
+              style={styles.modalLogoutButton}
+            />
           </Pressable>
         </Pressable>
       </Modal>
@@ -387,101 +403,85 @@ export default function AuthenticatedDashboardScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FCFAF2', // Blends seamlessly with warm hero backdrop
+    backgroundColor: Colors.backgroundWarm,
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.background,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
+    gap: Spacing.twoHalf,
   },
   loadingText: {
-    fontSize: 14,
-    color: '#64748B',
+    fontSize: Typography.sizes.bodySm,
+    color: Colors.textMuted,
+    fontWeight: Typography.weights.medium,
   },
   mainContainer: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.background,
     justifyContent: 'space-between',
   },
   scrollView: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.background,
   },
   scrollContent: {
     paddingBottom: Spacing.four,
   },
-  // Full-bleed integrated top hero zone matching official artwork
+  // Full-bleed integrated top hero zone
   fullBleedHeroZone: {
-    backgroundColor: '#FCFAF2',
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
+    backgroundColor: Colors.backgroundWarm,
+    borderBottomLeftRadius: BorderRadius.xxl,
+    borderBottomRightRadius: BorderRadius.xxl,
     paddingTop: Spacing.two,
-    paddingBottom: Spacing.four,
+    paddingBottom: Spacing.three,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borderSubtle,
   },
   heroInnerContainer: {
     width: '100%',
-    maxWidth: 520,
+    maxWidth: DashboardMaxContentWidth,
     alignSelf: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: Spacing.three,
   },
   // Body Content Container below Hero
   bodyContentContainer: {
     width: '100%',
-    maxWidth: 520,
+    maxWidth: DashboardMaxContentWidth,
     alignSelf: 'center',
-    paddingHorizontal: 16,
-    paddingTop: Spacing.three,
-    gap: 20, // Generous visual breathing room between sections
+    paddingHorizontal: Spacing.three,
+    paddingTop: Spacing.threeHalf,
+    gap: Spacing.threeHalf,
   },
   section: {
-    gap: 12,
-  },
-  sectionHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  sectionTitle: {
-    fontSize: 19,
-    fontWeight: '800',
-    color: '#0F172A',
-    letterSpacing: -0.3,
+    gap: Spacing.twoHalf,
   },
   filterPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.surface,
     paddingHorizontal: 11,
     paddingVertical: 5,
     borderRadius: BorderRadius.full,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: Colors.border,
     gap: 5,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
-    elevation: 1,
+    ...Shadows.xs,
   },
-  calendarIcon: {
-    fontSize: 12,
+  filterPillPressed: {
+    backgroundColor: Colors.primaryLight,
+    borderColor: Colors.primaryBorder,
   },
   filterPillText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#334155',
+    fontSize: Typography.sizes.xs,
+    fontWeight: Typography.weights.bold,
+    color: Colors.primaryDark,
   },
   filterChevron: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#64748B',
-  },
-  quickActionsSubtitle: {
-    fontSize: 12,
-    color: '#64748B',
-    fontWeight: '500',
+    fontSize: Typography.sizes.xs,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.textMuted,
   },
   gridRow: {
     flexDirection: 'row',
@@ -489,17 +489,17 @@ const styles = StyleSheet.create({
   },
   quickActionsRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: Spacing.two,
     justifyContent: 'space-between',
   },
   // Profile Modal Styling
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    backgroundColor: 'rgba(15, 23, 42, 0.45)',
     justifyContent: 'flex-end',
   },
   modalCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.surface,
     borderTopLeftRadius: BorderRadius.xl,
     borderTopRightRadius: BorderRadius.xl,
     padding: Spacing.four,
@@ -510,60 +510,60 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
-    paddingBottom: Spacing.two,
+    borderBottomColor: Colors.borderSubtle,
+    paddingBottom: Spacing.twoHalf,
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#0F172A',
+    fontSize: Typography.sizes.lg,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.textBrand,
   },
   modalCloseText: {
-    fontSize: 18,
-    color: '#94A3B8',
-    fontWeight: '700',
+    fontSize: Typography.sizes.lg,
+    color: Colors.textMuted,
+    fontWeight: Typography.weights.bold,
   },
   userProfileInfo: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: Colors.backgroundAlt,
     padding: Spacing.three,
     borderRadius: BorderRadius.lg,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: Colors.border,
   },
   modalAvatar: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#105B48',
+    backgroundColor: Colors.primaryBrand,
     alignItems: 'center',
     justifyContent: 'center',
   },
   modalAvatarText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '800',
+    color: Colors.textInverse,
+    fontSize: Typography.sizes.lg,
+    fontWeight: Typography.weights.extraBold,
   },
   userInfoText: {
     flex: 1,
     gap: 2,
   },
   userFullName: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#0F172A',
+    fontSize: Typography.sizes.base,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.textPrimary,
   },
   userEmailText: {
-    fontSize: 12,
-    color: '#64748B',
+    fontSize: Typography.sizes.xs,
+    color: Colors.textMuted,
   },
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#DCFCE7',
-    paddingHorizontal: 8,
+    backgroundColor: Colors.successLight,
+    paddingHorizontal: Spacing.two,
     paddingVertical: 2,
     borderRadius: BorderRadius.full,
     gap: 5,
@@ -574,32 +574,15 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#16A34A',
+    backgroundColor: Colors.success,
   },
   statusText: {
     fontSize: 10,
-    fontWeight: '700',
-    color: '#166534',
+    fontWeight: Typography.weights.bold,
+    color: Colors.successText,
   },
   modalLogoutButton: {
-    backgroundColor: '#FEE2E2',
-    borderWidth: 1,
-    borderColor: '#FCA5A5',
-    paddingVertical: 14,
-    borderRadius: BorderRadius.xl,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: Spacing.two,
-  },
-  modalLogoutButtonPressed: {
-    backgroundColor: '#FECACA',
-  },
-  modalLogoutButtonDisabled: {
-    opacity: 0.6,
-  },
-  modalLogoutText: {
-    color: '#DC2626',
-    fontSize: 15,
-    fontWeight: '700',
+    marginTop: Spacing.one,
   },
 });
+

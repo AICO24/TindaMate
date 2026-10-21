@@ -8,7 +8,14 @@ import {
 } from 'react-native';
 
 import { GoogleGIcon } from './AuthIcons';
-import { BorderRadius, Colors, Spacing, Typography } from '@/constants/theme';
+import {
+  BorderRadius,
+  Colors,
+  IconSizes,
+  Shadows,
+  Spacing,
+  Typography,
+} from '@/constants/theme';
 
 interface GoogleSignInButtonProps {
   onPress?: () => void;
@@ -17,7 +24,8 @@ interface GoogleSignInButtonProps {
 /**
  * GoogleSignInButton
  *
- * Renders the "Continue with Google" button matching the approved reference design.
+ * Renders the "Continue with Google" pill button matching TindaMateButton's
+ * geometry and elevation tokens.
  * UI only - notifies the user that third-party authentication will be available in an upcoming release.
  */
 export function GoogleSignInButton({ onPress }: GoogleSignInButtonProps) {
@@ -27,7 +35,8 @@ export function GoogleSignInButton({ onPress }: GoogleSignInButtonProps) {
       return;
     }
 
-    const message = 'Google authentication is a UI-only preview in Batch 3A and will be connected in a future update.';
+    const message =
+      'Google authentication is a UI-only preview in Batch 3A and will be connected in a future update.';
     if (Platform.OS === 'web') {
       window.alert(message);
     } else {
@@ -44,7 +53,7 @@ export function GoogleSignInButton({ onPress }: GoogleSignInButtonProps) {
         styles.button,
         pressed && styles.buttonPressed,
       ]}>
-      <GoogleGIcon size={22} />
+      <GoogleGIcon size={IconSizes.md} />
       <Text style={styles.buttonText}>Continue with Google</Text>
     </Pressable>
   );
@@ -53,24 +62,23 @@ export function GoogleSignInButton({ onPress }: GoogleSignInButtonProps) {
 const styles = StyleSheet.create({
   button: {
     width: '100%',
+    minHeight: 52,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: Spacing.two,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1.2,
+    gap: Spacing.twoHalf,
+    backgroundColor: Colors.surface,
+    borderWidth: 1.4,
     borderColor: Colors.border,
     paddingVertical: 13,
-    borderRadius: BorderRadius.xl,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    paddingHorizontal: Spacing.four,
+    borderRadius: BorderRadius.full,
+    ...Shadows.xs,
   },
   buttonPressed: {
-    backgroundColor: '#F8FAFC',
-    borderColor: '#CBD5E1',
+    backgroundColor: Colors.backgroundAlt,
+    borderColor: Colors.disabled,
+    transform: [{ scale: 0.985 }],
   },
   buttonText: {
     color: Colors.textPrimary,
@@ -78,4 +86,5 @@ const styles = StyleSheet.create({
     fontWeight: Typography.weights.semiBold,
   },
 });
+
 

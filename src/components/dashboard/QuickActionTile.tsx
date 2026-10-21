@@ -1,12 +1,21 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { DashboardBadgeVectorIcon } from './DashboardNavIcons';
+import {
+  BorderRadius,
+  Colors,
+  PastelThemeKey,
+  Shadows,
+  Typography,
+} from '@/constants/theme';
+
 export interface QuickActionItem {
   id: string;
   labelLine1: string;
   labelLine2: string;
   icon: string;
-  theme: 'green' | 'orange' | 'blue' | 'purple';
+  theme: PastelThemeKey;
   onPress: () => void;
 }
 
@@ -14,48 +23,24 @@ interface QuickActionTileProps {
   item: QuickActionItem;
 }
 
-const ACTION_THEMES = {
-  green: {
-    bg: '#EAF7F0',
-    border: '#D1EFE0',
-    iconBg: '#10B981',
-    text: '#064E3B',
-    arrowColor: '#059669',
-  },
-  orange: {
-    bg: '#FFF4E8',
-    border: '#FFE4CB',
-    iconBg: '#F97316',
-    text: '#7C2D12',
-    arrowColor: '#EA580C',
-  },
-  blue: {
-    bg: '#EAF4FE',
-    border: '#D0E6FC',
-    iconBg: '#3B82F6',
-    text: '#1E3A8A',
-    arrowColor: '#2563EB',
-  },
-  purple: {
-    bg: '#F5EDFE',
-    border: '#E8D5FD',
-    iconBg: '#8B5CF6',
-    text: '#581C87',
-    arrowColor: '#7C3AED',
-  },
-};
+const ACTION_VECTOR_IDS = new Set([
+  'add_product',
+  'record_sale',
+  'add_expense',
+  'record_utang',
+]);
 
 /**
  * QuickActionTile
  *
- * Visually strong, large action tile matching the reference mockup:
- * - Large 46px circular icon container at top
- * - Bold two-line centered title
- * - Prominent bottom arrow (→) indicator
- * - Soft pastel background with subtle border and elevation
+ * Visually strong, large action tile using the TindaMate Design System:
+ * - Centralized Colors.pastel tokens (green, orange, blue, purple)
+ * - Large 46px circular icon container with crisp white vector icon
+ * - Bold two-line centered title and bottom arrow (→) indicator
  */
 export function QuickActionTile({ item }: QuickActionTileProps) {
-  const currentTheme = ACTION_THEMES[item.theme];
+  const currentTheme = Colors.pastel[item.theme];
+  const hasVectorIcon = ACTION_VECTOR_IDS.has(item.id);
 
   return (
     <Pressable
@@ -72,7 +57,20 @@ export function QuickActionTile({ item }: QuickActionTileProps) {
       ]}>
       {/* Top Large Icon Circle */}
       <View style={[styles.iconCircle, { backgroundColor: currentTheme.iconBg }]}>
-        <Text style={styles.iconText}>{item.icon}</Text>
+        {hasVectorIcon ? (
+          <DashboardBadgeVectorIcon
+            type={
+              item.id as
+                | 'add_product'
+                | 'record_sale'
+                | 'add_expense'
+                | 'record_utang'
+            }
+            color={Colors.textInverse}
+          />
+        ) : (
+          <Text style={styles.iconText}>{item.icon}</Text>
+        )}
       </View>
 
       {/* Two-Line Centered Label */}
@@ -86,7 +84,7 @@ export function QuickActionTile({ item }: QuickActionTileProps) {
       </View>
 
       {/* Bottom Arrow Indicator */}
-      <Text style={[styles.arrow, { color: currentTheme.arrowColor }]}>→</Text>
+      <Text style={[styles.arrow, { color: currentTheme.accent }]}>→</Text>
     </Pressable>
   );
 }
@@ -96,20 +94,16 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderRadius: 18,
+    borderRadius: BorderRadius.lg,
     paddingVertical: 14,
     paddingHorizontal: 4,
     borderWidth: 1,
     minHeight: 125,
     gap: 6,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 3,
-    elevation: 2,
+    ...Shadows.xs,
   },
   tilePressed: {
-    opacity: 0.85,
+    opacity: 0.88,
     transform: [{ scale: 0.96 }],
   },
   iconCircle: {
@@ -118,28 +112,25 @@ const styles = StyleSheet.create({
     borderRadius: 23,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 2,
-    elevation: 1,
+    ...Shadows.xs,
   },
   iconText: {
     fontSize: 21,
-    color: '#FFFFFF',
+    color: Colors.textInverse,
   },
   labelContainer: {
     alignItems: 'center',
     justifyContent: 'center',
   },
   labelText: {
-    fontSize: 12.5,
-    fontWeight: '800',
+    fontSize: Typography.sizes.xs,
+    fontWeight: Typography.weights.extraBold,
     textAlign: 'center',
     lineHeight: 16,
   },
   arrow: {
-    fontSize: 15,
-    fontWeight: '800',
+    fontSize: Typography.sizes.body,
+    fontWeight: Typography.weights.extraBold,
   },
 });
+

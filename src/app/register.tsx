@@ -1,9 +1,10 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import React, { useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,15 +12,16 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AuthErrorBanner } from '@/components/ui/AuthErrorBanner';
 import { AuthHeader } from '@/components/ui/AuthHeader';
-import { AlertCircleIcon, LockIcon, MailIcon, UserIcon } from '@/components/ui/AuthIcons';
+import { LockIcon, MailIcon, UserIcon } from '@/components/ui/AuthIcons';
 import { PasswordStrengthMeter } from '@/components/ui/PasswordStrengthMeter';
 import { TindaMateButton } from '@/components/ui/TindaMateButton';
 import { TindaMateInput } from '@/components/ui/TindaMateInput';
 import {
-  BorderRadius,
+  AuthMaxContentWidth,
   Colors,
-  MaxContentWidth,
+  IconSizes,
   Spacing,
   Typography,
 } from '@/constants/theme';
@@ -103,7 +105,7 @@ export default function RegisterScreen() {
       return 'Please enter a valid email address.';
     }
     if (lower.includes('network') || lower.includes('fetch') || lower.includes('connection')) {
-      return `Unable to connect to Supabase: ${rawMessage}. Please check your internet connection.`;
+      return 'Unable to connect to TindaMate servers. Please check your internet connection and try again.';
     }
     return rawMessage;
   };
@@ -174,13 +176,14 @@ export default function RegisterScreen() {
         }
       }
     } catch (err: unknown) {
-      const errMsg = err instanceof Error ? err.message : String(err);
-      console.warn('[Supabase SignUp Exception]:', errMsg);
-      setAuthError(errMsg);
+      const rawMsg = err instanceof Error ? err.message : String(err);
+      console.warn('[Supabase SignUp Exception]:', rawMsg);
+      const friendlyMsg = mapAuthError(rawMsg);
+      setAuthError(friendlyMsg);
       if (Platform.OS === 'web') {
-        window.alert(`Registration Error: ${errMsg}`);
+        window.alert(`Registration Error: ${friendlyMsg}`);
       } else {
-        Alert.alert('Registration Error', errMsg, [{ text: 'OK' }]);
+        Alert.alert('Registration Error', friendlyMsg, [{ text: 'OK' }]);
       }
     } finally {
       setIsLoading(false);
@@ -192,7 +195,7 @@ export default function RegisterScreen() {
       <KeyboardAvoidingView
         style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        {/* Top Header with Back Button and Brand Logo */}
+        {/* Unified Top Header with Back Button and Official TindaMate Emblem */}
         <AuthHeader />
 
         <ScrollView
@@ -203,19 +206,16 @@ export default function RegisterScreen() {
           <View style={styles.contentContainer}>
             {/* Screen Heading & Supporting Text */}
             <View style={styles.headingBlock}>
-              <Text style={styles.heading}>Create Your Account</Text>
+              <Text style={styles.heading} accessibilityRole="header">
+                Create Your Account
+              </Text>
               <Text style={styles.supportingText}>
-                Join TindaMate and take control of your store.
+                Join TindaMate and take control of your sari-sari store.
               </Text>
             </View>
 
-            {/* General Auth Error Banner */}
-            {authError && (
-              <View style={styles.authErrorBanner}>
-                <AlertCircleIcon size={16} color={Colors.error} />
-                <Text style={styles.authErrorText}>{authError}</Text>
-              </View>
-            )}
+            {/* Reusable Auth Error Banner */}
+            <AuthErrorBanner message={authError} />
 
             {/* Field 1: Full Name */}
             <TindaMateInput
@@ -229,7 +229,7 @@ export default function RegisterScreen() {
                   setErrors((prev) => ({ ...prev, fullName: undefined }));
                 }
               }}
-              leftIcon={<UserIcon size={19} />}
+              leftIcon={<UserIcon size={IconSizes.md} />}
               autoCapitalize="words"
               autoCorrect={false}
               returnKeyType="next"
@@ -249,7 +249,7 @@ export default function RegisterScreen() {
                   setErrors((prev) => ({ ...prev, email: undefined }));
                 }
               }}
-              leftIcon={<MailIcon size={19} />}
+              leftIcon={<MailIcon size={IconSizes.md} />}
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
@@ -270,14 +270,14 @@ export default function RegisterScreen() {
                   setErrors((prev) => ({ ...prev, password: undefined }));
                 }
               }}
-              leftIcon={<LockIcon size={19} />}
+              leftIcon={<LockIcon size={IconSizes.md} variant="green" />}
               isPassword
               returnKeyType="next"
               errorMessage={errors.password}
               accessibilityLabel="Password"
             />
 
-            {/* Password Strength Indicator (shown in reference image screen 5) */}
+            {/* Password Strength Indicator */}
             <PasswordStrengthMeter password={password} showFeedbackText={!errors.password} />
 
             {/* Field 4: Confirm Password */}
@@ -292,7 +292,7 @@ export default function RegisterScreen() {
                   setErrors((prev) => ({ ...prev, confirmPassword: undefined }));
                 }
               }}
-              leftIcon={<LockIcon size={19} />}
+              leftIcon={<LockIcon size={IconSizes.md} variant="green" />}
               isPassword
               returnKeyType="done"
               onSubmitEditing={handleRegister}
@@ -303,7 +303,8 @@ export default function RegisterScreen() {
             {/* Primary CTA: Register Button */}
             <View style={styles.ctaContainer}>
               <TindaMateButton
-                title={isLoading ? 'Creating Account...' : 'Register'}
+                title={isLoading ? 'Creating Account...' : 'Create Account'}
+                loading={isLoading}
                 onPress={handleRegister}
                 disabled={isLoading}
                 accessibilityLabel="Create your TindaMate account"
@@ -312,14 +313,20 @@ export default function RegisterScreen() {
 
             {/* Bottom Navigation: Already have an account? Login */}
             <View style={styles.bottomNavContainer}>
-              <Text style={styles.bottomNavText}>
-                Already have an account?{' '}
-                <Text
-                  style={styles.bottomNavAction}
-                  onPress={() => router.push('/login')}>
-                  Login
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Already have an account? Go to Login"
+                onPress={() => router.push('/login')}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                style={({ pressed }) => [
+                  styles.bottomNavPressable,
+                  pressed && styles.linkPressed,
+                ]}>
+                <Text style={styles.bottomNavText}>
+                  Already have an account?{' '}
+                  <Text style={styles.bottomNavAction}>Login</Text>
                 </Text>
-              </Text>
+              </Pressable>
             </View>
           </View>
         </ScrollView>
@@ -331,13 +338,15 @@ export default function RegisterScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: Colors.backgroundWarm,
   },
   keyboardView: {
     flex: 1,
+    backgroundColor: Colors.background,
   },
   scrollView: {
     flex: 1,
+    backgroundColor: Colors.background,
   },
   scrollContent: {
     flexGrow: 1,
@@ -346,43 +355,24 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     width: '100%',
-    maxWidth: MaxContentWidth,
+    maxWidth: AuthMaxContentWidth,
     alignSelf: 'center',
-    paddingTop: Spacing.two,
+    paddingTop: Spacing.four,
   },
   headingBlock: {
     marginBottom: Spacing.four,
   },
   heading: {
-    fontSize: 24,
-    fontWeight: Typography.weights.bold,
-    color: Colors.textPrimary,
+    fontSize: Typography.sizes.xl,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.textBrand,
     letterSpacing: -0.3,
-    marginBottom: 4,
+    marginBottom: Spacing.one,
   },
   supportingText: {
     fontSize: Typography.sizes.bodySm,
     color: Colors.textSecondary,
     lineHeight: Typography.lineHeights.normal,
-  },
-  authErrorBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-    backgroundColor: Colors.errorLight,
-    borderWidth: 1,
-    borderColor: Colors.errorBorder,
-    borderRadius: BorderRadius.md,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    marginBottom: Spacing.three,
-  },
-  authErrorText: {
-    flex: 1,
-    fontSize: Typography.sizes.xs,
-    color: Colors.error,
-    fontWeight: Typography.weights.medium,
-    lineHeight: 18,
   },
   ctaContainer: {
     width: '100%',
@@ -394,13 +384,21 @@ const styles = StyleSheet.create({
     marginTop: Spacing.four,
     paddingVertical: Spacing.two,
   },
+  bottomNavPressable: {
+    paddingVertical: Spacing.one,
+    paddingHorizontal: Spacing.two,
+  },
+  linkPressed: {
+    opacity: 0.65,
+  },
   bottomNavText: {
     fontSize: Typography.sizes.bodySm,
     color: Colors.textSecondary,
   },
   bottomNavAction: {
     color: Colors.primary,
-    fontWeight: Typography.weights.bold,
+    fontWeight: Typography.weights.extraBold,
   },
 });
+
 

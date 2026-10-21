@@ -1,6 +1,8 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { Colors, Typography } from '@/constants/theme';
+
 interface DashboardMarketIllustrationProps {
   width?: number;
   height?: number;
@@ -11,18 +13,14 @@ interface DashboardMarketIllustrationProps {
  *
  * Dedicated pure React Native marketplace illustration for the Dashboard Hero:
  * - Friendly local market stall / sari-sari storefront
+ * - Hand-tilted "Small Store. Big Dreams." callout badge on the left
  * - Classic green-and-white striped awning with scalloped edge
- * - Tiered wooden shelves and crates filled with colorful fresh produce (apples, oranges, greens, lemons)
+ * - Tiered wooden shelves and crates filled with colorful fresh produce
  * - Side crate, lush green foliage plant leaves, and mini chalkboard
- * - Warm soft backdrop halo and friendly sparkle accents
- *
- * Built with 100% pure React Native primitives:
- * - Zero cropped screenshot artifacts
- * - Zero duplicated TindaMate branding or text fragments
- * - Sharp vector rendering across all mobile screen densities
+ * - Built with 100% pure React Native primitives (zero cropped screenshot artifacts, zero OS emojis)
  */
 export function DashboardMarketIllustration({
-  width = 150,
+  width = 154,
   height = 140,
 }: DashboardMarketIllustrationProps) {
   return (
@@ -30,12 +28,17 @@ export function DashboardMarketIllustration({
       {/* Soft warm circular backdrop glow */}
       <View style={styles.backdropHalo} />
 
-      {/* Floating Sparkle / Star Accents */}
-      <View style={styles.sparkleTopLeft}>
-        <Text style={styles.sparkleText}>✨</Text>
-      </View>
-      <View style={styles.sparkleTopRight}>
-        <Text style={styles.sparkleTextSmall}>🌱</Text>
+      {/* Hand-tilted "Small Store. Big Dreams." Callout matching reference */}
+      <View style={styles.dreamsCallout}>
+        <Text style={styles.dreamsText}>Small</Text>
+        <Text style={styles.dreamsText}>Store.</Text>
+        <Text style={styles.dreamsText}>Big</Text>
+        <Text style={styles.dreamsText}>Dreams.</Text>
+        {/* Warm Amber Sparkle Rays */}
+        <View style={styles.sparkleRaysTop}>
+          <View style={styles.sparkleRayShort} />
+          <View style={styles.sparkleRayLong} />
+        </View>
       </View>
 
       {/* The Market Stall Structure */}
@@ -73,14 +76,14 @@ export function DashboardMarketIllustration({
             <View style={styles.woodenShelfTop}>
               {/* Crate 1: Fresh Oranges & Lemons */}
               <View style={styles.produceCrate}>
-                <View style={[styles.produceDot, { backgroundColor: '#F97316' }]} />
+                <View style={[styles.produceDot, { backgroundColor: Colors.pastel.orange.iconBg }]} />
                 <View style={[styles.produceDot, { backgroundColor: '#FBBF24' }]} />
-                <View style={[styles.produceDot, { backgroundColor: '#F97316' }]} />
+                <View style={[styles.produceDot, { backgroundColor: Colors.pastel.orange.iconBg }]} />
               </View>
               {/* Crate 2: Crisp Green Apples & Calamansi */}
               <View style={styles.produceCrate}>
-                <View style={[styles.produceDot, { backgroundColor: '#10B981' }]} />
-                <View style={[styles.produceDot, { backgroundColor: '#059669' }]} />
+                <View style={[styles.produceDot, { backgroundColor: Colors.pastel.green.iconBg }]} />
+                <View style={[styles.produceDot, { backgroundColor: Colors.pastel.green.accent }]} />
                 <View style={[styles.produceDot, { backgroundColor: '#34D399' }]} />
               </View>
             </View>
@@ -90,10 +93,10 @@ export function DashboardMarketIllustration({
               {/* Crate 3: Fresh Red Tomatoes & Mangoes */}
               <View style={styles.produceCrateWide}>
                 <View style={[styles.produceDot, { backgroundColor: '#EF4444' }]} />
-                <View style={[styles.produceDot, { backgroundColor: '#F59E0B' }]} />
+                <View style={[styles.produceDot, { backgroundColor: Colors.accentWarm }]} />
                 <View style={[styles.produceDot, { backgroundColor: '#EF4444' }]} />
-                <View style={[styles.produceDot, { backgroundColor: '#10B981' }]} />
-                <View style={[styles.produceDot, { backgroundColor: '#F97316' }]} />
+                <View style={[styles.produceDot, { backgroundColor: Colors.pastel.green.iconBg }]} />
+                <View style={[styles.produceDot, { backgroundColor: Colors.pastel.orange.iconBg }]} />
               </View>
             </View>
 
@@ -116,15 +119,16 @@ export function DashboardMarketIllustration({
             <View style={styles.leafTertiary} />
           </View>
 
-          {/* Mini Chalkboard: "Local 💚" */}
+          {/* Mini Chalkboard */}
           <View style={styles.chalkboard}>
-            <Text style={styles.chalkboardText}>Fresh 💚</Text>
+            <View style={styles.chalkboardDot} />
+            <Text style={styles.chalkboardText}>Fresh Local</Text>
           </View>
 
           {/* Side Yellow Harvest Crate */}
           <View style={styles.sideCrate}>
-            <View style={[styles.miniDot, { backgroundColor: '#10B981' }]} />
-            <View style={[styles.miniDot, { backgroundColor: '#F59E0B' }]} />
+            <View style={[styles.miniDot, { backgroundColor: Colors.pastel.green.iconBg }]} />
+            <View style={[styles.miniDot, { backgroundColor: Colors.accentWarm }]} />
           </View>
         </View>
       </View>
@@ -134,56 +138,73 @@ export function DashboardMarketIllustration({
 
 const styles = StyleSheet.create({
   container: {
-    alignItems: 'center',
+    alignItems: 'flex-end',
     justifyContent: 'center',
     position: 'relative',
   },
   // Soft warm circular glow backdrop
   backdropHalo: {
     position: 'absolute',
-    width: 140,
-    height: 125,
+    width: 144,
+    height: 128,
     backgroundColor: '#FEF9EC',
-    borderRadius: 70,
+    borderRadius: 72,
     borderWidth: 1,
     borderColor: '#FDE68A',
     top: 6,
-    right: 2,
+    right: 0,
     opacity: 0.9,
   },
-  sparkleTopLeft: {
+  dreamsCallout: {
     position: 'absolute',
-    top: -4,
-    left: 2,
+    left: -6,
+    top: 10,
     zIndex: 10,
+    transform: [{ rotate: '-10deg' }],
+    alignItems: 'center',
   },
-  sparkleTopRight: {
+  dreamsText: {
+    fontSize: 9.5,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.warningText,
+    lineHeight: 11,
+    letterSpacing: -0.2,
+  },
+  sparkleRaysTop: {
     position: 'absolute',
-    top: 4,
-    right: 4,
-    zIndex: 10,
+    right: -8,
+    top: -2,
+    gap: 2,
   },
-  sparkleText: {
-    fontSize: 14,
+  sparkleRayShort: {
+    width: 5,
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: Colors.accentWarm,
+    transform: [{ rotate: '-25deg' }],
   },
-  sparkleTextSmall: {
-    fontSize: 13,
+  sparkleRayLong: {
+    width: 6,
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: Colors.accentWarm,
+    transform: [{ rotate: '15deg' }],
   },
   // Stall root wrapper
   stallWrapper: {
-    width: 136,
+    width: 126,
     alignItems: 'center',
     zIndex: 4,
   },
   // Awning Canopy
   awningCanopy: {
     flexDirection: 'row',
-    width: 132,
-    height: 24,
+    width: 122,
+    height: 23,
     borderTopLeftRadius: 8,
     borderTopRightRadius: 8,
     overflow: 'hidden',
-    shadowColor: '#064E3B',
+    shadowColor: Colors.primaryDark,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.12,
     shadowRadius: 3,
@@ -194,14 +215,14 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   stripeGreen: {
-    backgroundColor: '#0D7A4D',
+    backgroundColor: Colors.primary,
   },
   stripeWhite: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.surface,
   },
   awningScallopRow: {
     flexDirection: 'row',
-    width: 132,
+    width: 122,
     height: 7,
     marginTop: -1,
   },
@@ -214,24 +235,24 @@ const styles = StyleSheet.create({
   // Stall Body with Support Posts & Shelves
   stallBody: {
     flexDirection: 'row',
-    width: 126,
+    width: 116,
     marginTop: 2,
     alignItems: 'stretch',
     justifyContent: 'space-between',
   },
   woodenPostLeft: {
-    width: 6,
-    backgroundColor: '#92400E',
+    width: 5.5,
+    backgroundColor: Colors.warningText,
     borderRadius: 2,
   },
   woodenPostRight: {
-    width: 6,
-    backgroundColor: '#92400E',
+    width: 5.5,
+    backgroundColor: Colors.warningText,
     borderRadius: 2,
   },
   shelvesCenter: {
     flex: 1,
-    paddingHorizontal: 4,
+    paddingHorizontal: 3,
     gap: 3,
   },
   // Top Shelf
@@ -240,7 +261,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#B45309',
     borderRadius: 4,
     padding: 3,
-    gap: 4,
+    gap: 3,
     justifyContent: 'space-between',
   },
   produceCrate: {
@@ -248,7 +269,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FDE68A',
     borderRadius: 3,
     paddingVertical: 2,
-    paddingHorizontal: 3,
+    paddingHorizontal: 2,
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
@@ -256,18 +277,13 @@ const styles = StyleSheet.create({
     borderColor: '#D97706',
   },
   produceDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 1,
-    elevation: 1,
+    width: 9,
+    height: 9,
+    borderRadius: 4.5,
   },
   // Bottom Shelf
   woodenShelfBottom: {
-    backgroundColor: '#92400E',
+    backgroundColor: Colors.warningText,
     borderRadius: 4,
     padding: 3,
   },
@@ -283,7 +299,7 @@ const styles = StyleSheet.create({
     borderColor: '#D97706',
   },
   counterBasePlank: {
-    height: 7,
+    height: 6,
     backgroundColor: '#78350F',
     borderRadius: 2,
     marginTop: 1,
@@ -292,31 +308,31 @@ const styles = StyleSheet.create({
   },
   plankGrain: {
     height: 1,
-    backgroundColor: '#92400E',
+    backgroundColor: Colors.warningText,
     width: '80%',
   },
   // Ground details
   groundRow: {
     flexDirection: 'row',
-    width: 130,
+    width: 120,
     alignItems: 'flex-end',
     justifyContent: 'space-between',
     marginTop: 3,
-    paddingHorizontal: 2,
+    paddingHorizontal: 1,
   },
   // Plant Leaves
   plantContainer: {
-    width: 28,
-    height: 24,
+    width: 26,
+    height: 22,
     position: 'relative',
   },
   leafMain: {
     position: 'absolute',
     bottom: 0,
     left: 2,
-    width: 14,
-    height: 20,
-    backgroundColor: '#059669',
+    width: 13,
+    height: 19,
+    backgroundColor: Colors.pastel.green.accent,
     borderTopLeftRadius: 12,
     borderBottomRightRadius: 12,
     transform: [{ rotate: '-15deg' }],
@@ -324,10 +340,10 @@ const styles = StyleSheet.create({
   leafSecondary: {
     position: 'absolute',
     bottom: 2,
-    left: 10,
-    width: 12,
-    height: 17,
-    backgroundColor: '#10B981',
+    left: 9,
+    width: 11,
+    height: 16,
+    backgroundColor: Colors.pastel.green.iconBg,
     borderTopRightRadius: 10,
     borderBottomLeftRadius: 10,
     transform: [{ rotate: '25deg' }],
@@ -335,36 +351,40 @@ const styles = StyleSheet.create({
   leafTertiary: {
     position: 'absolute',
     bottom: 0,
-    left: 6,
-    width: 11,
-    height: 14,
+    left: 5,
+    width: 10,
+    height: 13,
     backgroundColor: '#34D399',
     borderRadius: 6,
   },
   // Chalkboard
   chalkboard: {
-    backgroundColor: '#064E3B',
-    paddingHorizontal: 7,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: Colors.primaryDark,
+    paddingHorizontal: 6,
     paddingVertical: 3,
     borderRadius: 4,
     borderWidth: 1,
-    borderColor: '#92400E',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 2,
-    elevation: 1,
+    borderColor: Colors.warningText,
+  },
+  chalkboardDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#34D399',
   },
   chalkboardText: {
     color: '#ECFDF5',
-    fontSize: 9,
-    fontWeight: '800',
+    fontSize: 8.5,
+    fontWeight: Typography.weights.extraBold,
     letterSpacing: 0.2,
   },
   // Side Harvest Crate
   sideCrate: {
-    width: 24,
-    height: 16,
+    width: 22,
+    height: 15,
     backgroundColor: '#FBBF24',
     borderRadius: 3,
     borderWidth: 0.8,
@@ -375,9 +395,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 2,
   },
   miniDot: {
-    width: 7,
-    height: 7,
+    width: 6.5,
+    height: 6.5,
     borderRadius: 3.5,
   },
 });
+
 

@@ -1,8 +1,15 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
+import { ProfileAvatarIcon } from './DashboardNavIcons';
 import { TindaMateCartLogo } from '@/components/ui/TindaMateCartLogo';
-import { BorderRadius, Spacing } from '@/constants/theme';
+import {
+  BorderRadius,
+  Colors,
+  IconSizes,
+  Shadows,
+  Spacing,
+} from '@/constants/theme';
 
 interface DashboardHeaderProps {
   userEmail?: string;
@@ -12,19 +19,18 @@ interface DashboardHeaderProps {
 /**
  * DashboardHeader
  *
- * Prominent top identity bar matching the reference mockup:
- * - Full-sized, high-visibility TindaMate logo & tagline on left
- * - Premium white circular profile button with dark teal user avatar on right
+ * Prominent top identity bar matching the TindaMate design system:
+ * - Left-aligned TindaMate Cart & Sprouting Leaves emblem + tagline
+ * - Elevated circular white profile button with crisp dark green vector avatar
  */
 export function DashboardHeader({
-  userEmail,
   onProfilePress,
 }: DashboardHeaderProps) {
   return (
     <View style={styles.header}>
       {/* Prominent Brand Logo & Tagline */}
       <View style={styles.logoWrapper}>
-        <TindaMateCartLogo scale={1.0} showTagline={true} />
+        <TindaMateCartLogo scale={0.96} showTagline={true} align="left" />
       </View>
 
       {/* Profile Circle Button */}
@@ -37,7 +43,7 @@ export function DashboardHeader({
           styles.avatarButton,
           pressed && styles.avatarButtonPressed,
         ]}>
-        <Text style={styles.avatarIcon}>👤</Text>
+        <ProfileAvatarIcon size={IconSizes.md} color={Colors.primaryDark} />
       </Pressable>
     </View>
   );
@@ -49,7 +55,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingTop: Spacing.two,
-    paddingBottom: Spacing.three,
+    paddingBottom: Spacing.twoHalf,
   },
   logoWrapper: {
     alignItems: 'flex-start',
@@ -58,23 +64,17 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: BorderRadius.full,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 5,
-    elevation: 3,
+    borderColor: Colors.border,
+    ...Shadows.sm,
   },
   avatarButtonPressed: {
     transform: [{ scale: 0.95 }],
-    backgroundColor: '#F8FAFC',
-  },
-  avatarIcon: {
-    fontSize: 20,
-    color: '#064E3B',
+    backgroundColor: Colors.primaryLight,
+    borderColor: Colors.primaryBorder,
   },
 });
+

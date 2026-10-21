@@ -1,7 +1,14 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
-import { Spacing } from '@/constants/theme';
+import { SectionHeader } from '@/components/ui/SectionHeader';
+import {
+  BorderRadius,
+  Colors,
+  Shadows,
+  Spacing,
+  Typography,
+} from '@/constants/theme';
 
 interface RecentActivitySectionProps {
   onViewAll?: () => void;
@@ -10,37 +17,49 @@ interface RecentActivitySectionProps {
 /**
  * RecentActivitySection
  *
- * Visually polished empty state card matching the reference mockup:
- * - Full-width horizontal card with generous padding (#EDF7F2)
- * - Large sparkling checklist icon on left
- * - "No recent activity yet." title and transaction guidance on right
+ * Visually polished empty state card using the TindaMate Design System:
+ * - Reusable SectionHeader ("Recent Activity" + "View All ›")
+ * - Full-width horizontal card with soft mint/slate surface
+ * - Pure React Native vector checklist pad with warm orange sparkle rays (zero OS emojis)
+ * - Friendly, non-alarming empty state guidance
  */
 export function RecentActivitySection({ onViewAll }: RecentActivitySectionProps) {
   return (
     <View style={styles.container}>
-      {/* Header Row */}
-      <View style={styles.headerRow}>
-        <Text style={styles.sectionTitle}>Recent Activity</Text>
-        {onViewAll && (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="View all recent activity"
-            onPress={onViewAll}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Text style={styles.viewAllText}>View All  ›</Text>
-          </Pressable>
-        )}
-      </View>
+      {/* Reusable Design-System Section Header */}
+      <SectionHeader
+        title="Recent Activity"
+        actionLabel={onViewAll ? 'View All' : undefined}
+        onActionPress={onViewAll}
+      />
 
-      {/* Empty State Card matching mockup */}
+      {/* Empty State Card */}
       <View style={styles.emptyCard}>
-        {/* Checklist with sparkles */}
-        <View style={styles.iconContainer}>
-          <Text style={styles.sparkleLeft}>✨</Text>
-          <View style={styles.clipboardBox}>
-            <Text style={styles.clipboardIcon}>📋</Text>
+        {/* Vector Checklist Card with Warm Sparkle Rays */}
+        <View style={styles.illustrationContainer}>
+          {/* Left Warm Sparkle Rays */}
+          <View style={styles.raysLeft}>
+            <View style={[styles.ray, styles.rayTopLeft]} />
+            <View style={[styles.ray, styles.rayMidLeft]} />
+            <View style={[styles.ray, styles.rayBotLeft]} />
           </View>
-          <Text style={styles.sparkleRight}>✨</Text>
+
+          {/* Tilted Mint Checklist Sheet */}
+          <View style={styles.checklistPad}>
+            {[0, 1, 2].map((idx) => (
+              <View key={idx} style={styles.checkRow}>
+                <View style={styles.checkDot} />
+                <View style={styles.checkLine} />
+              </View>
+            ))}
+          </View>
+
+          {/* Right Warm Sparkle Rays */}
+          <View style={styles.raysRight}>
+            <View style={[styles.ray, styles.rayTopRight]} />
+            <View style={[styles.ray, styles.rayMidRight]} />
+            <View style={[styles.ray, styles.rayBotRight]} />
+          </View>
         </View>
 
         {/* Text Details */}
@@ -58,93 +77,108 @@ export function RecentActivitySection({ onViewAll }: RecentActivitySectionProps)
 
 const styles = StyleSheet.create({
   container: {
-    gap: 12,
-    marginTop: Spacing.two,
+    gap: Spacing.twoHalf,
+    marginTop: Spacing.one,
     marginBottom: Spacing.three,
   },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 2,
-  },
-  sectionTitle: {
-    fontSize: 19,
-    fontWeight: '800',
-    color: '#0F172A',
-    letterSpacing: -0.3,
-  },
-  viewAllText: {
-    fontSize: 13.5,
-    fontWeight: '700',
-    color: '#064E3B',
-  },
   emptyCard: {
-    backgroundColor: '#EDF7F2',
-    borderRadius: 20,
+    backgroundColor: Colors.primarySoft,
+    borderRadius: BorderRadius.lg,
     paddingVertical: 18,
-    paddingHorizontal: 16,
+    paddingHorizontal: Spacing.three,
     borderWidth: 1,
-    borderColor: '#D4EBE0',
+    borderColor: Colors.pastel.green.border,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 5,
-    elevation: 2,
+    gap: Spacing.three,
+    ...Shadows.xs,
   },
-  iconContainer: {
+  illustrationContainer: {
+    width: 72,
+    height: 54,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    position: 'relative',
   },
-  clipboardBox: {
-    width: 50,
-    height: 50,
-    borderRadius: 14,
-    backgroundColor: '#DCFCE7',
+  checklistPad: {
+    width: 42,
+    height: 48,
+    borderRadius: BorderRadius.sm,
+    backgroundColor: '#99D5C3',
+    paddingVertical: 9,
+    paddingHorizontal: 8,
+    justifyContent: 'space-between',
+    transform: [{ rotate: '-5deg' }],
+    ...Shadows.xs,
+  },
+  checkRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    gap: 5,
   },
-  clipboardIcon: {
-    fontSize: 26,
+  checkDot: {
+    width: 4.5,
+    height: 4.5,
+    borderRadius: 2.5,
+    backgroundColor: Colors.surface,
   },
-  sparkleLeft: {
-    position: 'absolute',
-    left: -11,
-    top: 2,
-    fontSize: 12,
+  checkLine: {
+    flex: 1,
+    height: 2.5,
+    borderRadius: 1.5,
+    backgroundColor: Colors.surface,
   },
-  sparkleRight: {
-    position: 'absolute',
-    right: -11,
-    bottom: 2,
-    fontSize: 12,
+  raysLeft: {
+    height: 36,
+    justifyContent: 'space-between',
+    marginRight: 5,
+  },
+  raysRight: {
+    height: 36,
+    justifyContent: 'space-between',
+    marginLeft: 5,
+  },
+  ray: {
+    width: 6,
+    height: 2.2,
+    borderRadius: 1.2,
+    backgroundColor: Colors.accentWarm,
+  },
+  rayTopLeft: {
+    transform: [{ rotate: '28deg' }],
+  },
+  rayMidLeft: {
+    width: 7,
+  },
+  rayBotLeft: {
+    transform: [{ rotate: '-28deg' }],
+  },
+  rayTopRight: {
+    transform: [{ rotate: '-28deg' }],
+  },
+  rayMidRight: {
+    width: 7,
+  },
+  rayBotRight: {
+    transform: [{ rotate: '28deg' }],
   },
   textGroup: {
     flex: 1,
     gap: 3,
   },
   emptyTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#064E3B',
+    fontSize: Typography.sizes.body,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.primaryDark,
   },
   emptyDescription: {
-    fontSize: 12.5,
-    color: '#64748B',
-    lineHeight: 17,
+    fontSize: Typography.sizes.xs,
+    color: Colors.textMuted,
+    lineHeight: Typography.lineHeights.tight,
   },
   boldWord: {
-    fontWeight: '800',
-    color: '#334155',
+    fontWeight: Typography.weights.bold,
+    color: Colors.textSecondary,
   },
 });
+

@@ -1,0 +1,91 @@
+import React from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+
+import { Colors, Spacing, Typography } from '@/constants/theme';
+
+interface SectionHeaderProps {
+  /** Primary section title (e.g., "Store Overview", "Quick Actions") */
+  title: string;
+  /** Optional muted subtitle on the right (e.g., "Manage your store, faster.") */
+  subtitle?: string;
+  /** Optional interactive link label on the right (e.g., "View All") */
+  actionLabel?: string;
+  /** Callback when actionLabel is pressed */
+  onActionPress?: () => void;
+  /** Optional custom right element (e.g., date filter pill) */
+  rightElement?: React.ReactNode;
+}
+
+/**
+ * SectionHeader
+ *
+ * Reusable section heading component for TindaMate Dashboard and future
+ * Products, Inventory, Sales, and Utang modules.
+ * Uses TindaMate deep brand green (Colors.textBrand) for strong section hierarchy.
+ */
+export function SectionHeader({
+  title,
+  subtitle,
+  actionLabel,
+  onActionPress,
+  rightElement,
+}: SectionHeaderProps) {
+  return (
+    <View style={styles.row}>
+      <Text style={styles.title} accessibilityRole="header">
+        {title}
+      </Text>
+
+      {rightElement ? (
+        rightElement
+      ) : actionLabel && onActionPress ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`${actionLabel} ${title}`}
+          onPress={onActionPress}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          style={({ pressed }) => [
+            styles.actionButton,
+            pressed && styles.actionButtonPressed,
+          ]}>
+          <Text style={styles.actionText}>{actionLabel}  ›</Text>
+        </Pressable>
+      ) : subtitle ? (
+        <Text style={styles.subtitle}>{subtitle}</Text>
+      ) : null}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.xxs,
+  },
+  title: {
+    fontSize: Typography.sizes.sectionHeading,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.textBrand,
+    letterSpacing: -0.3,
+  },
+  subtitle: {
+    fontSize: Typography.sizes.xs,
+    color: Colors.textMuted,
+    fontWeight: Typography.weights.medium,
+  },
+  actionButton: {
+    paddingVertical: 2,
+    paddingHorizontal: 4,
+  },
+  actionButtonPressed: {
+    opacity: 0.65,
+  },
+  actionText: {
+    fontSize: Typography.sizes.sm,
+    fontWeight: Typography.weights.bold,
+    color: Colors.primaryDark,
+  },
+});
+

@@ -1,14 +1,22 @@
 import React from 'react';
 import {
-  Dimensions,
   Pressable,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
 
+import { StorePillIcon } from './DashboardNavIcons';
 import { DashboardMarketIllustration } from '@/components/dashboard/DashboardMarketIllustration';
-import { BorderRadius, Spacing } from '@/constants/theme';
+import {
+  BorderRadius,
+  Colors,
+  IconSizes,
+  Shadows,
+  Spacing,
+  Typography,
+} from '@/constants/theme';
 
 interface DashboardHeroBannerProps {
   displayName: string;
@@ -19,12 +27,12 @@ interface DashboardHeroBannerProps {
 /**
  * DashboardHeroBanner
  *
- * Visually polished mobile Hero section matching TindaMate specifications:
+ * Visually polished mobile Hero section using the TindaMate Design System:
  * - Dynamic greeting ("Good morning," / "Good afternoon," / "Good evening,")
  * - Dynamic user name with responsive scaling for long names
  * - Friendly store overview supporting text
- * - Compact interactive store pill: [ 🏪 TindaMate Store → ]
- * - Dedicated pure React Native marketplace illustration (zero logo fragments, zero screenshot artifacts)
+ * - Interactive store pill with vector storefront badge: [ 🏪 TindaMate Store › ]
+ * - Dedicated pure React Native marketplace illustration
  */
 export function DashboardHeroBanner({
   displayName,
@@ -39,28 +47,28 @@ export function DashboardHeroBanner({
     return 'Good evening,';
   };
 
-  const { width: windowWidth } = Dimensions.get('window');
+  const { width: windowWidth } = useWindowDimensions();
   const isSmallPhone = windowWidth < 375;
   const isLargePhone = windowWidth >= 414;
 
   // Responsive illustration size occupying right 35-45% of banner
-  const illustrationWidth = isSmallPhone ? 135 : isLargePhone ? 165 : 150;
-  const illustrationHeight = isSmallPhone ? 125 : isLargePhone ? 150 : 138;
+  const illustrationWidth = isSmallPhone ? 138 : isLargePhone ? 168 : 154;
+  const illustrationHeight = isSmallPhone ? 126 : isLargePhone ? 150 : 140;
 
-  // Responsive typography for long names (e.g., "Gochaico, Manolo Jr. A.!")
+  // Responsive typography for long names
   const nameFontSize =
     displayName.length > 22
       ? isSmallPhone ? 18 : 20
       : displayName.length > 14
       ? isSmallPhone ? 20 : 22
-      : isSmallPhone ? 22 : 25;
+      : isSmallPhone ? 22 : Typography.sizes.displaySm;
 
   return (
     <View style={styles.container}>
       <View style={styles.contentRow}>
         {/* Left Side: Text Hierarchy & Store Badge (55-65% width) */}
         <View style={styles.leftColumn}>
-          {/* 1. Greeting - medium / semibold */}
+          {/* 1. Greeting - semibold */}
           <Text style={styles.greetingTitle}>{getGreeting()}</Text>
 
           {/* 2. User Name - large / bold / responsive */}
@@ -72,10 +80,10 @@ export function DashboardHeroBanner({
 
           {/* 3. Supporting sentence */}
           <Text style={styles.greetingSubtext} numberOfLines={2}>
-            Here's what's happening with your store today.
+            Here&apos;s what&apos;s happening with your store today.
           </Text>
 
-          {/* 4. Store Context Pill: [ 🏪 TindaMate Store → ] */}
+          {/* 4. Store Context Pill: [ StoreIcon TindaMate Store › ] */}
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={`Active store: ${storeName}`}
@@ -85,12 +93,12 @@ export function DashboardHeroBanner({
               pressed && styles.storePillPressed,
             ]}>
             <View style={styles.storeIconCircle}>
-              <Text style={styles.storeIcon}>🏪</Text>
+              <StorePillIcon size={IconSizes.xs} color={Colors.textInverse} />
             </View>
             <Text style={styles.storePillText} numberOfLines={1}>
               {storeName}
             </Text>
-            <Text style={styles.storePillArrow}>→</Text>
+            <Text style={styles.storePillChevron}>›</Text>
           </Pressable>
         </View>
 
@@ -109,8 +117,8 @@ export function DashboardHeroBanner({
 const styles = StyleSheet.create({
   container: {
     paddingTop: Spacing.one,
-    paddingBottom: Spacing.four,
-    minHeight: 165,
+    paddingBottom: Spacing.three,
+    minHeight: 162,
     justifyContent: 'center',
   },
   contentRow: {
@@ -121,74 +129,70 @@ const styles = StyleSheet.create({
   leftColumn: {
     flex: 1.25,
     gap: 4,
-    paddingRight: 8,
+    paddingRight: Spacing.two,
     zIndex: 2,
     justifyContent: 'center',
   },
   greetingTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#334155',
+    fontSize: Typography.sizes.body,
+    fontWeight: Typography.weights.semiBold,
+    color: Colors.primaryDark,
   },
   displayNameText: {
-    fontWeight: '800',
-    color: '#064E3B',
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.primaryDark,
     letterSpacing: -0.4,
-    lineHeight: 28,
+    lineHeight: Typography.lineHeights.heading,
     marginBottom: 2,
   },
   greetingSubtext: {
-    fontSize: 12.5,
-    color: '#64748B',
-    lineHeight: 17,
-    marginBottom: 8,
+    fontSize: Typography.sizes.xs,
+    color: Colors.textSecondary,
+    lineHeight: Typography.lineHeights.tight,
+    marginBottom: Spacing.two,
   },
-  // Store pill button: [ 🏪 TindaMate Store → ]
+  // Store pill button
   storePill: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 12,
+    backgroundColor: Colors.surface,
+    paddingLeft: 8,
+    paddingRight: 12,
     paddingVertical: 6,
     borderRadius: BorderRadius.full,
     borderWidth: 1,
-    borderColor: '#D1FAE5',
-    gap: 6,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
-    elevation: 2,
+    borderColor: Colors.primaryBorder,
+    gap: 7,
+    ...Shadows.xs,
   },
   storePillPressed: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: Colors.primaryLight,
     transform: [{ scale: 0.98 }],
   },
   storeIconCircle: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: '#DCFCE7',
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: Colors.pastel.green.iconBg,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  storeIcon: {
-    fontSize: 12,
-  },
   storePillText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#064E3B',
+    fontSize: Typography.sizes.sm,
+    fontWeight: Typography.weights.bold,
+    color: Colors.primaryDark,
   },
-  storePillArrow: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#059669',
+  storePillChevron: {
+    fontSize: 16,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.primary,
+    marginTop: -1,
   },
   illustrationWrapper: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingLeft: 4,
+    paddingLeft: Spacing.one,
   },
 });
+

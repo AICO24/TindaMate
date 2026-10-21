@@ -13,7 +13,14 @@ import {
 } from 'react-native';
 
 import { AlertCircleIcon, EyeIcon, EyeOffIcon } from './AuthIcons';
-import { BorderRadius, Colors, Spacing, Typography } from '@/constants/theme';
+import {
+  BorderRadius,
+  Colors,
+  IconSizes,
+  Shadows,
+  Spacing,
+  Typography,
+} from '@/constants/theme';
 
 export interface TindaMateInputProps {
   /** Label displayed above the input value */
@@ -49,9 +56,10 @@ export interface TindaMateInputProps {
 /**
  * TindaMateInput
  *
- * A high-fidelity form input component designed after the approved TindaMate reference UI.
+ * Unified design-system form input component shared across Login, Register,
+ * and future TindaMate store forms.
  * Features a full-card touch target, stacked label, left icon slot, right password toggle,
- * and reliable keyboard handling to prevent Android typing crashes.
+ * clear focus/error states, and reliable keyboard handling across Android, iOS, and Web.
  */
 export function TindaMateInput({
   label,
@@ -117,7 +125,7 @@ export function TindaMateInput({
             value={value}
             onChangeText={onChangeText}
             placeholder={placeholder}
-            placeholderTextColor={Colors.textMuted}
+            placeholderTextColor={Colors.textPlaceholder}
             secureTextEntry={isPassword && !showPassword}
             inputMode={computedInputMode}
             keyboardType={Platform.OS === 'ios' ? keyboardType : undefined}
@@ -149,9 +157,9 @@ export function TindaMateInput({
             onPress={() => setShowPassword((prev) => !prev)}
             style={({ pressed }) => [styles.eyeButton, pressed && styles.eyePressed]}>
             {showPassword ? (
-              <EyeOffIcon size={20} color={hasError ? Colors.error : Colors.primary} />
+              <EyeOffIcon size={IconSizes.md} color={hasError ? Colors.error : Colors.primary} />
             ) : (
-              <EyeIcon size={20} color={Colors.textSecondary} />
+              <EyeIcon size={IconSizes.md} color={Colors.textSecondary} />
             )}
           </Pressable>
         )}
@@ -159,8 +167,8 @@ export function TindaMateInput({
 
       {/* Inline Validation Error Message */}
       {hasError && (
-        <View style={styles.errorRow}>
-          <AlertCircleIcon size={14} color={Colors.error} />
+        <View style={styles.errorRow} accessibilityRole="alert">
+          <AlertCircleIcon size={IconSizes.xs} color={Colors.error} />
           <Text style={styles.errorText}>{errorMessage}</Text>
         </View>
       )}
@@ -176,18 +184,18 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.card,
+    backgroundColor: Colors.surface,
     borderRadius: BorderRadius.md,
-    borderWidth: 1.2,
+    borderWidth: 1.4,
     borderColor: Colors.border,
     paddingHorizontal: Spacing.three,
-    paddingVertical: 8,
-    minHeight: 58,
+    paddingVertical: 9,
+    minHeight: 60,
   },
   containerFocused: {
-    borderColor: Colors.primary,
-    backgroundColor: '#FFFFFF',
-    elevation: 1,
+    borderColor: Colors.borderFocused,
+    backgroundColor: Colors.surface,
+    ...Shadows.xs,
   },
   containerError: {
     borderColor: Colors.error,
@@ -197,15 +205,15 @@ const styles = StyleSheet.create({
     width: 28,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: Spacing.two,
+    marginRight: Spacing.twoHalf,
   },
   inputArea: {
     flex: 1,
     justifyContent: 'center',
   },
   label: {
-    fontSize: 11,
-    fontWeight: Typography.weights.medium,
+    fontSize: Typography.sizes.caption,
+    fontWeight: Typography.weights.semiBold,
     color: Colors.textSecondary,
     marginBottom: 2,
     letterSpacing: 0.2,
@@ -218,6 +226,7 @@ const styles = StyleSheet.create({
   },
   textInput: {
     fontSize: Typography.sizes.body,
+    fontWeight: Typography.weights.medium,
     color: Colors.textPrimary,
     paddingVertical: Platform.OS === 'android' ? 2 : 0,
     paddingHorizontal: 0,
@@ -236,7 +245,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.one,
-    marginTop: 4,
+    marginTop: 5,
     paddingHorizontal: Spacing.one,
   },
   errorText: {

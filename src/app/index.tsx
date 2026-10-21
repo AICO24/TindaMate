@@ -1,18 +1,25 @@
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Dimensions,
   Image,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
-import { BorderRadius, Spacing } from '@/constants/theme';
+import { TindaMateButton } from '@/components/ui/TindaMateButton';
+import { TindaMateCartLogo } from '@/components/ui/TindaMateCartLogo';
+import {
+  AuthMaxContentWidth,
+  BorderRadius,
+  Colors,
+  Spacing,
+  Typography,
+} from '@/constants/theme';
 import { supabase } from '@/lib/supabase';
 
 // High-resolution reference artwork
@@ -21,34 +28,25 @@ const WELCOME_REFERENCE_IMAGE = require('@/assets/images/welcome-hero.png');
 /**
  * TindaMate Welcome Screen
  *
- * 100% Pixel-faithful reproduction of the official reference design:
- * - Authentic brand logo extracted cleanly (no status bar, no duplication)
- * - Complete 3D community market illustration (full green store badge, full bottom oval, zero text bleed)
- * - Pure white background (#FFFFFF) for seamless integration with artwork
- * - Exact 3-line balanced value proposition
- * - Clean pill buttons matching reference proportions
+ * Establishes the core TindaMate visual identity:
+ * - Official TindaMate Cart & Sprouting Leaves brand header
+ * - Community market 3D hero illustration framed cleanly for all mobile widths
+ * - High-contrast brand typography ("Shop Local, Support Small")
+ * - Unified TindaMateButton hierarchy (Primary pill, Secondary outline pill, Ghost guest action)
  */
 export default function WelcomeScreen() {
   const [isCheckingSession, setIsCheckingSession] = useState(true);
 
-  // Responsive layout dimensions based on device width
-  const { width: windowWidth } = Dimensions.get('window');
-  const contentWidth = Math.min(windowWidth - 32, 375);
+  // Reactive layout dimensions across small, normal, and large phones
+  const { width: windowWidth } = useWindowDimensions();
+  const contentWidth = Math.min(windowWidth - Spacing.four * 2, 360);
 
-  // Proportional scale factor matching standard mobile canvas (1 : 2.16)
+  // Proportional scale factor matching standard mobile artwork canvas (1 : 2.16)
   const fullImageWidth = contentWidth;
   const fullImageHeight = contentWidth * 2.16;
 
-  // 1. Logo Slice: Slices precisely between 6.8% and 19.2%
-  // - Starts at 6.8% (strictly below status bar, time, wifi, battery)
-  // - Height 12.4% (fully captures cart wheels and complete tagline with no cut-off)
-  const logoBoxHeight = fullImageHeight * 0.124;
-  const logoTopOffset = -fullImageHeight * 0.068;
-
-  // 2. Illustration Slice: Slices precisely between 19.2% and 52.8%
-  // - Starts at 19.2% (keeps 100% of the top green store badge with no flat top cut)
-  // - Ends at 52.8% (keeps 100% of the bottom rounded cream oval with no flat bottom cut,
-  //   and safely stops above the "Shop Local" text at 55.5% with zero black marks)
+  // Illustration Slice: Slices precisely between 19.2% and 52.8% of the reference artwork
+  // - Captures the complete 3D vendor & market stall scene with zero status bar or text bleed
   const illustrationBoxHeight = fullImageHeight * 0.336;
   const illustrationTopOffset = -fullImageHeight * 0.192;
 
@@ -93,7 +91,7 @@ export default function WelcomeScreen() {
   if (isCheckingSession) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#105B48" />
+        <ActivityIndicator size="large" color={Colors.primaryBrand} />
       </SafeAreaView>
     );
   }
@@ -102,85 +100,74 @@ export default function WelcomeScreen() {
     <SafeAreaView style={styles.safeArea}>
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={[styles.scrollContent, { maxWidth: contentWidth + 20 }]}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
-        {/* Authentic Top Brand Logo (Exact artwork, zero status bar artifacts) */}
-        <View style={[styles.logoSection, { width: contentWidth, height: logoBoxHeight }]}>
-          <Image
-            source={WELCOME_REFERENCE_IMAGE}
-            style={{
-              width: fullImageWidth,
-              height: fullImageHeight,
-              marginTop: logoTopOffset,
-            }}
-            resizeMode="cover"
-          />
-        </View>
+        <View style={styles.innerContainer}>
+          {/* 1. Unified TindaMate Brand Emblem & Tagline */}
+          <View style={styles.logoSection}>
+            <TindaMateCartLogo scale={1.08} showTagline={true} />
+          </View>
 
-        {/* Authentic 3D Marketplace Illustration (Full badge, full bottom oval, zero text bleed) */}
-        <View
-          style={[
-            styles.illustrationSection,
-            { width: contentWidth, height: illustrationBoxHeight },
-          ]}>
-          <Image
-            source={WELCOME_REFERENCE_IMAGE}
-            style={{
-              width: fullImageWidth,
-              height: fullImageHeight,
-              marginTop: illustrationTopOffset,
-            }}
-            resizeMode="cover"
-          />
-        </View>
-
-        {/* Core Value Proposition Section */}
-        <View style={styles.textSection}>
-          <Text style={styles.headline}>Shop Local,{'\n'}Support Small</Text>
-          <Text style={styles.subheadline}>
-            Discover amazing products from local{'\n'}
-            vendors in your community. Fresh, unique,{'\n'}
-            and just a tap away.
-          </Text>
-        </View>
-
-        {/* Interactive Action Buttons */}
-        <View style={styles.actionsSection}>
-          {/* Primary Action: Log In Pill */}
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Log in to your TindaMate account"
-            onPress={handleLogin}
-            style={({ pressed }) => [
-              styles.primaryButton,
-              pressed && styles.primaryButtonPressed,
+          {/* 2. 3D Community Marketplace Illustration */}
+          <View
+            style={[
+              styles.illustrationSection,
+              { width: contentWidth, height: illustrationBoxHeight },
             ]}>
-            <Text style={styles.primaryButtonText}>Log In  →</Text>
-          </Pressable>
+            <Image
+              source={WELCOME_REFERENCE_IMAGE}
+              style={{
+                width: fullImageWidth,
+                height: fullImageHeight,
+                marginTop: illustrationTopOffset,
+              }}
+              resizeMode="cover"
+              accessibilityLabel="Local sari-sari store vendor welcoming customers"
+            />
+          </View>
 
-          {/* Secondary Action: Create Account Outlined Pill */}
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Create a new TindaMate account"
-            onPress={handleRegister}
-            style={({ pressed }) => [
-              styles.secondaryButton,
-              pressed && styles.secondaryButtonPressed,
-            ]}>
-            <Text style={styles.secondaryButtonText}>Create Account  →</Text>
-          </Pressable>
+          {/* 3. Core Value Proposition Section */}
+          <View style={styles.textSection}>
+            <Text style={styles.headline} accessibilityRole="header">
+              Shop Local,{'\n'}Support Small
+            </Text>
+            <Text style={styles.subheadline}>
+              Discover amazing products from local vendors in your community.
+              Fresh, unique, and just a tap away.
+            </Text>
+          </View>
 
-          {/* Tertiary Action: Continue as Guest */}
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Continue as guest"
-            onPress={handleGuest}
-            style={({ pressed }) => [
-              styles.guestButton,
-              pressed && styles.guestButtonPressed,
-            ]}>
-            <Text style={styles.guestButtonText}>Continue as Guest</Text>
-          </Pressable>
+          {/* 4. Interactive Action Buttons using TindaMate Design System */}
+          <View style={styles.actionsSection}>
+            {/* Primary Action: Log In Pill */}
+            <TindaMateButton
+              title="Log In"
+              variant="primary"
+              showArrow
+              onPress={handleLogin}
+              accessibilityLabel="Log in to your TindaMate account"
+              style={styles.actionButton}
+            />
+
+            {/* Secondary Action: Create Account Outlined Pill */}
+            <TindaMateButton
+              title="Create Account"
+              variant="secondary"
+              showArrow
+              onPress={handleRegister}
+              accessibilityLabel="Create a new TindaMate account"
+              style={styles.actionButton}
+            />
+
+            {/* Tertiary Action: Continue as Guest */}
+            <TindaMateButton
+              title="Continue as Guest"
+              variant="ghost"
+              onPress={handleGuest}
+              accessibilityLabel="Continue as guest"
+              style={styles.guestButton}
+            />
+          </View>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -190,11 +177,11 @@ export default function WelcomeScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.background,
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.background,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -202,106 +189,62 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: Spacing.two,
-    paddingTop: Spacing.two,
-    paddingBottom: Spacing.five,
+    flexGrow: 1,
+    paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.three,
+    paddingBottom: Spacing.four,
+    justifyContent: 'center',
+  },
+  innerContainer: {
     width: '100%',
+    maxWidth: AuthMaxContentWidth,
     alignSelf: 'center',
     alignItems: 'center',
     justifyContent: 'space-between',
-    minHeight: '100%',
+    gap: Spacing.three,
   },
   logoSection: {
-    overflow: 'hidden',
     alignItems: 'center',
-    justifyContent: 'flex-start',
-    marginTop: Spacing.one,
-    marginBottom: Spacing.one,
+    justifyContent: 'center',
+    paddingTop: Spacing.one,
   },
   illustrationSection: {
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'flex-start',
-    marginVertical: Spacing.one,
+    borderRadius: BorderRadius.xl,
   },
   textSection: {
     alignItems: 'center',
     paddingHorizontal: Spacing.two,
-    marginBottom: Spacing.two,
   },
   headline: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: '#105B48',
+    fontSize: Typography.sizes.display,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.primaryBrand,
     textAlign: 'center',
-    lineHeight: 38,
+    lineHeight: Typography.lineHeights.display,
     letterSpacing: -0.5,
     marginBottom: Spacing.two,
   },
   subheadline: {
-    fontSize: 15,
-    color: '#5B6770',
+    fontSize: Typography.sizes.body,
+    color: Colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 22,
-    maxWidth: 300,
+    lineHeight: Typography.lineHeights.relaxed,
+    maxWidth: 310,
   },
   actionsSection: {
     width: '100%',
-    gap: 12,
+    gap: Spacing.twoHalf,
     alignItems: 'center',
-    paddingBottom: Spacing.two,
+    paddingTop: Spacing.one,
   },
-  primaryButton: {
-    width: '100%',
-    maxWidth: 340,
-    backgroundColor: '#13654E',
-    paddingVertical: 15,
-    borderRadius: BorderRadius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  primaryButtonPressed: {
-    backgroundColor: '#0F4D3C',
-    transform: [{ scale: 0.98 }],
-  },
-  primaryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: 0.2,
-  },
-  secondaryButton: {
-    width: '100%',
-    maxWidth: 340,
-    backgroundColor: 'transparent',
-    borderWidth: 1.8,
-    borderColor: '#13654E',
-    paddingVertical: 14,
-    borderRadius: BorderRadius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  secondaryButtonPressed: {
-    backgroundColor: '#E8F5E9',
-    transform: [{ scale: 0.98 }],
-  },
-  secondaryButtonText: {
-    color: '#13654E',
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: 0.2,
+  actionButton: {
+    maxWidth: 350,
   },
   guestButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    marginTop: 2,
-  },
-  guestButtonPressed: {
-    opacity: 0.6,
-  },
-  guestButtonText: {
-    color: '#64748B',
-    fontSize: 14,
-    fontWeight: '500',
+    marginTop: Spacing.xxs,
   },
 });
+

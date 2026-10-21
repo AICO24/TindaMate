@@ -13,15 +13,17 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
 import { AuthDivider } from '@/components/ui/AuthDivider';
+import { AuthErrorBanner } from '@/components/ui/AuthErrorBanner';
 import { AuthHeader } from '@/components/ui/AuthHeader';
-import { AlertCircleIcon, CheckIcon, LockIcon, MailIcon } from '@/components/ui/AuthIcons';
+import { CheckIcon, LockIcon, MailIcon } from '@/components/ui/AuthIcons';
 import { GoogleSignInButton } from '@/components/ui/GoogleSignInButton';
 import { TindaMateButton } from '@/components/ui/TindaMateButton';
 import { TindaMateInput } from '@/components/ui/TindaMateInput';
 import {
+  AuthMaxContentWidth,
   BorderRadius,
   Colors,
-  MaxContentWidth,
+  IconSizes,
   Spacing,
   Typography,
 } from '@/constants/theme';
@@ -80,7 +82,7 @@ export default function LoginScreen() {
       return 'Please confirm your email address before logging in. Check your inbox for the confirmation link.';
     }
     if (lower.includes('network') || lower.includes('fetch') || lower.includes('connection')) {
-      return `Unable to connect to Supabase: ${rawMessage}. Please check your internet connection.`;
+      return 'Unable to connect to TindaMate servers. Please check your internet connection and try again.';
     }
     return rawMessage;
   };
@@ -124,13 +126,14 @@ export default function LoginScreen() {
         router.replace('/home');
       }
     } catch (err: unknown) {
-      const errMsg = err instanceof Error ? err.message : String(err);
-      console.warn('[Supabase SignIn Exception]:', errMsg);
-      setAuthError(errMsg);
+      const rawMsg = err instanceof Error ? err.message : String(err);
+      console.warn('[Supabase SignIn Exception]:', rawMsg);
+      const friendlyMsg = mapAuthError(rawMsg);
+      setAuthError(friendlyMsg);
       if (Platform.OS === 'web') {
-        window.alert(`Login Error: ${errMsg}`);
+        window.alert(`Login Error: ${friendlyMsg}`);
       } else {
-        Alert.alert('Login Error', errMsg, [{ text: 'OK' }]);
+        Alert.alert('Login Error', friendlyMsg, [{ text: 'OK' }]);
       }
     } finally {
       setIsLoading(false);
@@ -156,7 +159,7 @@ export default function LoginScreen() {
       <KeyboardAvoidingView
         style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        {/* Top Header with Back Button and Brand Logo */}
+        {/* Unified Top Header with Back Button and Official TindaMate Emblem */}
         <AuthHeader />
 
         <ScrollView
@@ -167,19 +170,16 @@ export default function LoginScreen() {
           <View style={styles.contentContainer}>
             {/* Screen Heading & Supporting Text */}
             <View style={styles.headingBlock}>
-              <Text style={styles.heading}>Welcome Back!</Text>
+              <Text style={styles.heading} accessibilityRole="header">
+                Welcome Back!
+              </Text>
               <Text style={styles.supportingText}>
-                Login to your account to continue
+                Log in to your TindaMate store account to continue.
               </Text>
             </View>
 
-            {/* General Auth Error Banner */}
-            {authError && (
-              <View style={styles.authErrorBanner}>
-                <AlertCircleIcon size={16} color={Colors.error} />
-                <Text style={styles.authErrorText}>{authError}</Text>
-              </View>
-            )}
+            {/* Reusable Auth Error Banner */}
+            <AuthErrorBanner message={authError} />
 
             {/* Email Field */}
             <TindaMateInput
@@ -193,7 +193,7 @@ export default function LoginScreen() {
                   setErrors((prev) => ({ ...prev, email: undefined }));
                 }
               }}
-              leftIcon={<MailIcon size={19} />}
+              leftIcon={<MailIcon size={IconSizes.md} />}
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
@@ -214,7 +214,7 @@ export default function LoginScreen() {
                   setErrors((prev) => ({ ...prev, password: undefined }));
                 }
               }}
-              leftIcon={<LockIcon size={19} variant="green" />}
+              leftIcon={<LockIcon size={IconSizes.md} variant="green" />}
               isPassword
               returnKeyType="done"
               onSubmitEditing={handleLogin}
@@ -224,7 +224,7 @@ export default function LoginScreen() {
 
             {/* Remember Me & Forgot Password Row */}
             <View style={styles.optionsRow}>
-              {/* Remember Me Checkbox (UI-only for now; persistence in future batch) */}
+              {/* Remember Me Checkbox */}
               <Pressable
                 accessibilityRole="checkbox"
                 accessibilityState={{ checked: rememberMe }}
@@ -233,7 +233,7 @@ export default function LoginScreen() {
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 style={styles.checkboxContainer}>
                 <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
-                  {rememberMe && <CheckIcon size={10} color="#FFFFFF" />}
+                  {rememberMe && <CheckIcon size={10} color={Colors.textInverse} />}
                 </View>
                 <Text style={styles.rememberMeText}>Remember me</Text>
               </Pressable>
@@ -243,7 +243,8 @@ export default function LoginScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="Forgot password"
                 onPress={handleForgotPassword}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                style={({ pressed }) => pressed && styles.linkPressed}>
                 <Text style={styles.forgotPasswordText}>Forgot password?</Text>
               </Pressable>
             </View>
@@ -251,7 +252,8 @@ export default function LoginScreen() {
             {/* Primary CTA: Login Button */}
             <View style={styles.ctaContainer}>
               <TindaMateButton
-                title={isLoading ? 'Signing In...' : 'Login'}
+                title={isLoading ? 'Signing In...' : 'Log In'}
+                loading={isLoading}
                 onPress={handleLogin}
                 disabled={isLoading}
                 accessibilityLabel="Log in to your account"
@@ -266,14 +268,20 @@ export default function LoginScreen() {
 
             {/* Bottom Navigation: Don't have an account? Register */}
             <View style={styles.bottomNavContainer}>
-              <Text style={styles.bottomNavText}>
-                Don&apos;t have an account?{' '}
-                <Text
-                  style={styles.bottomNavAction}
-                  onPress={() => router.push('/register')}>
-                  Register
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Don't have an account? Go to Register"
+                onPress={() => router.push('/register')}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                style={({ pressed }) => [
+                  styles.bottomNavPressable,
+                  pressed && styles.linkPressed,
+                ]}>
+                <Text style={styles.bottomNavText}>
+                  Don&apos;t have an account?{' '}
+                  <Text style={styles.bottomNavAction}>Register</Text>
                 </Text>
-              </Text>
+              </Pressable>
             </View>
           </View>
         </ScrollView>
@@ -285,13 +293,15 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: Colors.backgroundWarm,
   },
   keyboardView: {
     flex: 1,
+    backgroundColor: Colors.background,
   },
   scrollView: {
     flex: 1,
+    backgroundColor: Colors.background,
   },
   scrollContent: {
     flexGrow: 1,
@@ -300,49 +310,30 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     width: '100%',
-    maxWidth: MaxContentWidth,
+    maxWidth: AuthMaxContentWidth,
     alignSelf: 'center',
-    paddingTop: Spacing.two,
+    paddingTop: Spacing.four,
   },
   headingBlock: {
     marginBottom: Spacing.four,
   },
   heading: {
-    fontSize: 24,
-    fontWeight: Typography.weights.bold,
-    color: Colors.textPrimary,
+    fontSize: Typography.sizes.xl,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.textBrand,
     letterSpacing: -0.3,
-    marginBottom: 4,
+    marginBottom: Spacing.one,
   },
   supportingText: {
     fontSize: Typography.sizes.bodySm,
     color: Colors.textSecondary,
     lineHeight: Typography.lineHeights.normal,
   },
-  authErrorBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-    backgroundColor: Colors.errorLight,
-    borderWidth: 1,
-    borderColor: Colors.errorBorder,
-    borderRadius: BorderRadius.md,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    marginBottom: Spacing.three,
-  },
-  authErrorText: {
-    flex: 1,
-    fontSize: Typography.sizes.xs,
-    color: Colors.error,
-    fontWeight: Typography.weights.medium,
-    lineHeight: 18,
-  },
   optionsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 2,
+    marginTop: Spacing.xxs,
     marginBottom: Spacing.four,
   },
   checkboxContainer: {
@@ -356,7 +347,7 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.xs,
     borderWidth: 1.5,
     borderColor: Colors.border,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -372,7 +363,10 @@ const styles = StyleSheet.create({
   forgotPasswordText: {
     fontSize: Typography.sizes.bodySm,
     color: Colors.primary,
-    fontWeight: Typography.weights.semiBold,
+    fontWeight: Typography.weights.bold,
+  },
+  linkPressed: {
+    opacity: 0.65,
   },
   ctaContainer: {
     width: '100%',
@@ -381,8 +375,12 @@ const styles = StyleSheet.create({
   bottomNavContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: Spacing.five,
+    marginTop: Spacing.four,
     paddingVertical: Spacing.two,
+  },
+  bottomNavPressable: {
+    paddingVertical: Spacing.one,
+    paddingHorizontal: Spacing.two,
   },
   bottomNavText: {
     fontSize: Typography.sizes.bodySm,
@@ -390,7 +388,8 @@ const styles = StyleSheet.create({
   },
   bottomNavAction: {
     color: Colors.primary,
-    fontWeight: Typography.weights.bold,
+    fontWeight: Typography.weights.extraBold,
   },
 });
+
 

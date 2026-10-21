@@ -8,7 +8,12 @@ import {
   NavSalesIcon,
   NavUtangIcon,
 } from './DashboardNavIcons';
-import { Spacing } from '@/constants/theme';
+import {
+  Colors,
+  Shadows,
+  Spacing,
+  Typography,
+} from '@/constants/theme';
 
 export type NavTab = 'home' | 'products' | 'sales' | 'utang' | 'more';
 
@@ -20,10 +25,10 @@ interface DashboardBottomNavProps {
 /**
  * DashboardBottomNav
  *
- * Professional bottom navigation matching the reference mockup:
- * - Pure vector line/fill icons (ZERO emoji, no red roofs or pink purses)
- * - Home has active deep green icon (#064E3B) and green underline bar
- * - Products, Sales, Utang, More in subtle slate (#64748B)
+ * Persistent bottom navigation bar using the TindaMate Design System:
+ * - Pure vector icons with standardized IconSizes.nav (22px)
+ * - Active tab highlighted in Colors.primaryDark with bottom indicator bar
+ * - Inactive tabs in Colors.textMuted
  */
 export function DashboardBottomNav({
   activeTab,
@@ -58,10 +63,10 @@ export function DashboardBottomNav({
   ];
 
   return (
-    <View style={styles.navBar}>
+    <View style={styles.navBar} accessibilityRole="tablist">
       {tabs.map((tab) => {
         const isActive = activeTab === tab.key;
-        const iconColor = isActive ? '#064E3B' : '#64748B';
+        const iconColor = isActive ? Colors.primaryDark : Colors.textMuted;
 
         return (
           <Pressable
@@ -85,7 +90,7 @@ export function DashboardBottomNav({
               {tab.label}
             </Text>
 
-            {/* Active Green Underline Bar matching reference */}
+            {/* Active Green Underline Bar */}
             {isActive ? (
               <View style={styles.activeIndicatorBar} />
             ) : (
@@ -103,23 +108,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.surface,
     borderTopWidth: 1,
-    borderTopColor: '#E2E8F0',
-    paddingTop: 8,
+    borderTopColor: Colors.border,
+    paddingTop: Spacing.two,
     paddingBottom: 6,
     paddingHorizontal: Spacing.one,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 8,
+    ...Shadows.bottomNav,
   },
   tabItem: {
     alignItems: 'center',
     justifyContent: 'center',
     flex: 1,
     gap: 3,
+    minHeight: 48,
   },
   tabItemPressed: {
     opacity: 0.7,
@@ -130,19 +132,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   tabLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#64748B',
+    fontSize: Typography.sizes.caption,
+    fontWeight: Typography.weights.semiBold,
+    color: Colors.textMuted,
   },
   activeTabLabel: {
-    color: '#064E3B',
-    fontWeight: '800',
+    color: Colors.primaryDark,
+    fontWeight: Typography.weights.extraBold,
   },
   activeIndicatorBar: {
     width: 22,
     height: 3,
     borderRadius: 1.5,
-    backgroundColor: '#064E3B',
+    backgroundColor: Colors.primaryDark,
     marginTop: 2,
   },
   inactiveIndicatorBar: {
@@ -152,3 +154,4 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 });
+

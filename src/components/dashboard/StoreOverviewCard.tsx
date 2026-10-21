@@ -1,7 +1,13 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { BorderRadius } from '@/constants/theme';
+import { DashboardBadgeVectorIcon } from './DashboardNavIcons';
+import {
+  BorderRadius,
+  Colors,
+  Shadows,
+  Typography,
+} from '@/constants/theme';
 
 export interface OverviewItem {
   id: string;
@@ -17,49 +23,26 @@ interface StoreOverviewCardProps {
   item: OverviewItem;
 }
 
-const THEME_STYLES = {
-  green: {
-    bg: '#EAF7F0',
-    border: '#D1EFE0',
-    iconBg: '#10B981',
-    iconColor: '#FFFFFF',
-    titleColor: '#064E3B',
-    chevronColor: '#059669',
-  },
-  blue: {
-    bg: '#EAF4FE',
-    border: '#D0E6FC',
-    iconBg: '#3B82F6',
-    iconColor: '#FFFFFF',
-    titleColor: '#1E3A8A',
-    chevronColor: '#2563EB',
-  },
-  amber: {
-    bg: '#FFF4E8',
-    border: '#FFE4CB',
-    iconBg: '#F97316',
-    iconColor: '#FFFFFF',
-    titleColor: '#7C2D12',
-    chevronColor: '#EA580C',
-  },
-  purple: {
-    bg: '#F5EDFE',
-    border: '#E8D5FD',
-    iconBg: '#8B5CF6',
-    iconColor: '#FFFFFF',
-    titleColor: '#581C87',
-    chevronColor: '#7C3AED',
-  },
-};
+const OVERVIEW_THEME_MAP = {
+  green: Colors.pastel.green,
+  blue: Colors.pastel.blue,
+  amber: Colors.pastel.orange,
+  purple: Colors.pastel.purple,
+} as const;
+
+const VECTOR_IDS = new Set(['sales', 'products', 'low_stock', 'utang']);
 
 /**
  * StoreOverviewCard
  *
- * Visually substantial summary card matching the reference mockup:
- * [ (Large 42px Icon)   Title / Subtext        › ]
+ * Visually substantial summary card using the TindaMate Design System:
+ * - Soft pastel background & border from centralized Colors.pastel tokens
+ * - 42px circular badge with crisp white vector icon
+ * - Brand-colored title & readable secondary subtitle
  */
 export function StoreOverviewCard({ item }: StoreOverviewCardProps) {
-  const currentTheme = THEME_STYLES[item.theme];
+  const currentTheme = OVERVIEW_THEME_MAP[item.theme];
+  const hasVectorIcon = VECTOR_IDS.has(item.id);
 
   return (
     <Pressable
@@ -76,14 +59,21 @@ export function StoreOverviewCard({ item }: StoreOverviewCardProps) {
       ]}>
       {/* Left: Prominent Round Themed Icon */}
       <View style={[styles.iconCircle, { backgroundColor: currentTheme.iconBg }]}>
-        <Text style={[styles.iconSymbol, { color: currentTheme.iconColor }]}>
-          {item.iconSymbol}
-        </Text>
+        {hasVectorIcon ? (
+          <DashboardBadgeVectorIcon
+            type={item.id as 'sales' | 'products' | 'low_stock' | 'utang'}
+            color={Colors.textInverse}
+          />
+        ) : (
+          <Text style={[styles.iconSymbol, { color: Colors.textInverse }]}>
+            {item.iconSymbol}
+          </Text>
+        )}
       </View>
 
       {/* Middle: Title & Subtitle */}
       <View style={styles.textColumn}>
-        <Text style={[styles.title, { color: currentTheme.titleColor }]} numberOfLines={1}>
+        <Text style={[styles.title, { color: currentTheme.text }]} numberOfLines={1}>
           {item.title}
         </Text>
         <Text style={styles.subtitle} numberOfLines={1}>
@@ -92,7 +82,7 @@ export function StoreOverviewCard({ item }: StoreOverviewCardProps) {
       </View>
 
       {/* Right: Chevron */}
-      <Text style={[styles.chevron, { color: currentTheme.chevronColor }]}>›</Text>
+      <Text style={[styles.chevron, { color: currentTheme.accent }]}>›</Text>
     </Pressable>
   );
 }
@@ -103,20 +93,16 @@ const styles = StyleSheet.create({
     minWidth: '47%',
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 18,
+    borderRadius: BorderRadius.lg,
     paddingVertical: 14,
     paddingHorizontal: 12,
     borderWidth: 1,
     minHeight: 78,
     gap: 10,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 4,
-    elevation: 1,
+    ...Shadows.xs,
   },
   cardPressed: {
-    opacity: 0.85,
+    opacity: 0.88,
     transform: [{ scale: 0.98 }],
   },
   iconCircle: {
@@ -128,25 +114,26 @@ const styles = StyleSheet.create({
   },
   iconSymbol: {
     fontSize: 19,
-    fontWeight: '800',
+    fontWeight: Typography.weights.extraBold,
   },
   textColumn: {
     flex: 1,
     gap: 2,
   },
   title: {
-    fontSize: 14,
-    fontWeight: '800',
+    fontSize: Typography.sizes.bodySm,
+    fontWeight: Typography.weights.extraBold,
     letterSpacing: -0.2,
   },
   subtitle: {
-    fontSize: 11.5,
-    color: '#64748B',
-    fontWeight: '500',
+    fontSize: Typography.sizes.caption,
+    color: Colors.textMuted,
+    fontWeight: Typography.weights.medium,
   },
   chevron: {
     fontSize: 22,
-    fontWeight: '800',
+    fontWeight: Typography.weights.extraBold,
     paddingLeft: 2,
   },
 });
+
