@@ -39,16 +39,43 @@ if (!supabasePublishableKey) {
 }
 
 /**
+ * Safe storage adapter that prevents "ReferenceError: window is not defined"
+ * during Expo Router static rendering / Node.js SSR.
+ */
+const isServer = typeof window === 'undefined';
+
+const ssrSafeStorage = {
+  getItem: async (key: string): Promise<string | null> => {
+    if (isServer) {
+      return null;
+    }
+    return AsyncStorage.getItem(key);
+  },
+  setItem: async (key: string, value: string): Promise<void> => {
+    if (isServer) {
+      return;
+    }
+    await AsyncStorage.setItem(key, value);
+  },
+  removeItem: async (key: string): Promise<void> => {
+    if (isServer) {
+      return;
+    }
+    await AsyncStorage.removeItem(key);
+  },
+};
+
+/**
  * Singleton Supabase client instance for the TindaMate mobile app.
  * Configured with AsyncStorage for robust session persistence across app launches,
- * OAuth PKCE callbacks, and deep linking navigation.
+ * OAuth PKCE callbacks, and deep linking navigation, while remaining safe for SSR.
  */
 export const supabase = createClient(supabaseUrl, supabasePublishableKey, {
   auth: {
-    storage: AsyncStorage,
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: Platform.OS === 'web',
+    storage: ssrSafeStorage,
+    autoRefreshToken: !isServer,
+    persistSession: !isServer,
+    detectSessionInUrl: !isServer && Platform.OS === 'web',
   },
 });
 
