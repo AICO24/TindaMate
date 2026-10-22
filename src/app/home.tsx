@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   Modal,
   Platform,
@@ -17,6 +16,7 @@ import { router, useFocusEffect, useLocalSearchParams, usePathname } from 'expo-
 import * as Linking from 'expo-linking';
 import { User } from '@supabase/supabase-js';
 
+import { TindaMateLoadingView } from '@/components/animated-icon';
 import {
   DashboardBottomNav,
   NavTab,
@@ -357,8 +357,7 @@ export default function AuthenticatedDashboardScreen() {
   if (isLoading) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={Colors.primaryDark} />
-        <Text style={styles.loadingText}>Loading TindaMate Dashboard...</Text>
+        <TindaMateLoadingView message="Loading TindaMate Dashboard..." />
       </SafeAreaView>
     );
   }
@@ -734,7 +733,7 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: '#FDF7EB',
     alignItems: 'center',
     justifyContent: 'center',
     gap: Spacing.twoHalf,

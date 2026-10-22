@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
   Image,
   ScrollView,
   StyleSheet,
@@ -12,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as Linking from 'expo-linking';
 
+import { TindaMateLoadingView } from '@/components/animated-icon';
 import { TindaMateButton } from '@/components/ui/TindaMateButton';
 import { TindaMateCartLogo } from '@/components/ui/TindaMateCartLogo';
 import {
@@ -115,7 +115,7 @@ export default function WelcomeScreen() {
   if (isCheckingSession) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={Colors.primaryBrand} />
+        <TindaMateLoadingView />
       </SafeAreaView>
     );
   }
@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: '#FDF7EB',
     alignItems: 'center',
     justifyContent: 'center',
   },
