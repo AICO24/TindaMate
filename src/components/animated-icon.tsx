@@ -1,124 +1,207 @@
 import { Image } from 'expo-image';
 import * as SplashScreen from 'expo-splash-screen';
-import { useState } from 'react';
-import { Dimensions, StyleSheet, View } from 'react-native';
-import Animated, { Easing, Keyframe } from 'react-native-reanimated';
-import { scheduleOnRN } from 'react-native-worklets';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated';
 
-const INITIAL_SCALE_FACTOR = Dimensions.get('screen').height / 90;
-const DURATION = 600;
+const TINDAMATE_LOGO = require('@/assets/images/tindamate-logo.png');
+
+/** Official TindaMate warm cream brand background matching the logo asset and native splash */
+const BRAND_CREAM_BACKGROUND = '#FDF7EB';
+
+/** Timing constants (ms) — 1.65s total visual launch experience */
+const ENTRANCE_DURATION_MS = 650;
+const HOLD_DURATION_MS = 600;
+const EXIT_DURATION_MS = 400;
+const TOTAL_DURATION_MS = ENTRANCE_DURATION_MS + HOLD_DURATION_MS + EXIT_DURATION_MS;
+const FAILSAFE_TIMEOUT_MS = 2300;
+
+/** Ensures the launch animation runs only once per cold application start */
+let hasShownInitialLaunchSplash = false;
 
 export function AnimatedSplashOverlay() {
-  const [animate, setAnimate] = useState(false);
-  const [visible, setVisible] = useState(true);
+  const [visible, setVisible] = useState(() => !hasShownInitialLaunchSplash);
+  const [isExiting, setIsExiting] = useState(false);
+  const hasStartedRef = useRef(false);
 
-  if (!visible) return null;
+  const { width, height } = useWindowDimensions();
+  const shortestSide = Math.min(width || 360, height || 640);
+  const logoSize = Math.round(Math.min(Math.max(shortestSide * 0.58, 184), 256));
 
-  const splashKeyframe = new Keyframe({
-    0: {
-      transform: [{ scale: 1 }],
-      opacity: 1,
-    },
-    20: {
-      opacity: 1,
-    },
-    70: {
-      opacity: 0,
-      easing: Easing.elastic(0.7),
-    },
-    100: {
-      opacity: 0,
-      transform: [{ scale: 1 }],
-      easing: Easing.elastic(0.7),
-    },
-  });
+  const overlayOpacity = useSharedValue(1);
+  const logoOpacity = useSharedValue(0);
+  const logoScale = useSharedValue(0.86);
+  const logoTranslateY = useSharedValue(12);
 
-  const image = <Image style={styles.image} source={require('@/assets/images/expo-logo.png')} />;
+  const finishSplash = useCallback(() => {
+    hasShownInitialLaunchSplash = true;
+    setVisible(false);
+  }, []);
 
-  return animate ? (
+  const startLaunchSequence = useCallback(() => {
+    if (hasStartedRef.current) {
+      return;
+    }
+    hasStartedRef.current = true;
+
+    SplashScreen.hideAsync().catch(() => {
+      // Ignore if native splash was already hidden
+    });
+
+    // Phase 2: Confident, smooth logo entrance (fade-in + scale-up + subtle upward lift)
+    logoOpacity.set(
+      withTiming(1, {
+        duration: 500,
+        easing: Easing.out(Easing.cubic),
+      })
+    );
+
+    logoTranslateY.set(
+      withTiming(0, {
+        duration: ENTRANCE_DURATION_MS,
+        easing: Easing.out(Easing.cubic),
+      })
+    );
+
+    // Phase 2 -> Phase 3 (Hold) -> Phase 4 (Subtle scale settle during exit)
+    logoScale.set(
+      withSequence(
+        withTiming(1, {
+          duration: ENTRANCE_DURATION_MS,
+          easing: Easing.out(Easing.cubic),
+        }),
+        withTiming(1.015, {
+          duration: HOLD_DURATION_MS,
+          easing: Easing.inOut(Easing.sin),
+        }),
+        withTiming(1.035, {
+          duration: EXIT_DURATION_MS,
+          easing: Easing.inOut(Easing.quad),
+        })
+      )
+    );
+
+    // Phase 4: Smooth fade-out transition into the first application screen
+    overlayOpacity.set(
+      withDelay(
+        ENTRANCE_DURATION_MS + HOLD_DURATION_MS,
+        withTiming(0, {
+          duration: EXIT_DURATION_MS,
+          easing: Easing.inOut(Easing.cubic),
+        })
+      )
+    );
+  }, [logoOpacity, logoScale, logoTranslateY, overlayOpacity]);
+
+  useEffect(() => {
+    if (!visible) {
+      SplashScreen.hideAsync().catch(() => {});
+      return;
+    }
+
+    const exitPointerTimer = setTimeout(() => {
+      setIsExiting(true);
+    }, ENTRANCE_DURATION_MS + HOLD_DURATION_MS);
+
+    const completionTimer = setTimeout(() => {
+      finishSplash();
+    }, TOTAL_DURATION_MS + 40);
+
+    const failsafeTimer = setTimeout(() => {
+      SplashScreen.hideAsync().catch(() => {});
+      finishSplash();
+    }, FAILSAFE_TIMEOUT_MS);
+
+    return () => {
+      clearTimeout(exitPointerTimer);
+      clearTimeout(completionTimer);
+      clearTimeout(failsafeTimer);
+    };
+  }, [finishSplash, visible]);
+
+  const overlayAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: overlayOpacity.get(),
+  }));
+
+  const logoAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: logoOpacity.get(),
+    transform: [
+      { translateY: logoTranslateY.get() },
+      { scale: logoScale.get() },
+    ],
+  }));
+
+  if (!visible) {
+    return null;
+  }
+
+  return (
     <Animated.View
-      entering={splashKeyframe.duration(DURATION).withCallback((finished) => {
-        'worklet';
-        if (finished) {
-          scheduleOnRN(setVisible, false);
-        }
-      })}
-      style={styles.splashOverlay}>
-      {image}
+      pointerEvents={isExiting ? 'none' : 'auto'}
+      onLayout={startLaunchSequence}
+      style={[styles.splashOverlay, overlayAnimatedStyle]}>
+      <Animated.View
+        style={[
+          styles.logoContainer,
+          { width: logoSize, height: logoSize },
+          logoAnimatedStyle,
+        ]}>
+        <Image
+          source={TINDAMATE_LOGO}
+          style={styles.logoImage}
+          contentFit="contain"
+          priority="high"
+          cachePolicy="memory-disk"
+          onLoad={startLaunchSequence}
+          accessibilityLabel="TindaMate official logo"
+        />
+      </Animated.View>
     </Animated.View>
-  ) : (
-    <View
-      onLayout={() => {
-        SplashScreen.hideAsync().finally(() => {
-          setAnimate(true);
-        });
-      }}
-      style={styles.splashOverlay}>
-      {image}
-    </View>
   );
 }
-
-const keyframe = new Keyframe({
-  0: {
-    transform: [{ scale: INITIAL_SCALE_FACTOR }],
-  },
-  100: {
-    transform: [{ scale: 1 }],
-    easing: Easing.elastic(0.7),
-  },
-});
-
-const logoKeyframe = new Keyframe({
-  0: {
-    transform: [{ scale: 1.3 }],
-    opacity: 0,
-  },
-  40: {
-    transform: [{ scale: 1.3 }],
-    opacity: 0,
-    easing: Easing.elastic(0.7),
-  },
-  100: {
-    opacity: 1,
-    transform: [{ scale: 1 }],
-    easing: Easing.elastic(0.7),
-  },
-});
-
-const glowKeyframe = new Keyframe({
-  0: {
-    transform: [{ rotateZ: '0deg' }],
-  },
-  100: {
-    transform: [{ rotateZ: '7200deg' }],
-  },
-});
 
 export function AnimatedIcon() {
   return (
     <View style={styles.iconContainer}>
-      <Animated.View entering={glowKeyframe.duration(60 * 1000 * 4)} style={styles.glow}>
-        <Image style={styles.glow} source={require('@/assets/images/logo-glow.png')} />
-      </Animated.View>
-
-      <Animated.View entering={keyframe.duration(DURATION)} style={styles.background} />
-      <Animated.View style={styles.imageContainer} entering={logoKeyframe.duration(DURATION)}>
-        <Image style={styles.image} source={require('@/assets/images/expo-logo.png')} />
-      </Animated.View>
+      <View style={styles.background} />
+      <View style={styles.imageContainer}>
+        <Image
+          style={styles.image}
+          source={TINDAMATE_LOGO}
+          contentFit="contain"
+          accessibilityLabel="TindaMate logo"
+        />
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  splashOverlay: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: BRAND_CREAM_BACKGROUND,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000,
+  },
+  logoContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoImage: {
+    width: '100%',
+    height: '100%',
+  },
   imageContainer: {
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  glow: {
-    width: 201,
-    height: 201,
-    position: 'absolute',
   },
   iconContainer: {
     justifyContent: 'center',
@@ -128,21 +211,14 @@ const styles = StyleSheet.create({
     zIndex: 100,
   },
   image: {
-    width: 76,
-    height: 71,
+    width: 104,
+    height: 104,
   },
   background: {
-    borderRadius: 40,
-    experimental_backgroundImage: `linear-gradient(180deg, #3C9FFE, #0274DF)`,
+    borderRadius: 32,
+    backgroundColor: BRAND_CREAM_BACKGROUND,
     width: 128,
     height: 128,
     position: 'absolute',
-  },
-  splashOverlay: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: '#208AEF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 1000,
   },
 });
