@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useFocusEffect, useLocalSearchParams, usePathname } from 'expo-router';
+import * as Linking from 'expo-linking';
 import { User } from '@supabase/supabase-js';
 
 import {
@@ -41,6 +42,7 @@ import {
   Typography,
 } from '@/constants/theme';
 import { fetchStoreProductSummary } from '@/lib/products';
+import { parseAndApplyOAuthTokens } from '@/lib/oauth';
 import { supabase } from '@/lib/supabase';
 import { StoreProductSummary } from '@/types/product';
 
@@ -113,7 +115,25 @@ export default function AuthenticatedDashboardScreen() {
     // Verify session on mount (supports guest preview without session bounce)
     const checkSession = async () => {
       try {
-        const { data } = await supabase.auth.getSession();
+        // If arrived via deep link with tokens, apply them first
+        const initialUrl = await Linking.getInitialURL();
+        if (
+          initialUrl &&
+          (initialUrl.includes('access_token=') || initialUrl.includes('code='))
+        ) {
+          console.log('[Home] Processing deep link auth tokens...');
+          await parseAndApplyOAuthTokens(initialUrl);
+        }
+
+        let { data } = await supabase.auth.getSession();
+
+        // Grace period for AsyncStorage to finish hydrating if needed
+        if (!data?.session) {
+          await new Promise((resolve) => setTimeout(resolve, 500));
+          const retry = await supabase.auth.getSession();
+          data = retry.data;
+        }
+
         if (data?.session) {
           if (isMounted) {
             setUser(data.session.user);
@@ -158,8 +178,9 @@ export default function AuthenticatedDashboardScreen() {
     // Subscribe to auth state updates
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session && isMounted) {
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      // ONLY redirect to '/' if the user explicitly SIGNED OUT!
+      if (event === 'SIGNED_OUT' && isMounted) {
         if (!isGuestMode) {
           router.replace('/');
         } else {

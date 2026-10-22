@@ -71,7 +71,8 @@ export default function RootLayout() {
     const {
       data: { subscription: authSubscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session && event === 'SIGNED_IN') {
+      console.log('[Auth Layout Event]:', event, !!session);
+      if (session && event !== 'SIGNED_OUT') {
         router.replace('/home');
       }
     });

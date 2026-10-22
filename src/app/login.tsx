@@ -127,8 +127,8 @@ export default function LoginScreen() {
       }
 
       if (data.session) {
-        // Successful login: display smooth success modal and directly transition to dashboard
-        setShowSuccessModal(true);
+        // Successful login: directly navigate to dashboard screen
+        router.replace('/home');
       } else {
         const unconfirmedMsg =
           'Please confirm your email address before logging in, or check your credentials.';
@@ -179,7 +179,8 @@ export default function LoginScreen() {
     try {
       const result = await performOAuthSignIn(provider);
       if (result.success) {
-        setShowSuccessModal(true);
+        // Successful OAuth login: directly navigate to dashboard screen
+        router.replace('/home');
       } else if (result.error) {
         setAuthError(mapAuthError(result.error));
       }

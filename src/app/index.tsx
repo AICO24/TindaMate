@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import * as Linking from 'expo-linking';
 
 import { TindaMateButton } from '@/components/ui/TindaMateButton';
 import { TindaMateCartLogo } from '@/components/ui/TindaMateCartLogo';
@@ -20,6 +21,7 @@ import {
   Spacing,
   Typography,
 } from '@/constants/theme';
+import { parseAndApplyOAuthTokens } from '@/lib/oauth';
 import { supabase } from '@/lib/supabase';
 
 // High-resolution reference artwork
@@ -55,8 +57,19 @@ export default function WelcomeScreen() {
 
     const checkExistingSession = async () => {
       try {
+        // If arrived with OAuth tokens in URL, process them immediately
+        const initialUrl = await Linking.getInitialURL();
+        if (
+          initialUrl &&
+          (initialUrl.includes('access_token=') || initialUrl.includes('code='))
+        ) {
+          console.log('[Welcome Screen] Detected OAuth callback tokens, applying...');
+          await parseAndApplyOAuthTokens(initialUrl);
+        }
+
         const { data } = await supabase.auth.getSession();
         if (data?.session && isMounted) {
+          console.log('[Welcome Screen] Active session verified, routing to /home...');
           router.replace('/home');
           return;
         }
@@ -71,8 +84,19 @@ export default function WelcomeScreen() {
 
     checkExistingSession();
 
+    // Listen for any auth session established while on welcome screen
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session && isMounted) {
+        console.log('[Welcome Screen] Auth state changed to active, routing to /home...');
+        router.replace('/home');
+      }
+    });
+
     return () => {
       isMounted = false;
+      subscription.unsubscribe();
     };
   }, []);
 

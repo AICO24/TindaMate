@@ -163,7 +163,7 @@ export default function RegisterScreen() {
       // Check if session was returned or email confirmation is required
       if (data.session) {
         // Confirmation is disabled; user is immediately logged in
-        setShowSuccessModal(true);
+        router.replace('/home');
       } else {
         // Confirmation is enabled; user must verify email first
         const message =
@@ -203,7 +203,8 @@ export default function RegisterScreen() {
     try {
       const result = await performOAuthSignIn(provider);
       if (result.success) {
-        setShowSuccessModal(true);
+        // Successful OAuth: directly navigate to dashboard screen
+        router.replace('/home');
       } else if (result.error) {
         setAuthError(mapAuthError(result.error));
       }

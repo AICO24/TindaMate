@@ -169,7 +169,14 @@ export async function performOAuthSignIn(
     }
 
     if (browserResult.type === 'cancel' || browserResult.type === 'dismiss') {
-      console.log('[OAuth] User dismissed auth browser.');
+      console.log('[OAuth] Browser dismissed. Checking if session was established...');
+      // Give 350ms in case deep link handler or storage is finishing
+      await new Promise((res) => setTimeout(res, 350));
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (sessionData?.session) {
+        console.log('[OAuth] Active session detected after browser dismiss! Login verified.');
+        return { success: true };
+      }
       return { success: false };
     }
 
