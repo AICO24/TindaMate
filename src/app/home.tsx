@@ -344,7 +344,7 @@ export default function AuthenticatedDashboardScreen() {
         handleModuleClick('Record Sale', 'Batch 4');
         return;
       }
-      router.push('/sales');
+      router.push('/sales' as any);
       return;
     }
 
@@ -390,7 +390,13 @@ export default function AuthenticatedDashboardScreen() {
       value: '₱0.00',
       subtitle: 'No sales recorded yet',
       theme: 'green',
-      onPress: () => handleModuleClick("Today's Sales", 'Batch 4'),
+      onPress: () => {
+        if (isGuestMode) {
+          handleModuleClick("Today's Sales", 'Batch 4');
+          return;
+        }
+        router.push('/sales/history');
+      },
     },
     {
       id: 'products',
@@ -446,7 +452,7 @@ export default function AuthenticatedDashboardScreen() {
           handleModuleClick('Record Sale', 'Batch 4');
           return;
         }
-        router.push('/sales');
+        router.push('/sales' as any);
       },
     },
     {

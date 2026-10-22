@@ -463,6 +463,15 @@ export default function SalesScreen() {
           subtitle={headerSubtitle}
           showBack={true}
           onBack={handleBackNavigation}
+          rightActionLabel={
+            step === 'select_product' ? 'History' : undefined
+          }
+          rightActionAccessibilityLabel="View store sales history log"
+          onRightActionPress={
+            step === 'select_product'
+              ? () => router.push('/sales/history')
+              : undefined
+          }
         />
 
         {/* Scrollable Body */}
@@ -665,6 +674,12 @@ export default function SalesScreen() {
                     showArrow
                     onPress={handleStartNewSale}
                     accessibilityLabel="Record another sale"
+                  />
+                  <TindaMateButton
+                    title="View Sales History"
+                    variant="secondary"
+                    onPress={() => router.push('/sales/history')}
+                    accessibilityLabel="View completed sales history log"
                   />
                   <TindaMateButton
                     title="View Products Inventory"

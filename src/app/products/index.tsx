@@ -112,7 +112,7 @@ export default function ProductsListScreen() {
       return;
     }
     if (tab === 'sales') {
-      router.replace('/sales');
+      router.replace('/sales' as any);
       return;
     }
     const tabNames: Record<NavTab, string> = {
