@@ -209,7 +209,14 @@ export default function RegisterScreen() {
     try {
       const result = await performOAuthSignIn(provider);
       if (result.success) {
-        router.replace('/home');
+        if (Platform.OS === 'web') {
+          window.alert('Registration Successful! Welcome to TindaMate.');
+          router.replace('/home');
+        } else {
+          Alert.alert('Welcome!', 'Registration Successful! Welcome to TindaMate.', [
+            { text: 'Get Started', onPress: () => router.replace('/home') },
+          ]);
+        }
       } else if (result.error) {
         setAuthError(mapAuthError(result.error));
       }

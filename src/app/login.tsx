@@ -125,8 +125,15 @@ export default function LoginScreen() {
       }
 
       if (data.session) {
-        // Successful login: navigate to authenticated home screen
-        router.replace('/home');
+        // Successful login: show clear feedback and navigate to home screen
+        if (Platform.OS === 'web') {
+          window.alert('Login Successful! Welcome to TindaMate.');
+          router.replace('/home');
+        } else {
+          Alert.alert('Login Successful', 'Welcome back to TindaMate!', [
+            { text: 'Continue', onPress: () => router.replace('/home') },
+          ]);
+        }
       } else {
         const unconfirmedMsg =
           'Please confirm your email address before logging in, or check your credentials.';
@@ -177,7 +184,14 @@ export default function LoginScreen() {
     try {
       const result = await performOAuthSignIn(provider);
       if (result.success) {
-        router.replace('/home');
+        if (Platform.OS === 'web') {
+          window.alert('Login Successful! Welcome to TindaMate.');
+          router.replace('/home');
+        } else {
+          Alert.alert('Login Successful', 'Welcome to TindaMate!', [
+            { text: 'Continue', onPress: () => router.replace('/home') },
+          ]);
+        }
       } else if (result.error) {
         setAuthError(mapAuthError(result.error));
       }
