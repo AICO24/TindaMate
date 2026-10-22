@@ -44,3 +44,19 @@ export interface CompletedSaleResult {
   updatedProduct: Product;
 }
 
+/**
+ * Lightweight current-day sales summary for the authenticated store.
+ */
+export interface TodaySalesSummary {
+  totalAmount: number;
+  transactionCount: number;
+}
+
+/**
+ * Section grouping of sales by human-readable date.
+ */
+export interface DateGroupedSales {
+  dateTitle: string;
+  data: Sale[];
+}
+

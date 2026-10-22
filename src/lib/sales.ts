@@ -5,8 +5,10 @@ import {
 } from '@/types/product';
 import {
   CompletedSaleResult,
+  DateGroupedSales,
   Sale,
   SaleQuantityValidation,
+  TodaySalesSummary,
 } from '@/types/sale';
 import {
   fetchStoreProductById,
@@ -547,4 +549,158 @@ export async function fetchStoreSales(): Promise<Sale[]> {
   return (data ?? []).map((row) =>
     normalizeSaleRow(row as Record<string, unknown>)
   );
+}
+
+/**
+ * Fetches a single historical sale by ID belonging to the authenticated store.
+ * Always returns the exact historical record stored in `public.sales`.
+ */
+export async function fetchStoreSaleById(saleId: string): Promise<Sale | null> {
+  if (!saleId || !saleId.trim()) {
+    return null;
+  }
+
+  const storeId = await getAuthenticatedStoreId();
+
+  const { data, error } = await supabase
+    .from('sales')
+    .select(
+      'id, store_id, product_id, product_name, unit, quantity, unit_price, total_amount, created_at'
+    )
+    .eq('id', saleId.trim())
+    .eq('store_id', storeId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(
+      mapSaleDatabaseError(error, 'Could not load sale details. Please try again.')
+    );
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  return normalizeSaleRow(data as Record<string, unknown>);
+}
+
+/**
+ * Computes the current calendar day's sales summary (total amount & transaction count)
+ * from a list of store sales records in the user's local timezone.
+ */
+export function computeTodaySalesSummary(sales: Sale[]): TodaySalesSummary {
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth();
+  const currentDate = now.getDate();
+
+  let todayTotalCentavos = 0;
+  let todayCount = 0;
+
+  for (const sale of sales) {
+    const saleDate = new Date(sale.created_at);
+    if (
+      !Number.isNaN(saleDate.getTime()) &&
+      saleDate.getFullYear() === currentYear &&
+      saleDate.getMonth() === currentMonth &&
+      saleDate.getDate() === currentDate
+    ) {
+      todayCount += 1;
+      const amountCentavos = Math.round(sale.total_amount * 100);
+      todayTotalCentavos += amountCentavos;
+    }
+  }
+
+  return {
+    totalAmount: Number((todayTotalCentavos / 100).toFixed(2)),
+    transactionCount: todayCount,
+  };
+}
+
+/**
+ * Formats a sale's ISO timestamp into a friendly time string (e.g. "2:35 PM").
+ */
+export function formatSaleTime(isoString: string): string {
+  const date = new Date(isoString);
+  if (Number.isNaN(date.getTime())) {
+    return '—';
+  }
+  return date.toLocaleTimeString('en-PH', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
+}
+
+/**
+ * Formats a sale's ISO timestamp into a friendly date string (e.g. "October 22, 2026").
+ */
+export function formatSaleDate(isoString: string): string {
+  const date = new Date(isoString);
+  if (Number.isNaN(date.getTime())) {
+    return '—';
+  }
+  return date.toLocaleDateString('en-PH', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+/**
+ * Groups sales records by human-readable date headers:
+ * - "Today"
+ * - "Yesterday"
+ * - "Month Day, Year" (e.g. "October 20, 2026")
+ *
+ * Assumes sales are already sorted newest-first (`created_at DESC`),
+ * which is guaranteed by `fetchStoreSales`.
+ */
+export function groupSalesByDate(sales: Sale[]): DateGroupedSales[] {
+  if (!sales || sales.length === 0) {
+    return [];
+  }
+
+  const now = new Date();
+  const todayKey = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`;
+
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  const yesterdayKey = `${yesterday.getFullYear()}-${yesterday.getMonth()}-${yesterday.getDate()}`;
+
+  const groupsMap = new Map<string, { title: string; data: Sale[] }>();
+
+  for (const sale of sales) {
+    const saleDate = new Date(sale.created_at);
+    if (Number.isNaN(saleDate.getTime())) {
+      continue;
+    }
+
+    const key = `${saleDate.getFullYear()}-${saleDate.getMonth()}-${saleDate.getDate()}`;
+    let group = groupsMap.get(key);
+
+    if (!group) {
+      let title: string;
+      if (key === todayKey) {
+        title = 'Today';
+      } else if (key === yesterdayKey) {
+        title = 'Yesterday';
+      } else {
+        title = saleDate.toLocaleDateString('en-PH', {
+          month: 'long',
+          day: 'numeric',
+          year: 'numeric',
+        });
+      }
+      group = { title, data: [] };
+      groupsMap.set(key, group);
+    }
+
+    group.data.push(sale);
+  }
+
+  return Array.from(groupsMap.values()).map((g) => ({
+    dateTitle: g.title,
+    data: g.data,
+  }));
 }
