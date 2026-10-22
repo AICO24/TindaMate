@@ -17,6 +17,7 @@ import { AuthDivider } from '@/components/ui/AuthDivider';
 import { AuthErrorBanner } from '@/components/ui/AuthErrorBanner';
 import { AuthHeader } from '@/components/ui/AuthHeader';
 import { LockIcon, MailIcon, UserIcon } from '@/components/ui/AuthIcons';
+import { AuthSuccessModal } from '@/components/ui/AuthSuccessModal';
 import { FacebookSignInButton } from '@/components/ui/FacebookSignInButton';
 import { GoogleSignInButton } from '@/components/ui/GoogleSignInButton';
 import { PasswordStrengthMeter } from '@/components/ui/PasswordStrengthMeter';
@@ -43,6 +44,7 @@ export default function RegisterScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [oauthLoadingProvider, setOauthLoadingProvider] = useState<'google' | 'facebook' | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   // Field-level Validation Error State
   const [errors, setErrors] = useState<{
@@ -161,15 +163,7 @@ export default function RegisterScreen() {
       // Check if session was returned or email confirmation is required
       if (data.session) {
         // Confirmation is disabled; user is immediately logged in
-        const message = 'Account created successfully! Welcome to TindaMate.';
-        if (Platform.OS === 'web') {
-          window.alert(message);
-          router.replace('/home');
-        } else {
-          Alert.alert('Welcome!', message, [
-            { text: 'Get Started', onPress: () => router.replace('/home') },
-          ]);
-        }
+        setShowSuccessModal(true);
       } else {
         // Confirmation is enabled; user must verify email first
         const message =
@@ -209,14 +203,7 @@ export default function RegisterScreen() {
     try {
       const result = await performOAuthSignIn(provider);
       if (result.success) {
-        if (Platform.OS === 'web') {
-          window.alert('Registration Successful! Welcome to TindaMate.');
-          router.replace('/home');
-        } else {
-          Alert.alert('Welcome!', 'Registration Successful! Welcome to TindaMate.', [
-            { text: 'Get Started', onPress: () => router.replace('/home') },
-          ]);
-        }
+        setShowSuccessModal(true);
       } else if (result.error) {
         setAuthError(mapAuthError(result.error));
       }
@@ -390,6 +377,14 @@ export default function RegisterScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Smooth Direct Redirect Modal */}
+      <AuthSuccessModal
+        visible={showSuccessModal}
+        title="Account Created!"
+        message="Welcome to TindaMate! Taking you directly to your dashboard..."
+        onAutoRedirect={() => router.replace('/home')}
+      />
     </SafeAreaView>
   );
 }

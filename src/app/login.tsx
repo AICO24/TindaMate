@@ -16,6 +16,7 @@ import { AuthDivider } from '@/components/ui/AuthDivider';
 import { AuthErrorBanner } from '@/components/ui/AuthErrorBanner';
 import { AuthHeader } from '@/components/ui/AuthHeader';
 import { CheckIcon, LockIcon, MailIcon } from '@/components/ui/AuthIcons';
+import { AuthSuccessModal } from '@/components/ui/AuthSuccessModal';
 import { FacebookSignInButton } from '@/components/ui/FacebookSignInButton';
 import { GoogleSignInButton } from '@/components/ui/GoogleSignInButton';
 import { TindaMateButton } from '@/components/ui/TindaMateButton';
@@ -41,6 +42,7 @@ export default function LoginScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [oauthLoadingProvider, setOauthLoadingProvider] = useState<'google' | 'facebook' | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   // Field-level Validation Error State
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
@@ -125,15 +127,8 @@ export default function LoginScreen() {
       }
 
       if (data.session) {
-        // Successful login: show clear feedback and navigate to home screen
-        if (Platform.OS === 'web') {
-          window.alert('Login Successful! Welcome to TindaMate.');
-          router.replace('/home');
-        } else {
-          Alert.alert('Login Successful', 'Welcome back to TindaMate!', [
-            { text: 'Continue', onPress: () => router.replace('/home') },
-          ]);
-        }
+        // Successful login: display smooth success modal and directly transition to dashboard
+        setShowSuccessModal(true);
       } else {
         const unconfirmedMsg =
           'Please confirm your email address before logging in, or check your credentials.';
@@ -184,14 +179,7 @@ export default function LoginScreen() {
     try {
       const result = await performOAuthSignIn(provider);
       if (result.success) {
-        if (Platform.OS === 'web') {
-          window.alert('Login Successful! Welcome to TindaMate.');
-          router.replace('/home');
-        } else {
-          Alert.alert('Login Successful', 'Welcome to TindaMate!', [
-            { text: 'Continue', onPress: () => router.replace('/home') },
-          ]);
-        }
+        setShowSuccessModal(true);
       } else if (result.error) {
         setAuthError(mapAuthError(result.error));
       }
@@ -348,6 +336,14 @@ export default function LoginScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Smooth Direct Redirect Modal */}
+      <AuthSuccessModal
+        visible={showSuccessModal}
+        title="Login Successful!"
+        message="Welcome back to TindaMate! Taking you directly to your dashboard..."
+        onAutoRedirect={() => router.replace('/home')}
+      />
     </SafeAreaView>
   );
 }
