@@ -111,6 +111,10 @@ export default function ProductsListScreen() {
       router.replace('/home');
       return;
     }
+    if (tab === 'sales') {
+      router.replace('/sales');
+      return;
+    }
     const tabNames: Record<NavTab, string> = {
       home: 'Home',
       products: 'Products Catalog',

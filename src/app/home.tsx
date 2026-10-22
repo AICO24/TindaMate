@@ -339,6 +339,15 @@ export default function AuthenticatedDashboardScreen() {
       return;
     }
 
+    if (tab === 'sales') {
+      if (isGuestMode) {
+        handleModuleClick('Record Sale', 'Batch 4');
+        return;
+      }
+      router.push('/sales');
+      return;
+    }
+
     if (tab === 'more') {
       setIsProfileModalVisible(true);
       return;
@@ -432,7 +441,13 @@ export default function AuthenticatedDashboardScreen() {
       labelLine2: 'Sale',
       theme: 'orange',
       isPrimary: true,
-      onPress: () => handleModuleClick('Record Sale', 'Batch 4'),
+      onPress: () => {
+        if (isGuestMode) {
+          handleModuleClick('Record Sale', 'Batch 4');
+          return;
+        }
+        router.push('/sales');
+      },
     },
     {
       id: 'add_product',
