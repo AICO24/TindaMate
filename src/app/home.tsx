@@ -41,10 +41,12 @@ import {
   Spacing,
   Typography,
 } from '@/constants/theme';
-import { fetchStoreProductSummary } from '@/lib/products';
+import { fetchStoreProductSummary, formatPesoCurrency } from '@/lib/products';
+import { fetchDashboardSalesData } from '@/lib/sales';
 import { parseAndApplyOAuthTokens } from '@/lib/oauth';
 import { supabase } from '@/lib/supabase';
 import { StoreProductSummary } from '@/types/product';
+import { Sale, TodaySalesSummary } from '@/types/sale';
 
 /**
  * TindaMate Main Dashboard Screen
@@ -74,6 +76,11 @@ export default function AuthenticatedDashboardScreen() {
     lowStockCount: 0,
     outOfStockCount: 0,
   });
+  const [todaySalesSummary, setTodaySalesSummary] = useState<TodaySalesSummary>({
+    totalAmount: 0,
+    transactionCount: 0,
+  });
+  const [recentSales, setRecentSales] = useState<Sale[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isCardLoading, setIsCardLoading] = useState(false);
@@ -83,10 +90,12 @@ export default function AuthenticatedDashboardScreen() {
   const [isLogoutModalVisible, setIsLogoutModalVisible] = useState(false);
 
   /**
-   * Fetches real store product counts (Products & Low Stock) from Supabase
-   * using the centralized `getProductStockStatus` rule.
+   * Fetches real store metrics from Supabase:
+   * 1. Product & stock counts (Total, In Stock, Low Stock)
+   * 2. Today's sales revenue & transaction count
+   * 3. Recent completed sales activity
    */
-  const loadProductSummary = useCallback(async () => {
+  const loadDashboardData = useCallback(async () => {
     if (isGuestMode) {
       setProductSummary({
         totalProducts: 0,
@@ -94,17 +103,45 @@ export default function AuthenticatedDashboardScreen() {
         lowStockCount: 0,
         outOfStockCount: 0,
       });
+      setTodaySalesSummary({
+        totalAmount: 0,
+        transactionCount: 0,
+      });
+      setRecentSales([]);
       return;
     }
 
     try {
-      const summary = await fetchStoreProductSummary();
-      setProductSummary(summary);
+      const [productRes, salesRes] = await Promise.allSettled([
+        fetchStoreProductSummary(),
+        fetchDashboardSalesData(),
+      ]);
+
+      if (productRes.status === 'fulfilled') {
+        setProductSummary(productRes.value);
+      } else {
+        console.warn('[Dashboard Product Error]:', productRes.reason);
+      }
+
+      if (salesRes.status === 'fulfilled') {
+        setTodaySalesSummary(salesRes.value.todaySummary);
+        setRecentSales(salesRes.value.recentSales);
+      } else {
+        console.warn('[Dashboard Sales Error]:', salesRes.reason);
+      }
+
+      if (productRes.status === 'rejected' && salesRes.status === 'rejected') {
+        const msg =
+          productRes.reason instanceof Error
+            ? productRes.reason.message
+            : 'Unable to load store dashboard data.';
+        setErrorMessage(msg);
+      }
     } catch (err: unknown) {
       const msg =
         err instanceof Error
           ? err.message
-          : 'Unable to load store product counts.';
+          : 'Unable to load store dashboard data.';
       setErrorMessage(msg);
     }
   }, [isGuestMode]);
@@ -138,20 +175,7 @@ export default function AuthenticatedDashboardScreen() {
           if (isMounted) {
             setUser(data.session.user);
           }
-          try {
-            const summary = await fetchStoreProductSummary();
-            if (isMounted) {
-              setProductSummary(summary);
-            }
-          } catch (summaryErr: unknown) {
-            if (isMounted) {
-              setErrorMessage(
-                summaryErr instanceof Error
-                  ? summaryErr.message
-                  : 'Unable to load store product counts.'
-              );
-            }
-          }
+          await loadDashboardData();
         } else {
           // If no active session, allow entry only if explicitly in guest mode
           if (isGuestMode) {
@@ -197,13 +221,13 @@ export default function AuthenticatedDashboardScreen() {
     };
   }, [isGuestMode]);
 
-  // Refresh store product counts whenever the user returns to Home from Products or Add Product
+  // Refresh store metrics (products, sales summary, recent activity) whenever user returns to Home
   useFocusEffect(
     useCallback(() => {
       if (!isGuestMode && !isLoading) {
-        loadProductSummary();
+        loadDashboardData();
       }
-    }, [isGuestMode, isLoading, loadProductSummary])
+    }, [isGuestMode, isLoading, loadDashboardData])
   );
 
   /**
@@ -215,7 +239,7 @@ export default function AuthenticatedDashboardScreen() {
 
   /**
    * Pull-to-refresh handler
-   * Re-validates active session, clears errors, and refreshes real store product metrics
+   * Re-validates active session, clears errors, and refreshes real store product & sales metrics
    */
   const handleRefresh = async () => {
     try {
@@ -242,7 +266,7 @@ export default function AuthenticatedDashboardScreen() {
       }
 
       setUser(data.session.user);
-      await loadProductSummary();
+      await loadDashboardData();
     } catch (err) {
       console.warn('[Dashboard Refresh Exception]:', err);
       setErrorMessage('Network connection lost. Tap Retry to reconnect.');
@@ -387,8 +411,16 @@ export default function AuthenticatedDashboardScreen() {
     {
       id: 'sales',
       title: "Today's Sales",
-      value: '₱0.00',
-      subtitle: 'No sales recorded yet',
+      value: isGuestMode ? '₱0.00' : formatPesoCurrency(todaySalesSummary.totalAmount),
+      subtitle: isGuestMode
+        ? 'No sales recorded yet'
+        : todaySalesSummary.transactionCount === 0
+          ? 'No sales recorded yet'
+          : `${todaySalesSummary.transactionCount} ${
+              todaySalesSummary.transactionCount === 1
+                ? 'transaction today'
+                : 'transactions today'
+            }`,
       theme: 'green',
       onPress: () => {
         if (isGuestMode) {
@@ -618,8 +650,27 @@ export default function AuthenticatedDashboardScreen() {
 
             {/* 5. Recent Activity Section */}
             <RecentActivitySection
-              onViewAll={() => handleModuleClick('Recent Activity', 'Batch 3')}
-              hasActivity={false}
+              sales={recentSales}
+              isLoading={isCardLoading}
+              hasActivity={recentSales.length > 0}
+              activityCount={recentSales.length}
+              onViewAll={() => {
+                if (isGuestMode) {
+                  handleModuleClick('Recent Activity', 'Batch 5');
+                  return;
+                }
+                router.push('/sales/history');
+              }}
+              onSalePress={(sale) => {
+                if (isGuestMode) {
+                  handleModuleClick('Sale Details', 'Batch 5');
+                  return;
+                }
+                router.push({
+                  pathname: '/sales/[id]',
+                  params: { id: sale.id },
+                });
+              }}
             />
           </View>
         </ScrollView>
