@@ -53,6 +53,14 @@ export interface TodaySalesSummary {
 }
 
 /**
+ * Dashboard sales data payload for the authenticated store.
+ */
+export interface DashboardSalesData {
+  todaySummary: TodaySalesSummary;
+  recentSales: Sale[];
+}
+
+/**
  * Section grouping of sales by human-readable date.
  */
 export interface DateGroupedSales {

@@ -5,6 +5,7 @@ import {
 } from '@/types/product';
 import {
   CompletedSaleResult,
+  DashboardSalesData,
   DateGroupedSales,
   Sale,
   SaleQuantityValidation,
@@ -630,6 +631,114 @@ export function formatSaleTime(isoString: string): string {
     minute: '2-digit',
     hour12: true,
   });
+}
+
+/**
+ * Formats a sale's ISO timestamp for compact dashboard recent activity display.
+ * - Today: "2:35 PM"
+ * - Yesterday: "Yesterday, 2:35 PM"
+ * - Older: "Oct 20, 2:35 PM"
+ */
+export function formatRecentSaleTime(isoString: string): string {
+  const date = new Date(isoString);
+  if (Number.isNaN(date.getTime())) {
+    return '—';
+  }
+
+  const now = new Date();
+  const isToday =
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate();
+
+  const timeStr = formatSaleTime(isoString);
+  if (isToday) {
+    return timeStr;
+  }
+
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  const isYesterday =
+    date.getFullYear() === yesterday.getFullYear() &&
+    date.getMonth() === yesterday.getMonth() &&
+    date.getDate() === yesterday.getDate();
+
+  if (isYesterday) {
+    return `Yesterday, ${timeStr}`;
+  }
+
+  const monthShort = date.toLocaleDateString('en-PH', { month: 'short' });
+  const dayNum = date.getDate();
+  return `${monthShort} ${dayNum}, ${timeStr}`;
+}
+
+/**
+ * Fetches dashboard sales data for the authenticated user's store:
+ * 1. Recent sales (latest 5 records for recent activity feed)
+ * 2. Today's sales summary (total revenue & transaction count computed from today's completed sales)
+ *
+ * Strictly scoped to store_id = authenticated user ID.
+ */
+export async function fetchDashboardSalesData(): Promise<DashboardSalesData> {
+  const storeId = await getAuthenticatedStoreId();
+
+  // 1. Fetch recent 5 completed sales
+  const { data: recentRows, error: recentError } = await supabase
+    .from('sales')
+    .select(
+      'id, store_id, product_id, product_name, unit, quantity, unit_price, total_amount, created_at'
+    )
+    .eq('store_id', storeId)
+    .order('created_at', { ascending: false })
+    .limit(5);
+
+  if (recentError) {
+    throw new Error(
+      mapSaleDatabaseError(recentError, 'Could not load recent sales activity.')
+    );
+  }
+
+  const recentSales = (recentRows ?? []).map((row) =>
+    normalizeSaleRow(row as Record<string, unknown>)
+  );
+
+  // 2. Fetch sales from start of today in local time
+  const now = new Date();
+  const startOfToday = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+    0,
+    0,
+    0,
+    0
+  );
+
+  const { data: todayRows, error: todayError } = await supabase
+    .from('sales')
+    .select(
+      'id, store_id, product_id, product_name, unit, quantity, unit_price, total_amount, created_at'
+    )
+    .eq('store_id', storeId)
+    .gte('created_at', startOfToday.toISOString())
+    .order('created_at', { ascending: false });
+
+  if (todayError) {
+    throw new Error(
+      mapSaleDatabaseError(todayError, "Could not load today's sales summary.")
+    );
+  }
+
+  const todaySales = (todayRows ?? []).map((row) =>
+    normalizeSaleRow(row as Record<string, unknown>)
+  );
+
+  const todaySummary = computeTodaySalesSummary(todaySales);
+
+  return {
+    todaySummary,
+    recentSales,
+  };
 }
 
 /**
