@@ -30,6 +30,33 @@ export interface Sale {
 }
 
 /**
+ * In-memory client cart item used on the Sales screen.
+ * Contains product details and client-side quantity for POS cart calculations.
+ */
+export interface CartItem {
+  productId: string;
+  productName: string;
+  category: string | null;
+  imageUrl: string | null;
+  unit: string;
+  sellingPrice: number;
+  costPrice: number | null;
+  quantity: number;
+  availableStock: number;
+  lowStockThreshold: number;
+  subtotal: number;
+}
+
+/**
+ * Summary metrics derived from the active client cart.
+ */
+export interface CartSummary {
+  totalItems: number; // Total units across all cart items (e.g. 2 Cokes + 1 Bread = 3 items)
+  distinctCount: number; // Count of unique product lines in the cart
+  totalAmount: number; // Pre-checkout estimated total in Philippine Pesos (₱)
+}
+
+/**
  * Normalized SaleItem domain entity returned to UI components.
  * Represents an individual product line item inside a sales transaction header.
  */

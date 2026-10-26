@@ -4,6 +4,8 @@ import {
   Product,
 } from '@/types/product';
 import {
+  CartItem,
+  CartSummary,
   CompletedSaleResult,
   DashboardSalesData,
   DateGroupedSales,
@@ -57,6 +59,183 @@ export function filterSellableProducts(products: Product[]): Product[] {
       Number.isFinite(product.selling_price) &&
       product.selling_price >= 0
   );
+}
+
+/**
+ * Computes estimated cart summary:
+ * - totalItems: Total unit count across all cart items (e.g., 2 + 1 = 3 units)
+ * - distinctCount: Number of unique products in cart
+ * - totalAmount: Pre-checkout estimated total in Philippine Pesos using centavo accuracy
+ */
+export function calculateCartSummary(cart: CartItem[]): CartSummary {
+  if (!cart || cart.length === 0) {
+    return {
+      totalItems: 0,
+      distinctCount: 0,
+      totalAmount: 0,
+    };
+  }
+
+  let totalUnits = 0;
+  let totalCentavos = 0;
+
+  for (const item of cart) {
+    if (Number.isFinite(item.quantity) && item.quantity > 0) {
+      totalUnits += item.quantity;
+      const subtotalCentavos = Math.round(item.subtotal * 100);
+      totalCentavos += subtotalCentavos;
+    }
+  }
+
+  return {
+    totalItems: totalUnits,
+    distinctCount: cart.length,
+    totalAmount: Number((totalCentavos / 100).toFixed(2)),
+  };
+}
+
+/**
+ * Adds a product to the cart:
+ * - If product is not in cart: adds with quantity 1 (if in stock)
+ * - If product is already in cart: merges by incrementing quantity by 1,
+ *   capped at currently known available stock
+ */
+export function addProductToCart(cart: CartItem[], product: Product): CartItem[] {
+  if (!product || product.stock_quantity <= 0) {
+    return cart;
+  }
+
+  const existingIndex = cart.findIndex((item) => item.productId === product.id);
+
+  if (existingIndex === -1) {
+    const subtotal = calculateSaleTotal(product.selling_price, 1);
+    const newItem: CartItem = {
+      productId: product.id,
+      productName: product.name,
+      category: product.category,
+      imageUrl: product.image_url,
+      unit: product.unit,
+      sellingPrice: product.selling_price,
+      costPrice: product.cost_price,
+      quantity: 1,
+      availableStock: product.stock_quantity,
+      lowStockThreshold: product.low_stock_threshold,
+      subtotal,
+    };
+    return [...cart, newItem];
+  }
+
+  const existing = cart[existingIndex];
+  if (existing.quantity >= existing.availableStock) {
+    // Already at maximum available stock
+    return cart;
+  }
+
+  const nextQuantity = existing.quantity + 1;
+  const nextSubtotal = calculateSaleTotal(existing.sellingPrice, nextQuantity);
+
+  const updatedCart = [...cart];
+  updatedCart[existingIndex] = {
+    ...existing,
+    quantity: nextQuantity,
+    subtotal: nextSubtotal,
+  };
+
+  return updatedCart;
+}
+
+/**
+ * Adjusts quantity for a specific cart item:
+ * - delta: +1 to increment, -1 to decrement
+ * - If quantity reaches 0, removes the item from the cart
+ * - If quantity exceeds availableStock, caps at availableStock
+ */
+export function updateCartItemQuantity(
+  cart: CartItem[],
+  productId: string,
+  delta: number
+): CartItem[] {
+  const itemIndex = cart.findIndex((item) => item.productId === productId);
+  if (itemIndex === -1) {
+    return cart;
+  }
+
+  const item = cart[itemIndex];
+  const nextQuantity = item.quantity + delta;
+
+  if (nextQuantity <= 0) {
+    return cart.filter((i) => i.productId !== productId);
+  }
+
+  const cappedQuantity = Math.min(item.availableStock, nextQuantity);
+  const nextSubtotal = calculateSaleTotal(item.sellingPrice, cappedQuantity);
+
+  const updatedCart = [...cart];
+  updatedCart[itemIndex] = {
+    ...item,
+    quantity: cappedQuantity,
+    subtotal: nextSubtotal,
+  };
+
+  return updatedCart;
+}
+
+/**
+ * Removes a specific product line item from the cart.
+ */
+export function removeCartItem(cart: CartItem[], productId: string): CartItem[] {
+  return cart.filter((item) => item.productId !== productId);
+}
+
+/**
+ * Synchronizes cart items with freshly fetched store products:
+ * Updates availableStock and sellingPrice if modified, and caps quantity if stock reduced.
+ */
+export function syncCartWithLatestProducts(
+  cart: CartItem[],
+  products: Product[]
+): CartItem[] {
+  if (cart.length === 0 || products.length === 0) {
+    return cart;
+  }
+
+  const productMap = new Map<string, Product>();
+  for (const p of products) {
+    productMap.set(p.id, p);
+  }
+
+  const updated: CartItem[] = [];
+
+  for (const item of cart) {
+    const live = productMap.get(item.productId);
+    if (!live || live.stock_quantity <= 0) {
+      // Product was deleted or completely out of stock; keep in cart but mark availableStock = 0
+      updated.push({
+        ...item,
+        availableStock: 0,
+      });
+      continue;
+    }
+
+    const cappedQuantity = Math.min(item.quantity, live.stock_quantity);
+    const subtotal = calculateSaleTotal(live.selling_price, cappedQuantity);
+
+    updated.push({
+      ...item,
+      productName: live.name,
+      category: live.category,
+      imageUrl: live.image_url,
+      unit: live.unit,
+      sellingPrice: live.selling_price,
+      costPrice: live.cost_price,
+      availableStock: live.stock_quantity,
+      lowStockThreshold: live.low_stock_threshold,
+      quantity: cappedQuantity,
+      subtotal,
+    });
+  }
+
+  return updated;
 }
 
 /**
