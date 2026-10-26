@@ -42,13 +42,18 @@ export function SaleHistoryItemCard({
   const isCompactPhone = windowWidth < 360;
 
   const isMultiItem = (sale.item_count ?? 1) > 1;
+  const isUtang = sale.payment_method === 'credit';
   const formattedTotal = formatPesoCurrency(sale.total_amount);
   const formattedUnitPrice = formatPesoCurrency(sale.unit_price);
   const formattedTime = formatSaleTime(sale.created_at);
 
+  const paymentDesc = isUtang
+    ? `Utang credit sale${sale.customer_name ? ` to ${sale.customer_name}` : ''}`
+    : 'Cash sale';
+
   const accessibilityLabel = isMultiItem
-    ? `Sale: ${sale.product_name}, ${sale.item_count} products, ${sale.quantity} total units, total ${formattedTotal}, at ${formattedTime}`
-    : `Sale: ${sale.product_name}, ${sale.quantity} ${sale.unit} at ${formattedUnitPrice} each, total ${formattedTotal}, at ${formattedTime}`;
+    ? `${paymentDesc}: ${sale.product_name}, ${sale.item_count} products, ${sale.quantity} total units, total ${formattedTotal}, at ${formattedTime}`
+    : `${paymentDesc}: ${sale.product_name}, ${sale.quantity} ${sale.unit} at ${formattedUnitPrice} each, total ${formattedTotal}, at ${formattedTime}`;
 
   return (
     <Pressable
@@ -75,6 +80,13 @@ export function SaleHistoryItemCard({
               <View style={styles.multiBadge}>
                 <Text style={styles.multiBadgeText}>
                   {sale.item_count} items
+                </Text>
+              </View>
+            )}
+            {isUtang && (
+              <View style={styles.utangBadge}>
+                <Text style={styles.utangBadgeText} numberOfLines={1}>
+                  {sale.customer_name ? `Utang · ${sale.customer_name}` : 'Utang'}
                 </Text>
               </View>
             )}
@@ -165,6 +177,22 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: Typography.weights.bold,
     color: Colors.pastel.blue.accent,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  utangBadge: {
+    backgroundColor: Colors.accentLight,
+    borderWidth: 1,
+    borderColor: Colors.accentBorder,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: BorderRadius.xs,
+    maxWidth: 140,
+  },
+  utangBadgeText: {
+    fontSize: 10,
+    fontWeight: Typography.weights.bold,
+    color: Colors.accent,
     textTransform: 'uppercase',
     letterSpacing: 0.3,
   },

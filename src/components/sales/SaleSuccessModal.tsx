@@ -100,6 +100,7 @@ export function SaleSuccessModal({
   const totalUnits = sale.quantity;
   const formattedDate = formatSaleDate(sale.created_at);
   const formattedTime = formatSaleTime(sale.created_at);
+  const isUtang = sale.payment_method === 'credit';
 
   return (
     <Modal
@@ -123,7 +124,7 @@ export function SaleSuccessModal({
               </View>
 
               <Text style={styles.title} accessibilityRole="header">
-                Sale Recorded!
+                {isUtang ? 'Utang Recorded!' : 'Sale Recorded!'}
               </Text>
 
               {/* Meta details: Reference & Timestamp */}
@@ -136,6 +137,15 @@ export function SaleSuccessModal({
                   {formattedDate} • {formattedTime}
                 </Text>
               </View>
+
+              {/* Payment Method Badge */}
+              {isUtang && (
+                <View style={styles.utangHeaderBadge}>
+                  <Text style={styles.utangHeaderBadgeText}>
+                    📝 Charged to {sale.customer_name ?? 'Customer'}
+                  </Text>
+                </View>
+              )}
 
               {/* Idempotency Retry Badge */}
               {isRetry && (
@@ -216,53 +226,78 @@ export function SaleSuccessModal({
                   </Text>
                 </View>
 
-                {/* Payment Breakdown (Tendered & Change) */}
+                {/* Payment Breakdown (Cash Tendered/Change OR Utang Credit Notice) */}
                 <View style={styles.paymentSection}>
-                  {amountTendered !== null && (
-                    <View style={styles.paymentRow}>
-                      <Text style={styles.paymentLabel}>Amount Tendered:</Text>
-                      <Text style={styles.paymentValue}>
-                        {formatPesoCurrency(amountTendered)}
-                      </Text>
-                    </View>
-                  )}
-
-                  <View
-                    style={[
-                      styles.changeContainer,
-                      change === 0
-                        ? styles.changeContainerExact
-                        : styles.changeContainerOverpaid,
-                    ]}>
-                    <View style={styles.changeLabelCol}>
-                      <Text
-                        style={[
-                          styles.changeLabel,
-                          change === 0
-                            ? styles.changeLabelExact
-                            : styles.changeLabelOverpaid,
-                        ]}>
-                        Change / Sukli:
-                      </Text>
-                      {change === 0 && (
-                        <Text style={styles.exactPaymentHint}>
-                          Exact Payment (Sakto)
+                  {isUtang ? (
+                    <View style={styles.utangCard}>
+                      <View style={styles.utangCardHeader}>
+                        <View style={styles.utangBadge}>
+                          <Text style={styles.utangBadgeText}>
+                            UTANG (STORE CREDIT)
+                          </Text>
+                        </View>
+                      </View>
+                      <View style={styles.utangCustomerRow}>
+                        <Text style={styles.utangCustomerLabel}>Customer:</Text>
+                        <Text style={styles.utangCustomerName} numberOfLines={1}>
+                          {sale.customer_name ?? 'Store Customer'}
                         </Text>
-                      )}
+                      </View>
+                      <View style={styles.utangNoticeBox}>
+                        <Text style={styles.utangNoticeText}>
+                          Charged to customer&apos;s credit account. No cash was received or change given.
+                        </Text>
+                      </View>
                     </View>
-                    <Text
-                      style={[
-                        styles.changeAmount,
-                        change === 0
-                          ? styles.changeAmountExact
-                          : styles.changeAmountOverpaid,
-                      ]}
-                      adjustsFontSizeToFit
-                      minimumFontScale={0.8}
-                      numberOfLines={1}>
-                      {formatPesoCurrency(change)}
-                    </Text>
-                  </View>
+                  ) : (
+                    <>
+                      {amountTendered !== null && (
+                        <View style={styles.paymentRow}>
+                          <Text style={styles.paymentLabel}>Amount Tendered:</Text>
+                          <Text style={styles.paymentValue}>
+                            {formatPesoCurrency(amountTendered)}
+                          </Text>
+                        </View>
+                      )}
+
+                      <View
+                        style={[
+                          styles.changeContainer,
+                          change === 0
+                            ? styles.changeContainerExact
+                            : styles.changeContainerOverpaid,
+                        ]}>
+                        <View style={styles.changeLabelCol}>
+                          <Text
+                            style={[
+                              styles.changeLabel,
+                              change === 0
+                                ? styles.changeLabelExact
+                                : styles.changeLabelOverpaid,
+                            ]}>
+                            Change / Sukli:
+                          </Text>
+                          {change === 0 && (
+                            <Text style={styles.exactPaymentHint}>
+                              Exact Payment (Sakto)
+                            </Text>
+                          )}
+                        </View>
+                        <Text
+                          style={[
+                            styles.changeAmount,
+                            change === 0
+                              ? styles.changeAmountExact
+                              : styles.changeAmountOverpaid,
+                          ]}
+                          adjustsFontSizeToFit
+                          minimumFontScale={0.8}
+                          numberOfLines={1}>
+                          {formatPesoCurrency(change)}
+                        </Text>
+                      </View>
+                    </>
+                  )}
                 </View>
               </View>
             </ScrollView>
@@ -379,6 +414,22 @@ const styles = StyleSheet.create({
     color: Colors.pastel.blue.accent,
     textAlign: 'center',
     fontWeight: Typography.weights.semiBold,
+  },
+  utangHeaderBadge: {
+    backgroundColor: Colors.accentLight,
+    borderWidth: 1,
+    borderColor: Colors.accentBorder,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 3,
+    borderRadius: BorderRadius.sm,
+    marginTop: Spacing.xs,
+    width: '100%',
+  },
+  utangHeaderBadgeText: {
+    fontSize: Typography.sizes.caption,
+    color: Colors.accent,
+    textAlign: 'center',
+    fontWeight: Typography.weights.bold,
   },
   priceNoticeBox: {
     backgroundColor: Colors.warningLight,
@@ -498,6 +549,56 @@ const styles = StyleSheet.create({
   },
   paymentSection: {
     gap: Spacing.xs,
+  },
+  utangCard: {
+    backgroundColor: Colors.accentLight,
+    borderWidth: 1,
+    borderColor: Colors.accentBorder,
+    borderRadius: BorderRadius.sm,
+    padding: Spacing.sm,
+    gap: Spacing.xs,
+  },
+  utangCardHeader: {
+    flexDirection: 'row',
+  },
+  utangBadge: {
+    backgroundColor: Colors.accent,
+    paddingHorizontal: Spacing.xs,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.xs,
+  },
+  utangBadgeText: {
+    fontSize: Typography.sizes.caption,
+    fontWeight: Typography.weights.bold,
+    color: Colors.surface,
+    letterSpacing: 0.5,
+  },
+  utangCustomerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  utangCustomerLabel: {
+    fontSize: Typography.sizes.xs,
+    color: Colors.textSecondary,
+    fontWeight: Typography.weights.medium,
+  },
+  utangCustomerName: {
+    fontSize: Typography.sizes.bodySm,
+    fontWeight: Typography.weights.bold,
+    color: Colors.textPrimary,
+  },
+  utangNoticeBox: {
+    backgroundColor: Colors.surface,
+    padding: Spacing.xs,
+    borderRadius: BorderRadius.xs,
+    borderWidth: 1,
+    borderColor: Colors.borderSubtle,
+  },
+  utangNoticeText: {
+    fontSize: Typography.sizes.caption,
+    color: Colors.textSecondary,
+    fontStyle: 'italic',
   },
   paymentRow: {
     flexDirection: 'row',

@@ -59,6 +59,7 @@ export default function SaleDetailsScreen() {
   const sale = transactionDetails?.sale ?? null;
   const items = transactionDetails?.items ?? [];
   const isMultiItem = (sale?.item_count ?? items.length) > 1;
+  const isUtang = sale?.payment_method === 'credit';
 
   const loadSaleDetails = useCallback(
     async (showRefresh = false) => {
@@ -210,6 +211,14 @@ export default function SaleDetailsScreen() {
                       </Text>
                     </View>
 
+                    {isUtang && (
+                      <View style={styles.utangBadge}>
+                        <Text style={styles.utangBadgeText}>
+                          {sale.customer_name ? `Utang: ${sale.customer_name}` : 'Utang (Credit)'}
+                        </Text>
+                      </View>
+                    )}
+
                     {isMultiItem && (
                       <View style={styles.multiItemBadge}>
                         <Text style={styles.multiItemBadgeText}>
@@ -231,12 +240,23 @@ export default function SaleDetailsScreen() {
                   </Text>
 
                   {/* Total Amount Big Callout */}
-                  <View style={styles.totalAmountBox}>
-                    <Text style={styles.totalAmountLabel}>
-                      Total Amount Paid
+                  <View
+                    style={[
+                      styles.totalAmountBox,
+                      isUtang && styles.totalAmountBoxUtang,
+                    ]}>
+                    <Text
+                      style={[
+                        styles.totalAmountLabel,
+                        isUtang && styles.totalAmountLabelUtang,
+                      ]}>
+                      {isUtang ? 'Total Credit Amount (Utang)' : 'Total Amount Paid'}
                     </Text>
                     <Text
-                      style={styles.totalAmountValue}
+                      style={[
+                        styles.totalAmountValue,
+                        isUtang && styles.totalAmountValueUtang,
+                      ]}
                       adjustsFontSizeToFit
                       minimumFontScale={0.85}
                       numberOfLines={1}>
@@ -336,6 +356,31 @@ export default function SaleDetailsScreen() {
                       #{sale.id.slice(0, 8).toUpperCase()}
                     </Text>
                   </View>
+
+                  <View style={styles.metaDivider} />
+
+                  <View style={styles.metaRow}>
+                    <Text style={styles.metaLabel}>Payment Method</Text>
+                    <Text
+                      style={[
+                        styles.metaValue,
+                        isUtang && styles.metaValueUtang,
+                      ]}>
+                      {isUtang ? 'Utang (Store Credit)' : 'Cash'}
+                    </Text>
+                  </View>
+
+                  {isUtang && sale.customer_name && (
+                    <>
+                      <View style={styles.metaDivider} />
+                      <View style={styles.metaRow}>
+                        <Text style={styles.metaLabel}>Customer</Text>
+                        <Text style={[styles.metaValue, styles.metaValueUtang]}>
+                          {sale.customer_name}
+                        </Text>
+                      </View>
+                    </>
+                  )}
 
                   <View style={styles.metaDivider} />
 
@@ -503,6 +548,19 @@ const styles = StyleSheet.create({
     fontWeight: Typography.weights.extraBold,
     color: Colors.successText,
   },
+  utangBadge: {
+    backgroundColor: Colors.accentLight,
+    borderWidth: 1,
+    borderColor: Colors.accentBorder,
+    paddingHorizontal: Spacing.twoHalf,
+    paddingVertical: 4,
+    borderRadius: BorderRadius.full,
+  },
+  utangBadgeText: {
+    fontSize: Typography.sizes.caption,
+    fontWeight: Typography.weights.bold,
+    color: Colors.accent,
+  },
   historicalSnapshotNote: {
     fontSize: Typography.sizes.caption,
     fontWeight: Typography.weights.medium,
@@ -522,6 +580,10 @@ const styles = StyleSheet.create({
     padding: Spacing.three,
     gap: 2,
   },
+  totalAmountBoxUtang: {
+    backgroundColor: Colors.accentLight,
+    borderColor: Colors.accentBorder,
+  },
   totalAmountLabel: {
     fontSize: Typography.sizes.caption,
     fontWeight: Typography.weights.bold,
@@ -529,10 +591,16 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.3,
   },
+  totalAmountLabelUtang: {
+    color: Colors.accent,
+  },
   totalAmountValue: {
     fontSize: Typography.sizes.displaySm,
     fontWeight: Typography.weights.extraBold,
     color: Colors.primaryDark,
+  },
+  totalAmountValueUtang: {
+    color: Colors.accent,
   },
   totalAmountSub: {
     fontSize: Typography.sizes.caption,
@@ -662,6 +730,9 @@ const styles = StyleSheet.create({
     fontSize: Typography.sizes.xs,
     color: Colors.textPrimary,
     fontWeight: Typography.weights.bold,
+  },
+  metaValueUtang: {
+    color: Colors.accent,
   },
   monospaceId: {
     maxWidth: '55%',
