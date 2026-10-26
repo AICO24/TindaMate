@@ -55,7 +55,7 @@ import {
 } from '@/lib/sales';
 import { supabase } from '@/lib/supabase';
 import { Product } from '@/types/product';
-import { CartItem, CompletedCartSaleResult } from '@/types/sale';
+import { CartItem, CompletedCartSaleResult, SalePaymentMethod } from '@/types/sale';
 
 /**
  * TindaMate Sales Screen (`/sales`)
@@ -96,12 +96,15 @@ export default function SalesScreen() {
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const activeIdempotencyKeyRef = useRef<string | null>(null);
 
-  // Completed Transaction State (Batch 7B-3)
+  // Completed Transaction State (Batch 7B-3 & Batch 8C)
   const [completedSaleResult, setCompletedSaleResult] =
     useState<CompletedCartSaleResult | null>(null);
   const [completedPaymentInfo, setCompletedPaymentInfo] = useState<{
-    amountTendered: number;
+    paymentMethod: SalePaymentMethod;
+    amountTendered: number | null;
     change: number;
+    customerId?: string | null;
+    customerName?: string | null;
     priceDifferenceNotice: string | null;
   } | null>(null);
   const [isSuccessModalVisible, setIsSuccessModalVisible] = useState(false);
@@ -246,13 +249,16 @@ export default function SalesScreen() {
    * Enforces:
    * 1. Double-tap prevention (isSubmitting guard)
    * 2. Idempotency UUID generation and preservation across network retries
-   * 3. Server-authoritative totals and stock deductions
+   * 3. Server-authoritative totals, stock deductions, and customer credit ledger update
    * 4. Cart clearing ONLY on confirmed database success
    * 5. Inventory catalog reload to reflect actual deducted stock
    */
   const handleConfirmSale = async (
-    amountTendered: number,
-    _estimatedChange: number
+    paymentMethod: SalePaymentMethod,
+    amountTendered: number | null,
+    _estimatedChange: number,
+    customerId?: string | null,
+    customerName?: string | null
   ) => {
     if (isSubmitting) {
       return;
@@ -269,18 +275,27 @@ export default function SalesScreen() {
 
     try {
       // 2. Execute atomic database RPC transaction
-      const result = await recordCartSale(cartItems, idempotencyKey);
+      const result = await recordCartSale(
+        cartItems,
+        idempotencyKey,
+        paymentMethod,
+        customerId
+      );
 
       // 3. Server-authoritative calculations
       const serverTotal = result.sale.total_amount;
       const clientEstimatedTotal = cartSummary.totalAmount;
-      const serverTotalCentavos = Math.round(serverTotal * 100);
-      const tenderedCentavos = Math.round(amountTendered * 100);
-      const actualChangeCentavos = Math.max(
-        0,
-        tenderedCentavos - serverTotalCentavos
-      );
-      const actualChange = Number((actualChangeCentavos / 100).toFixed(2));
+
+      let actualChange = 0;
+      if (paymentMethod === 'cash' && amountTendered !== null) {
+        const serverTotalCentavos = Math.round(serverTotal * 100);
+        const tenderedCentavos = Math.round(amountTendered * 100);
+        const actualChangeCentavos = Math.max(
+          0,
+          tenderedCentavos - serverTotalCentavos
+        );
+        actualChange = Number((actualChangeCentavos / 100).toFixed(2));
+      }
 
       let priceNotice: string | null = null;
       if (serverTotal !== clientEstimatedTotal) {
@@ -302,8 +317,11 @@ export default function SalesScreen() {
       // 7. Store completed sale information and display success modal
       setCompletedSaleResult(result);
       setCompletedPaymentInfo({
+        paymentMethod,
         amountTendered,
         change: actualChange,
+        customerId,
+        customerName: customerName ?? result.sale.customer_name,
         priceDifferenceNotice: priceNotice,
       });
       setIsSuccessModalVisible(true);
