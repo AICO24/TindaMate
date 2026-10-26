@@ -93,6 +93,15 @@ export interface CompletedCartSaleResult {
 }
 
 /**
+ * Detailed historical transaction payload returned by `fetchStoreSaleById`.
+ * Pairs the transaction header with its individual itemized line items.
+ */
+export interface SaleTransactionDetails {
+  sale: Sale;
+  items: SaleItem[];
+}
+
+/**
  * Validation result for the quantity sold input.
  */
 export interface SaleQuantityValidation {

@@ -31,22 +31,18 @@ import {
   formatSaleTime,
 } from '@/lib/sales';
 import { supabase } from '@/lib/supabase';
-import { Sale } from '@/types/sale';
+import { Sale, SaleItem, SaleTransactionDetails } from '@/types/sale';
 
 /**
  * TindaMate Individual Sale Details Screen (`/sales/[id]`)
  *
- * Displays complete details for an individual historical transaction:
- * - Product Sold (name from historical record)
- * - Unit Price (historical snapshot at time of sale)
- * - Quantity Sold & Unit
- * - Total Amount (historical snapshot)
- * - Date of transaction
- * - Time of transaction
- * - Transaction Reference ID
- *
- * Source of truth is strictly `public.sales`. Never fetches current product
- * prices to display old sales.
+ * Implements Batch 7C-2: Historical Sale Details for Single and Multi-Item POS transactions:
+ * - Displays complete itemized list of purchased products from `public.sale_items`
+ * - Each item shows: product name, quantity, unit, historical snapshot price, and subtotal
+ * - Server-authoritative transaction total amount from `public.sales`
+ * - Preserves historical pricing even if product prices changed or products were deleted
+ * - Transaction metadata: timestamp (date/time), reference ID, total units, line count
+ * - Honest loading, error, and not-found states
  */
 export default function SaleDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -54,10 +50,15 @@ export default function SaleDetailsScreen() {
   const { width: windowWidth } = useWindowDimensions();
   const isCompactPhone = windowWidth < 360;
 
-  const [sale, setSale] = useState<Sale | null>(null);
+  const [transactionDetails, setTransactionDetails] =
+    useState<SaleTransactionDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const sale = transactionDetails?.sale ?? null;
+  const items = transactionDetails?.items ?? [];
+  const isMultiItem = (sale?.item_count ?? items.length) > 1;
 
   const loadSaleDetails = useCallback(
     async (showRefresh = false) => {
@@ -87,13 +88,13 @@ export default function SaleDetailsScreen() {
           return;
         }
 
-        const item = await fetchStoreSaleById(saleId);
-        if (!item) {
+        const details = await fetchStoreSaleById(saleId);
+        if (!details) {
           setErrorMessage(
             'This sale record could not be found or does not belong to your store.'
           );
         } else {
-          setSale(item);
+          setTransactionDetails(details);
         }
       } catch (err: unknown) {
         const msg =
@@ -129,7 +130,11 @@ export default function SaleDetailsScreen() {
         {/* Top Screen Header */}
         <ProductScreenHeader
           title="Sale Details"
-          subtitle={sale ? sale.product_name : 'Transaction details'}
+          subtitle={
+            sale
+              ? `${sale.product_name} · ${formatPesoCurrency(sale.total_amount)}`
+              : 'Transaction details'
+          }
           showBack={true}
           onBack={handleBack}
         />
@@ -205,6 +210,14 @@ export default function SaleDetailsScreen() {
                       </Text>
                     </View>
 
+                    {isMultiItem && (
+                      <View style={styles.multiItemBadge}>
+                        <Text style={styles.multiItemBadgeText}>
+                          {items.length} products
+                        </Text>
+                      </View>
+                    )}
+
                     <Text style={styles.historicalSnapshotNote}>
                       Historical Record
                     </Text>
@@ -229,52 +242,64 @@ export default function SaleDetailsScreen() {
                       numberOfLines={1}>
                       {formatPesoCurrency(sale.total_amount)}
                     </Text>
+                    <Text style={styles.totalAmountSub}>
+                      {items.length} {items.length === 1 ? 'product line' : 'product lines'} · {sale.quantity} {sale.quantity === 1 ? 'unit' : 'units'} sold
+                    </Text>
                   </View>
                 </View>
 
-                {/* Line Item Breakdown Card */}
+                {/* Itemized Line Items Breakdown Card */}
                 <View style={styles.sectionCard}>
-                  <Text
-                    style={styles.sectionHeading}
-                    accessibilityRole="header">
-                    Transaction Breakdown
-                  </Text>
-
-                  <View
-                    style={[
-                      styles.metricsGrid,
-                      isCompactPhone && styles.metricsGridStacked,
-                    ]}>
-                    <View style={styles.metricBox}>
-                      <Text style={styles.metricLabel}>Unit Price at Sale</Text>
-                      <Text
-                        style={styles.metricValue}
-                        numberOfLines={1}
-                        adjustsFontSizeToFit
-                        minimumFontScale={0.85}>
-                        {formatPesoCurrency(sale.unit_price)}
-                      </Text>
-                      <Text style={styles.metricCaption}>
-                        per {sale.unit}
-                      </Text>
-                    </View>
-
-                    <View style={styles.metricBox}>
-                      <Text style={styles.metricLabel}>Quantity Sold</Text>
-                      <Text style={styles.metricValue}>
-                        {sale.quantity} {sale.unit}
-                      </Text>
-                      <Text style={styles.metricCaption}>Units deducted</Text>
-                    </View>
+                  <View style={styles.sectionHeaderRow}>
+                    <Text
+                      style={styles.sectionHeading}
+                      accessibilityRole="header">
+                      Purchased Items ({items.length})
+                    </Text>
+                    <Text style={styles.itemCountSub}>
+                      {sale.quantity} {sale.quantity === 1 ? 'unit' : 'units'} total
+                    </Text>
                   </View>
 
-                  <View style={styles.formulaNoticeBox}>
-                    <Text style={styles.formulaNoticeText}>
-                      Calculation: {sale.quantity} ×{' '}
-                      {formatPesoCurrency(sale.unit_price)} ={' '}
-                      <Text style={styles.boldText}>
-                        {formatPesoCurrency(sale.total_amount)}
-                      </Text>
+                  <View style={styles.itemsList}>
+                    {items.map((item, index) => (
+                      <View
+                        key={`${item.id}-${index}`}
+                        style={[
+                          styles.itemRow,
+                          index < items.length - 1 && styles.itemRowDivider,
+                        ]}>
+                        <View style={styles.itemInfoCol}>
+                          <Text
+                            style={styles.itemName}
+                            numberOfLines={2}
+                            maxFontSizeMultiplier={1.3}>
+                            {item.product_name}
+                          </Text>
+                          <Text
+                            style={styles.itemCalculation}
+                            maxFontSizeMultiplier={1.2}>
+                            {item.quantity} {item.unit} × {formatPesoCurrency(item.unit_price)}
+                          </Text>
+                        </View>
+                        <Text
+                          style={styles.itemSubtotal}
+                          numberOfLines={1}
+                          adjustsFontSizeToFit
+                          minimumFontScale={0.85}>
+                          {formatPesoCurrency(item.subtotal)}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+
+                  {/* Receipt Total Footer Row */}
+                  <View style={styles.receiptTotalFooter}>
+                    <Text style={styles.receiptTotalFooterLabel}>
+                      Transaction Total
+                    </Text>
+                    <Text style={styles.receiptTotalFooterValue}>
+                      {formatPesoCurrency(sale.total_amount)}
                     </Text>
                   </View>
                 </View>
@@ -284,7 +309,7 @@ export default function SaleDetailsScreen() {
                   <Text
                     style={styles.sectionHeading}
                     accessibilityRole="header">
-                    Date & Time
+                    Transaction Details
                   </Text>
 
                   <View style={styles.metaRow}>
@@ -306,6 +331,15 @@ export default function SaleDetailsScreen() {
                   <View style={styles.metaDivider} />
 
                   <View style={styles.metaRow}>
+                    <Text style={styles.metaLabel}>Reference No.</Text>
+                    <Text style={styles.metaValue}>
+                      #{sale.id.slice(0, 8).toUpperCase()}
+                    </Text>
+                  </View>
+
+                  <View style={styles.metaDivider} />
+
+                  <View style={styles.metaRow}>
                     <Text style={styles.metaLabel}>Transaction ID</Text>
                     <Text
                       style={[styles.metaValue, styles.monospaceId]}
@@ -314,6 +348,21 @@ export default function SaleDetailsScreen() {
                       {sale.id}
                     </Text>
                   </View>
+
+                  {sale.idempotency_key && (
+                    <>
+                      <View style={styles.metaDivider} />
+                      <View style={styles.metaRow}>
+                        <Text style={styles.metaLabel}>Idempotency Key</Text>
+                        <Text
+                          style={[styles.metaValue, styles.monospaceId]}
+                          numberOfLines={1}
+                          ellipsizeMode="middle">
+                          {sale.idempotency_key}
+                        </Text>
+                      </View>
+                    </>
+                  )}
                 </View>
 
                 {/* Primary Actions */}
@@ -485,6 +534,25 @@ const styles = StyleSheet.create({
     fontWeight: Typography.weights.extraBold,
     color: Colors.primaryDark,
   },
+  totalAmountSub: {
+    fontSize: Typography.sizes.caption,
+    color: Colors.primaryDark,
+    marginTop: 2,
+  },
+  multiItemBadge: {
+    backgroundColor: Colors.pastel.blue.bg,
+    borderWidth: 1,
+    borderColor: Colors.pastel.blue.border,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.xs,
+  },
+  multiItemBadgeText: {
+    fontSize: Typography.sizes.caption,
+    fontWeight: Typography.weights.bold,
+    color: Colors.pastel.blue.accent,
+    textTransform: 'uppercase',
+  },
   sectionCard: {
     backgroundColor: Colors.surface,
     borderRadius: BorderRadius.lg,
@@ -499,52 +567,76 @@ const styles = StyleSheet.create({
     fontWeight: Typography.weights.extraBold,
     color: Colors.textBrand,
   },
-  metricsGrid: {
+  sectionHeaderRow: {
     flexDirection: 'row',
-    gap: Spacing.twoHalf,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: Spacing.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borderSubtle,
   },
-  metricsGridStacked: {
-    flexDirection: 'column',
-  },
-  metricBox: {
-    flex: 1,
-    backgroundColor: Colors.backgroundAlt,
-    borderRadius: BorderRadius.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.twoHalf,
-    gap: 4,
-  },
-  metricLabel: {
-    fontSize: Typography.sizes.caption,
-    fontWeight: Typography.weights.semiBold,
-    color: Colors.textSecondary,
-  },
-  metricValue: {
-    fontSize: Typography.sizes.lg,
-    fontWeight: Typography.weights.extraBold,
-    color: Colors.textPrimary,
-  },
-  metricCaption: {
+  itemCountSub: {
     fontSize: Typography.sizes.caption,
     color: Colors.textMuted,
     fontWeight: Typography.weights.medium,
   },
-  formulaNoticeBox: {
-    backgroundColor: Colors.backgroundAlt,
-    borderRadius: BorderRadius.sm,
+  itemsList: {
+    gap: Spacing.xs,
+  },
+  itemRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+  },
+  itemRowDivider: {
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borderSubtle,
+  },
+  itemInfoCol: {
+    flex: 1,
+    paddingRight: Spacing.twoHalf,
+  },
+  itemName: {
+    fontSize: Typography.sizes.bodySm,
+    fontWeight: Typography.weights.semiBold,
+    color: Colors.textPrimary,
+    lineHeight: 18,
+  },
+  itemCalculation: {
+    fontSize: Typography.sizes.xs,
+    color: Colors.textMuted,
+    marginTop: 2,
+  },
+  itemSubtotal: {
+    fontSize: Typography.sizes.bodySm,
+    fontWeight: Typography.weights.bold,
+    color: Colors.textPrimary,
+    textAlign: 'right',
+  },
+  receiptTotalFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.pastel.green.bg,
     borderWidth: 1,
-    borderColor: Colors.borderSubtle,
+    borderColor: Colors.pastel.green.border,
+    borderRadius: BorderRadius.sm,
     paddingHorizontal: Spacing.twoHalf,
     paddingVertical: Spacing.two,
+    marginTop: Spacing.xs,
   },
-  formulaNoticeText: {
-    fontSize: Typography.sizes.xs,
-    color: Colors.textSecondary,
+  receiptTotalFooterLabel: {
+    fontSize: Typography.sizes.caption,
+    fontWeight: Typography.weights.bold,
+    color: Colors.primaryDark,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
   },
-  boldText: {
+  receiptTotalFooterValue: {
+    fontSize: Typography.sizes.base,
     fontWeight: Typography.weights.extraBold,
-    color: Colors.textPrimary,
+    color: Colors.primaryDark,
   },
   metadataCard: {
     backgroundColor: Colors.surface,

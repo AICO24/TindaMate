@@ -41,14 +41,19 @@ export function SaleHistoryItemCard({
   const { width: windowWidth } = useWindowDimensions();
   const isCompactPhone = windowWidth < 360;
 
+  const isMultiItem = (sale.item_count ?? 1) > 1;
   const formattedTotal = formatPesoCurrency(sale.total_amount);
   const formattedUnitPrice = formatPesoCurrency(sale.unit_price);
   const formattedTime = formatSaleTime(sale.created_at);
 
+  const accessibilityLabel = isMultiItem
+    ? `Sale: ${sale.product_name}, ${sale.item_count} products, ${sale.quantity} total units, total ${formattedTotal}, at ${formattedTime}`
+    : `Sale: ${sale.product_name}, ${sale.quantity} ${sale.unit} at ${formattedUnitPrice} each, total ${formattedTotal}, at ${formattedTime}`;
+
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`Sale: ${sale.product_name}, ${sale.quantity} ${sale.unit} at ${formattedUnitPrice} each, total ${formattedTotal}, at ${formattedTime}`}
+      accessibilityLabel={accessibilityLabel}
       accessibilityHint="Opens complete details for this sale"
       onPress={() => onPress(sale)}
       style={({ pressed }) => [
@@ -59,16 +64,27 @@ export function SaleHistoryItemCard({
       <View style={styles.contentRow}>
         {/* Left Information Block */}
         <View style={styles.infoCol}>
-          <Text
-            style={styles.productName}
-            numberOfLines={2}
-            maxFontSizeMultiplier={1.3}>
-            {sale.product_name}
-          </Text>
+          <View style={styles.nameHeaderRow}>
+            <Text
+              style={styles.productName}
+              numberOfLines={2}
+              maxFontSizeMultiplier={1.3}>
+              {sale.product_name}
+            </Text>
+            {isMultiItem && (
+              <View style={styles.multiBadge}>
+                <Text style={styles.multiBadgeText}>
+                  {sale.item_count} items
+                </Text>
+              </View>
+            )}
+          </View>
 
           <View style={styles.metaRow}>
             <Text style={styles.calculationText} maxFontSizeMultiplier={1.2}>
-              {sale.quantity} × {formattedUnitPrice}
+              {isMultiItem
+                ? `${sale.item_count} products · ${sale.quantity} units`
+                : `${sale.quantity} ${sale.unit} × ${formattedUnitPrice}`}
             </Text>
             <Text style={styles.dotSeparator}>•</Text>
             <Text style={styles.timeText} maxFontSizeMultiplier={1.2}>
@@ -125,11 +141,32 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 4,
   },
+  nameHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexWrap: 'wrap',
+  },
   productName: {
     fontSize: Typography.sizes.base,
     fontWeight: Typography.weights.extraBold,
     color: Colors.textPrimary,
     lineHeight: Typography.lineHeights.normal,
+  },
+  multiBadge: {
+    backgroundColor: Colors.pastel.blue.bg,
+    borderWidth: 1,
+    borderColor: Colors.pastel.blue.border,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: BorderRadius.xs,
+  },
+  multiBadgeText: {
+    fontSize: 10,
+    fontWeight: Typography.weights.bold,
+    color: Colors.pastel.blue.accent,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
   },
   metaRow: {
     flexDirection: 'row',

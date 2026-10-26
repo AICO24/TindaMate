@@ -16,6 +16,7 @@ import {
   Sale,
   SaleItem,
   SaleQuantityValidation,
+  SaleTransactionDetails,
   TodaySalesSummary,
 } from '@/types/sale';
 import {
@@ -1024,17 +1025,24 @@ export async function fetchStoreSales(): Promise<Sale[]> {
 }
 
 /**
- * Fetches a single historical sale by ID belonging to the authenticated store.
- * Always returns the exact historical record stored in `public.sales`.
+ * Fetches a single historical sale by ID belonging to the authenticated store,
+ * including its individual line items from `public.sale_items`.
+ *
+ * Guaranteed compatibility:
+ * - If `sale_items` rows exist (multi-item and backfilled sales), they are returned deterministically ordered.
+ * - If no `sale_items` exist (legacy un-backfilled edge case), synthesizes a fallback line item from header.
  */
-export async function fetchStoreSaleById(saleId: string): Promise<Sale | null> {
+export async function fetchStoreSaleById(
+  saleId: string
+): Promise<SaleTransactionDetails | null> {
   if (!saleId || !saleId.trim()) {
     return null;
   }
 
   const storeId = await getAuthenticatedStoreId();
 
-  const { data, error } = await supabase
+  // 1. Fetch transaction header from `public.sales`
+  const { data: saleData, error: saleError } = await supabase
     .from('sales')
     .select(
       'id, store_id, product_id, product_name, unit, quantity, unit_price, total_amount, item_count, idempotency_key, created_at'
@@ -1043,17 +1051,61 @@ export async function fetchStoreSaleById(saleId: string): Promise<Sale | null> {
     .eq('store_id', storeId)
     .maybeSingle();
 
-  if (error) {
+  if (saleError) {
     throw new Error(
-      mapSaleDatabaseError(error, 'Could not load sale details. Please try again.')
+      mapSaleDatabaseError(saleError, 'Could not load sale details. Please try again.')
     );
   }
 
-  if (!data) {
+  if (!saleData) {
     return null;
   }
 
-  return normalizeSaleRow(data as Record<string, unknown>);
+  const sale = normalizeSaleRow(saleData as Record<string, unknown>);
+
+  // 2. Fetch associated line items from `public.sale_items`
+  const { data: itemsData, error: itemsError } = await supabase
+    .from('sale_items')
+    .select(
+      'id, sale_id, store_id, product_id, product_name, unit, quantity, unit_price, cost_price, subtotal, created_at'
+    )
+    .eq('sale_id', sale.id)
+    .eq('store_id', storeId)
+    .order('created_at', { ascending: true })
+    .order('id', { ascending: true });
+
+  if (itemsError) {
+    throw new Error(
+      mapSaleDatabaseError(itemsError, 'Could not load sale line items. Please try again.')
+    );
+  }
+
+  // 3. Normalize items or fallback gracefully to header data
+  const items: SaleItem[] =
+    itemsData && itemsData.length > 0
+      ? itemsData.map((row) =>
+          normalizeSaleItemRow(row as Record<string, unknown>)
+        )
+      : [
+          {
+            id: sale.id,
+            sale_id: sale.id,
+            store_id: sale.store_id,
+            product_id: sale.product_id ?? sale.id,
+            product_name: sale.product_name,
+            unit: sale.unit,
+            quantity: sale.quantity,
+            unit_price: sale.unit_price,
+            cost_price: null,
+            subtotal: sale.total_amount,
+            created_at: sale.created_at,
+          },
+        ];
+
+  return {
+    sale,
+    items,
+  };
 }
 
 /**
