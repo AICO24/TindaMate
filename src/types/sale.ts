@@ -18,13 +18,51 @@ import { Product } from '@/types/product';
 export interface Sale {
   id: string;
   store_id: string;
-  product_id: string;
+  product_id?: string | null;
   product_name: string;
   unit: string;
   quantity: number;
   unit_price: number;
   total_amount: number;
   created_at: string;
+  item_count?: number;
+  idempotency_key?: string | null;
+}
+
+/**
+ * Normalized SaleItem domain entity returned to UI components.
+ * Represents an individual product line item inside a sales transaction header.
+ */
+export interface SaleItem {
+  id: string;
+  sale_id: string;
+  store_id: string;
+  product_id: string;
+  product_name: string;
+  unit: string;
+  quantity: number;
+  unit_price: number;
+  cost_price: number | null;
+  subtotal: number;
+  created_at: string;
+}
+
+/**
+ * Input payload for multi-item cart sale RPC.
+ */
+export interface CartSaleItemInput {
+  product_id: string;
+  quantity: number;
+}
+
+/**
+ * Result returned after a multi-item cart sale is atomically recorded.
+ */
+export interface CompletedCartSaleResult {
+  sale: Sale;
+  items: SaleItem[];
+  updatedProducts: Product[];
+  isRetry: boolean;
 }
 
 /**
