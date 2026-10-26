@@ -102,6 +102,29 @@ export interface SaleQuantityValidation {
 }
 
 /**
+ * Payment validation status for POS checkout.
+ */
+export type PaymentStatus =
+  | 'empty'
+  | 'invalid'
+  | 'insufficient'
+  | 'exact'
+  | 'overpaid';
+
+/**
+ * Result of validating customer payment against cart total amount.
+ * Calculations are performed in integer centavos to ensure currency safety.
+ */
+export interface PaymentValidationResult {
+  status: PaymentStatus;
+  isValid: boolean;
+  amountTendered: number | null;
+  change: number;
+  amountNeeded: number;
+  errorMessage?: string;
+}
+
+/**
  * Result returned after a sale is atomically recorded and inventory stock deducted.
  */
 export interface CompletedSaleResult {

@@ -9,6 +9,8 @@ import {
   CompletedSaleResult,
   DashboardSalesData,
   DateGroupedSales,
+  PaymentStatus,
+  PaymentValidationResult,
   Sale,
   SaleQuantityValidation,
   TodaySalesSummary,
@@ -236,6 +238,113 @@ export function syncCartWithLatestProducts(
   }
 
   return updated;
+}
+
+/**
+ * Validates the amount tendered against the checkout total using safe integer centavos.
+ *
+ * Ensures floating-point accuracy when calculating change or shortfall:
+ * - Empty: Prompt for tender (no change calculated)
+ * - Invalid: Non-numeric, negative, or unparsable values
+ * - Insufficient: Calculates shortfall amount needed
+ * - Exact: Change is ₱0.00
+ * - Overpaid: Calculates positive change (sukli) to return to customer
+ */
+export function validatePaymentAmount(
+  amountTenderedRaw: string,
+  totalAmount: number
+): PaymentValidationResult {
+  const trimmed = amountTenderedRaw.trim();
+  if (trimmed === '') {
+    return {
+      status: 'empty',
+      isValid: false,
+      amountTendered: null,
+      change: 0,
+      amountNeeded: totalAmount,
+    };
+  }
+
+  const parsed = Number(trimmed);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return {
+      status: 'invalid',
+      isValid: false,
+      amountTendered: null,
+      change: 0,
+      amountNeeded: totalAmount,
+      errorMessage: 'Please enter a valid amount.',
+    };
+  }
+
+  const totalCentavos = Math.round(totalAmount * 100);
+  const tenderedCentavos = Math.round(parsed * 100);
+  const diffCentavos = tenderedCentavos - totalCentavos;
+
+  if (diffCentavos < 0) {
+    const amountNeededCentavos = -diffCentavos;
+    return {
+      status: 'insufficient',
+      isValid: false,
+      amountTendered: parsed,
+      change: 0,
+      amountNeeded: Number((amountNeededCentavos / 100).toFixed(2)),
+      errorMessage: `Insufficient payment. ₱${(amountNeededCentavos / 100).toFixed(2)} more needed.`,
+    };
+  }
+
+  if (diffCentavos === 0) {
+    return {
+      status: 'exact',
+      isValid: true,
+      amountTendered: parsed,
+      change: 0,
+      amountNeeded: 0,
+    };
+  }
+
+  return {
+    status: 'overpaid',
+    isValid: true,
+    amountTendered: parsed,
+    change: Number((diffCentavos / 100).toFixed(2)),
+    amountNeeded: 0,
+  };
+}
+
+/**
+ * Generates smart quick-payment denominations in Philippine Pesos for POS cashiers.
+ *
+ * Always includes exact amount plus standard Philippine currency bills (₱20, ₱50, ₱100, ₱200, ₱500, ₱1,000)
+ * that are greater than or equal to the total amount.
+ */
+export function getQuickPaymentOptions(totalAmount: number): number[] {
+  if (totalAmount <= 0) {
+    return [];
+  }
+
+  const standardBills = [20, 50, 100, 200, 500, 1000];
+  const options = new Set<number>();
+
+  // Always include exact amount
+  options.add(totalAmount);
+
+  // Add bills that are greater than the total amount
+  for (const bill of standardBills) {
+    if (bill > totalAmount) {
+      options.add(bill);
+    }
+  }
+
+  // If total is large (> ₱1000), offer the next rounded thousands
+  if (totalAmount > 1000) {
+    const nextThousand = Math.ceil(totalAmount / 1000) * 1000;
+    options.add(nextThousand);
+  }
+
+  return Array.from(options)
+    .sort((a, b) => a - b)
+    .slice(0, 5);
 }
 
 /**

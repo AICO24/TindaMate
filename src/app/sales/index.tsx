@@ -30,6 +30,7 @@ import { DashboardBadgeVectorIcon } from '@/components/dashboard/DashboardNavIco
 import { ProductCard } from '@/components/products/ProductCard';
 import { ProductScreenHeader } from '@/components/products/ProductScreenHeader';
 import { CartItemCard } from '@/components/sales/CartItemCard';
+import { CheckoutModal } from '@/components/sales/CheckoutModal';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { TindaMateButton } from '@/components/ui/TindaMateButton';
 import {
@@ -83,6 +84,9 @@ export default function SalesScreen() {
   // Local Cart State (Batch 7B-1)
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const didApplyInitialProductRef = useRef(false);
+
+  // Local Checkout Modal State (Batch 7B-2)
+  const [isCheckoutVisible, setIsCheckoutVisible] = useState(false);
 
   // Derived metrics
   const sellableProducts = filterSellableProducts(allProducts);
@@ -204,6 +208,33 @@ export default function SalesScreen() {
    */
   const handleClearCart = () => {
     setCartItems([]);
+  };
+
+  /**
+   * Handles checkout confirmation in Batch 7B-2 (UI verification mode).
+   * Verifies calculations and displays summary without submitting to database or deducting stock.
+   */
+  const handleConfirmSalePreview = (amountTendered: number, change: number) => {
+    const title = 'Checkout Verification';
+    const message =
+      `Payment calculation verified!\n\n` +
+      `• Total Amount: ${formatPesoCurrency(cartSummary.totalAmount)}\n` +
+      `• Amount Tendered: ${formatPesoCurrency(amountTendered)}\n` +
+      `• Change (Sukli): ${formatPesoCurrency(change)}\n\n` +
+      `[Batch 7B-2 UI Verification]\n` +
+      `Database checkout integration is scheduled for Batch 7B-3. No inventory stock has been deducted yet.`;
+
+    if (Platform.OS === 'web') {
+      window.alert(message);
+      setIsCheckoutVisible(false);
+    } else {
+      Alert.alert(title, message, [
+        {
+          text: 'Got it!',
+          onPress: () => setIsCheckoutVisible(false),
+        },
+      ]);
+    }
   };
 
   const handleBackNavigation = () => {
@@ -417,7 +448,7 @@ export default function SalesScreen() {
 
                     <View style={styles.summaryFooterRow}>
                       <Text style={styles.summaryHintText}>
-                        Pre-checkout estimate · Batch 7B-1 Cart State
+                        Pre-checkout estimate · Tap Proceed to Checkout to enter payment
                       </Text>
                     </View>
                   </View>
@@ -443,6 +474,17 @@ export default function SalesScreen() {
                         />
                       ))}
                     </View>
+
+                    {/* Prominent Checkout Action Button */}
+                    <View style={styles.checkoutActionWrap}>
+                      <TindaMateButton
+                        title={`Proceed to Checkout · ${formatPesoCurrency(cartSummary.totalAmount)}`}
+                        variant="primary"
+                        showArrow
+                        onPress={() => setIsCheckoutVisible(true)}
+                        accessibilityLabel={`Proceed to checkout with ${cartSummary.totalItems} items for ${formatPesoCurrency(cartSummary.totalAmount)}`}
+                      />
+                    </View>
                   </View>
                 ) : (
                   /* Empty Cart Container */
@@ -464,6 +506,15 @@ export default function SalesScreen() {
                     <Text style={styles.emptyCartSubtitle}>
                       Tap any in-stock product below to add it to your sale.
                     </Text>
+                    <View style={styles.emptyCartActionWrap}>
+                      <TindaMateButton
+                        title="Proceed to Checkout"
+                        variant="primary"
+                        disabled={true}
+                        onPress={() => {}}
+                        accessibilityLabel="Proceed to checkout disabled because cart is empty"
+                      />
+                    </View>
                   </View>
                 )}
 
@@ -534,6 +585,15 @@ export default function SalesScreen() {
           onTabPress={handleTabPress}
         />
       </KeyboardAvoidingView>
+
+      {/* POS Checkout & Payment Modal (Batch 7B-2) */}
+      <CheckoutModal
+        visible={isCheckoutVisible}
+        cartItems={cartItems}
+        cartSummary={cartSummary}
+        onClose={() => setIsCheckoutVisible(false)}
+        onConfirmSale={handleConfirmSalePreview}
+      />
     </SafeAreaView>
   );
 }
@@ -753,12 +813,20 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     maxWidth: 280,
   },
+  emptyCartActionWrap: {
+    width: '100%',
+    maxWidth: 280,
+    marginTop: Spacing.sm,
+  },
   // Cart Section
   cartSection: {
     gap: Spacing.twoHalf,
   },
   cartItemsList: {
     gap: Spacing.twoHalf,
+  },
+  checkoutActionWrap: {
+    marginTop: Spacing.xs,
   },
   // Products Catalog Section
   productsSection: {
