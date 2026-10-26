@@ -1209,7 +1209,7 @@ export async function fetchDashboardSalesData(): Promise<DashboardSalesData> {
   const { data: recentRows, error: recentError } = await supabase
     .from('sales')
     .select(
-      'id, store_id, product_id, product_name, unit, quantity, unit_price, total_amount, created_at'
+      'id, store_id, product_id, product_name, unit, quantity, unit_price, total_amount, item_count, idempotency_key, created_at'
     )
     .eq('store_id', storeId)
     .order('created_at', { ascending: false })
@@ -1240,7 +1240,7 @@ export async function fetchDashboardSalesData(): Promise<DashboardSalesData> {
   const { data: todayRows, error: todayError } = await supabase
     .from('sales')
     .select(
-      'id, store_id, product_id, product_name, unit, quantity, unit_price, total_amount, created_at'
+      'id, store_id, product_id, product_name, unit, quantity, unit_price, total_amount, item_count, idempotency_key, created_at'
     )
     .eq('store_id', storeId)
     .gte('created_at', startOfToday.toISOString())

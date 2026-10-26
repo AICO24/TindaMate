@@ -59,15 +59,20 @@ export function RecentActivitySection({
         /* Real Recent Sales List (limited to 5 records, newest first) */
         <View style={styles.salesList}>
           {sales.slice(0, 5).map((sale) => {
+            const isMultiItem = (sale.item_count ?? 1) > 1;
             const formattedTotal = formatPesoCurrency(sale.total_amount);
             const formattedUnitPrice = formatPesoCurrency(sale.unit_price);
             const formattedTime = formatRecentSaleTime(sale.created_at);
+
+            const accessibilityLabel = isMultiItem
+              ? `Sale: ${sale.product_name}, ${sale.item_count} products, ${sale.quantity} total units, total ${formattedTotal}, ${formattedTime}`
+              : `Sale: ${sale.product_name}, ${sale.quantity} ${sale.unit} at ${formattedUnitPrice} each, total ${formattedTotal}, ${formattedTime}`;
 
             return (
               <Pressable
                 key={sale.id}
                 accessibilityRole="button"
-                accessibilityLabel={`Sale: ${sale.product_name}, ${sale.quantity} ${sale.unit} at ${formattedUnitPrice} each, total ${formattedTotal}, ${formattedTime}`}
+                accessibilityLabel={accessibilityLabel}
                 accessibilityHint="Opens complete details for this sale"
                 onPress={() => onSalePress?.(sale)}
                 style={({ pressed }) => [
@@ -78,17 +83,28 @@ export function RecentActivitySection({
                 <View style={styles.saleRow}>
                   {/* Left Column: Product name, Quantity & Unit Price, Time */}
                   <View style={styles.saleInfoCol}>
-                    <Text
-                      style={styles.saleProductName}
-                      numberOfLines={1}
-                      ellipsizeMode="tail"
-                      maxFontSizeMultiplier={1.3}>
-                      {sale.product_name}
-                    </Text>
+                    <View style={styles.nameHeaderRow}>
+                      <Text
+                        style={styles.saleProductName}
+                        numberOfLines={1}
+                        ellipsizeMode="tail"
+                        maxFontSizeMultiplier={1.3}>
+                        {sale.product_name}
+                      </Text>
+                      {isMultiItem && (
+                        <View style={styles.multiBadge}>
+                          <Text style={styles.multiBadgeText}>
+                            {sale.item_count} items
+                          </Text>
+                        </View>
+                      )}
+                    </View>
 
                     <View style={styles.saleMetaRow}>
                       <Text style={styles.saleQuantityText} maxFontSizeMultiplier={1.2}>
-                        {sale.quantity} {sale.unit} × {formattedUnitPrice}
+                        {isMultiItem
+                          ? `${sale.item_count} products · ${sale.quantity} units`
+                          : `${sale.quantity} ${sale.unit} × ${formattedUnitPrice}`}
                       </Text>
                       <Text style={styles.saleMetaDot}>•</Text>
                       <Text style={styles.saleTimeText} maxFontSizeMultiplier={1.2}>
@@ -197,6 +213,27 @@ const styles = StyleSheet.create({
   saleInfoCol: {
     flex: 1,
     gap: 3,
+  },
+  nameHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexWrap: 'wrap',
+  },
+  multiBadge: {
+    backgroundColor: Colors.pastel.blue.bg,
+    borderRadius: BorderRadius.xs,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderWidth: 1,
+    borderColor: Colors.pastel.blue.border,
+  },
+  multiBadgeText: {
+    fontSize: 10,
+    fontWeight: Typography.weights.bold,
+    color: Colors.pastel.blue.accent,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
   },
   saleProductName: {
     fontSize: Typography.sizes.body,
