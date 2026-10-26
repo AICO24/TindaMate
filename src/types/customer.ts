@@ -1,12 +1,10 @@
 /**
--- ============================================================================
--- TindaMate — Batch 8A: Customer & Credit (Utang) Foundation Types
--- File: src/types/customer.ts
---
--- Single source of truth for Customer, Credit Account, Credit Transaction,
--- and Credit Balance Summary domain entities.
--- ============================================================================
-*/
+ * TindaMate — Batch 8: Customer & Credit (Utang) Foundation Types
+ * File: src/types/customer.ts
+ *
+ * Single source of truth for Customer, Credit Account, Credit Transaction,
+ * and Credit Balance Summary domain entities.
+ */
 
 /**
  * Normalized Customer entity returned to UI components.
@@ -82,3 +80,53 @@ export interface CustomerCreditSummary {
   last_transaction_at?: string | null;
 }
 
+/**
+ * Combined customer entity with its derived credit balance summary.
+ */
+export interface CustomerWithCredit extends Customer {
+  credit_summary: CustomerCreditSummary | null;
+}
+
+/**
+ * Input for creating a new store customer.
+ */
+export interface CreateCustomerInput {
+  name: string;
+  phone?: string | null;
+  notes?: string | null;
+}
+
+/**
+ * Input for updating an existing store customer.
+ */
+export interface UpdateCustomerInput {
+  name: string;
+  phone?: string | null;
+  notes?: string | null;
+  is_active?: boolean;
+}
+
+/**
+ * Raw string form values for add/edit customer forms.
+ */
+export interface CustomerFormValues {
+  name: string;
+  phone: string;
+  notes: string;
+  isActive?: boolean;
+}
+
+/**
+ * Field-level validation error map for customer forms.
+ */
+export interface CustomerFormErrors {
+  name?: string;
+  phone?: string;
+  notes?: string;
+  general?: string;
+}
+
+/**
+ * Filter tabs available on the customer management list.
+ */
+export type CustomerFilterTab = 'All' | 'Active' | 'With Utang' | 'Inactive';
