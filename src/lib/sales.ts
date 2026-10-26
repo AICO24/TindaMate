@@ -15,6 +15,7 @@ import {
   PaymentValidationResult,
   Sale,
   SaleItem,
+  SalePaymentMethod,
   SaleQuantityValidation,
   SaleTransactionDetails,
   TodaySalesSummary,
@@ -450,6 +451,19 @@ function normalizeSaleRow(row: Record<string, unknown>): Sale {
   const itemCountRaw = Number(row.item_count ?? 1);
   const itemCount = Number.isFinite(itemCountRaw) && itemCountRaw > 0 ? Math.trunc(itemCountRaw) : 1;
 
+  const paymentMethodRaw =
+    typeof row.payment_method === 'string'
+      ? row.payment_method.toLowerCase().trim()
+      : '';
+  const payment_method: SalePaymentMethod =
+    paymentMethodRaw === 'credit' ? 'credit' : 'cash';
+
+  const customer_id = row.customer_id ? String(row.customer_id) : null;
+  const customer_name =
+    typeof row.customer_name === 'string' && row.customer_name.trim().length > 0
+      ? row.customer_name.trim()
+      : null;
+
   return {
     id: String(row.id ?? ''),
     store_id: String(row.store_id ?? ''),
@@ -464,6 +478,9 @@ function normalizeSaleRow(row: Record<string, unknown>): Sale {
     total_amount: totalAmount,
     item_count: itemCount,
     idempotency_key: row.idempotency_key ? String(row.idempotency_key) : null,
+    payment_method,
+    customer_id,
+    customer_name,
     created_at: String(row.created_at ?? new Date().toISOString()),
   };
 }
@@ -605,7 +622,22 @@ export function mapSaleDatabaseError(error: unknown, fallback: string): string {
     if (rawMessage.toLowerCase().includes('not enough stock')) {
       return rawMessage;
     }
+    if (message.includes('customer') || message.includes('utang') || message.includes('credit') || message.includes('payment')) {
+      return rawMessage;
+    }
     return 'Not enough stock available for one or more products.';
+  }
+
+  if (message.includes('customer account is inactive')) {
+    return 'Selected customer account is inactive. Only active customers can take store credit.';
+  }
+
+  if (message.includes('requires a valid customer')) {
+    return 'Please select a customer to record this sale as Utang.';
+  }
+
+  if (message.includes('credit limit') || message.includes('customers_credit_limit')) {
+    return "This sale exceeds the customer's credit limit.";
   }
 
   if (
@@ -917,10 +949,18 @@ export function generateIdempotencyKey(): string {
  */
 export async function recordCartSale(
   items: CartItem[] | CartSaleItemInput[],
-  idempotencyKey?: string | null
+  idempotencyKey?: string | null,
+  paymentMethod: SalePaymentMethod = 'cash',
+  customerId?: string | null
 ): Promise<CompletedCartSaleResult> {
   if (!items || items.length === 0) {
     throw new Error('Your cart is empty. Please add at least one product.');
+  }
+
+  if (paymentMethod === 'credit') {
+    if (!customerId || !customerId.trim()) {
+      throw new Error('A customer must be selected to record a sale as Utang.');
+    }
   }
 
   // Pre-validate store authentication
@@ -951,6 +991,9 @@ export async function recordCartSale(
     {
       p_items: payloadItems,
       p_idempotency_key: idempotencyKey ?? null,
+      p_payment_method: paymentMethod,
+      p_customer_id:
+        paymentMethod === 'credit' && customerId ? customerId.trim() : null,
     }
   );
 
@@ -971,6 +1014,7 @@ export async function recordCartSale(
     sale?: Record<string, unknown>;
     items?: Record<string, unknown>[];
     updated_products?: Record<string, unknown>[];
+    credit_transaction?: Record<string, unknown> | null;
     is_retry?: boolean;
   };
 
@@ -991,6 +1035,7 @@ export async function recordCartSale(
     sale,
     items: saleItems,
     updatedProducts,
+    creditTransaction: raw.credit_transaction ?? null,
     isRetry,
   };
 }
@@ -1005,7 +1050,7 @@ export async function fetchStoreSales(): Promise<Sale[]> {
   const { data, error } = await supabase
     .from('sales')
     .select(
-      'id, store_id, product_id, product_name, unit, quantity, unit_price, total_amount, item_count, idempotency_key, created_at'
+      'id, store_id, product_id, product_name, unit, quantity, unit_price, total_amount, item_count, idempotency_key, payment_method, customer_id, customer_name, created_at'
     )
     .eq('store_id', storeId)
     .order('created_at', { ascending: false });
@@ -1045,7 +1090,7 @@ export async function fetchStoreSaleById(
   const { data: saleData, error: saleError } = await supabase
     .from('sales')
     .select(
-      'id, store_id, product_id, product_name, unit, quantity, unit_price, total_amount, item_count, idempotency_key, created_at'
+      'id, store_id, product_id, product_name, unit, quantity, unit_price, total_amount, item_count, idempotency_key, payment_method, customer_id, customer_name, created_at'
     )
     .eq('id', saleId.trim())
     .eq('store_id', storeId)
@@ -1209,7 +1254,7 @@ export async function fetchDashboardSalesData(): Promise<DashboardSalesData> {
   const { data: recentRows, error: recentError } = await supabase
     .from('sales')
     .select(
-      'id, store_id, product_id, product_name, unit, quantity, unit_price, total_amount, item_count, idempotency_key, created_at'
+      'id, store_id, product_id, product_name, unit, quantity, unit_price, total_amount, item_count, idempotency_key, payment_method, customer_id, customer_name, created_at'
     )
     .eq('store_id', storeId)
     .order('created_at', { ascending: false })
@@ -1240,7 +1285,7 @@ export async function fetchDashboardSalesData(): Promise<DashboardSalesData> {
   const { data: todayRows, error: todayError } = await supabase
     .from('sales')
     .select(
-      'id, store_id, product_id, product_name, unit, quantity, unit_price, total_amount, item_count, idempotency_key, created_at'
+      'id, store_id, product_id, product_name, unit, quantity, unit_price, total_amount, item_count, idempotency_key, payment_method, customer_id, customer_name, created_at'
     )
     .eq('store_id', storeId)
     .gte('created_at', startOfToday.toISOString())

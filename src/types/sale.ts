@@ -15,6 +15,8 @@ import { Product } from '@/types/product';
  * Note: `unit_price` and `product_name` are stored at the time of sale so
  * historical sales remain accurate even if the product's price or name changes later.
  */
+export type SalePaymentMethod = 'cash' | 'credit';
+
 export interface Sale {
   id: string;
   store_id: string;
@@ -27,6 +29,9 @@ export interface Sale {
   created_at: string;
   item_count?: number;
   idempotency_key?: string | null;
+  payment_method?: SalePaymentMethod;
+  customer_id?: string | null;
+  customer_name?: string | null;
 }
 
 /**
@@ -89,6 +94,7 @@ export interface CompletedCartSaleResult {
   sale: Sale;
   items: SaleItem[];
   updatedProducts: Product[];
+  creditTransaction?: Record<string, unknown> | null;
   isRetry: boolean;
 }
 
