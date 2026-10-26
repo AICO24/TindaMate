@@ -32,6 +32,12 @@ export interface CheckoutModalProps {
   cartItems: CartItem[];
   /** Derived metrics for the active cart */
   cartSummary: CartSummary;
+  /** Whether the transaction is actively submitting to the database */
+  isSubmitting?: boolean;
+  /** Any submission error message from the previous attempt */
+  submissionError?: string | null;
+  /** Callback to clear any checkout submission error */
+  onClearError?: () => void;
   /** Callback triggered when user cancels or dismisses checkout */
   onClose: () => void;
   /** Callback triggered when user confirms sale with valid payment */
@@ -41,19 +47,23 @@ export interface CheckoutModalProps {
 /**
  * CheckoutModal
  *
- * Implements Batch 7B-2: Checkout UI + Amount Tendered + Change Calculation
+ * Implements Batch 7B-3: Checkout UI + Amount Tendered + Atomic RPC Integration
  * - Complete order summary review (items, quantities, unit prices, subtotals, total)
  * - Safe numeric input for customer Amount Tendered (supports Philippine Peso decimals)
  * - Integer centavo arithmetic for safe, deterministic change calculation
  * - Dynamic quick payment options (Exact amount, ₱20, ₱50, ₱100, ₱200, ₱500, ₱1,000)
  * - Real-time payment states: Empty, Invalid, Insufficient (shortfall needed), Exact (₱0.00), Overpaid (Change)
+ * - Interactive submission state ("Recording Sale...") with duplicate tap lock
+ * - Actionable submission error reporting with inline retry support
  * - Keyboard-adaptive mobile layout preserving full scrollability and touch access
- * - Batch 7B-2 boundary: stops at UI confirmation without database mutation
  */
 export function CheckoutModal({
   visible,
   cartItems,
   cartSummary,
+  isSubmitting = false,
+  submissionError = null,
+  onClearError,
   onClose,
   onConfirmSale,
 }: CheckoutModalProps) {
@@ -80,14 +90,23 @@ export function CheckoutModal({
   const quickPaymentOptions = getQuickPaymentOptions(cartSummary.totalAmount);
 
   const handleQuickPaymentPress = (amount: number) => {
+    onClearError?.();
     // If integer, display without trailing .00; if has cents, keep exact
     const formatted =
       amount % 1 === 0 ? amount.toString() : amount.toFixed(2);
     setAmountTenderedInput(formatted);
   };
 
+  const handleInputChange = (text: string) => {
+    if (submissionError) {
+      onClearError?.();
+    }
+    setAmountTenderedInput(text);
+  };
+
   const handleConfirmPress = () => {
     if (
+      isSubmitting ||
       !paymentValidation.isValid ||
       paymentValidation.amountTendered === null
     ) {
@@ -105,7 +124,7 @@ export function CheckoutModal({
       animationType="slide"
       transparent={false}
       statusBarTranslucent={true}
-      onRequestClose={onClose}>
+      onRequestClose={isSubmitting ? undefined : onClose}>
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right', 'bottom']}>
         <KeyboardAvoidingView
           style={styles.container}
@@ -123,8 +142,10 @@ export function CheckoutModal({
             <Pressable
               style={({ pressed }) => [
                 styles.closeButton,
-                pressed && styles.closeButtonPressed,
+                pressed && !isSubmitting && styles.closeButtonPressed,
+                isSubmitting && styles.closeButtonDisabled,
               ]}
+              disabled={isSubmitting}
               onPress={onClose}
               accessibilityRole="button"
               accessibilityLabel="Cancel checkout and return to cart"
@@ -213,7 +234,7 @@ export function CheckoutModal({
                 <TextInput
                   style={styles.numericInput}
                   value={amountTenderedInput}
-                  onChangeText={setAmountTenderedInput}
+                  onChangeText={handleInputChange}
                   placeholder="0.00"
                   placeholderTextColor={Colors.textPlaceholder}
                   keyboardType="decimal-pad"
@@ -358,25 +379,34 @@ export function CheckoutModal({
               )}
             </View>
 
-            {/* Architecture Scope Notice */}
-            <View style={styles.noticeCard}>
-              <Text style={styles.noticeText}>
-                💡 <Text style={styles.noticeBold}>Batch 7B-2 UI Verification Mode:</Text>{' '}
-                Confirming sale will verify payment and change calculations without submitting to the database or modifying inventory stock.
-              </Text>
-            </View>
+            {/* Submission Error Banner */}
+            {submissionError ? (
+              <View style={styles.errorBannerCard}>
+                <View style={styles.errorBannerHeader}>
+                  <Text style={styles.errorBannerIcon}>⚠️</Text>
+                  <Text style={styles.errorBannerTitle}>Could Not Complete Sale</Text>
+                </View>
+                <Text style={styles.errorBannerText}>{submissionError}</Text>
+                <Text style={styles.errorBannerHint}>
+                  Your cart is safely preserved. You can retry with the same payment or return to cart to adjust items.
+                </Text>
+              </View>
+            ) : null}
           </ScrollView>
 
           {/* Sticky Bottom Actions Bar */}
           <View style={styles.bottomBar}>
             <TindaMateButton
               title={
-                paymentValidation.isValid
+                isSubmitting
+                  ? 'Recording Sale...'
+                  : paymentValidation.isValid
                   ? `Confirm Sale · ${formatPesoCurrency(cartSummary.totalAmount)}`
                   : 'Enter Sufficient Payment'
               }
               variant="primary"
-              disabled={!paymentValidation.isValid}
+              loading={isSubmitting}
+              disabled={isSubmitting || !paymentValidation.isValid}
               onPress={handleConfirmPress}
               accessibilityLabel="Confirm POS sale"
               style={styles.confirmButton}
@@ -385,6 +415,7 @@ export function CheckoutModal({
             <TindaMateButton
               title="Back to Cart"
               variant="ghost"
+              disabled={isSubmitting}
               onPress={onClose}
               accessibilityLabel="Cancel checkout and return to cart"
               style={styles.cancelButton}
@@ -439,6 +470,9 @@ const styles = StyleSheet.create({
   },
   closeButtonPressed: {
     backgroundColor: Colors.border,
+  },
+  closeButtonDisabled: {
+    opacity: 0.4,
   },
   closeButtonText: {
     fontSize: Typography.sizes.base,
@@ -741,20 +775,37 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     marginTop: 4,
   },
-  noticeCard: {
-    backgroundColor: Colors.primarySoft,
-    padding: Spacing.sm,
+  errorBannerCard: {
+    backgroundColor: Colors.errorLight,
+    padding: Spacing.md,
     borderRadius: BorderRadius.md,
-    borderWidth: 1,
-    borderColor: Colors.primaryBorder,
+    borderWidth: 1.5,
+    borderColor: Colors.errorBorder,
+    gap: 4,
   },
-  noticeText: {
+  errorBannerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  errorBannerIcon: {
+    fontSize: Typography.sizes.body,
+  },
+  errorBannerTitle: {
+    fontSize: Typography.sizes.bodySm,
+    fontWeight: Typography.weights.bold,
+    color: Colors.error,
+  },
+  errorBannerText: {
     fontSize: Typography.sizes.xs,
-    color: Colors.textBrand,
+    color: Colors.error,
+    fontWeight: Typography.weights.medium,
     lineHeight: 18,
   },
-  noticeBold: {
-    fontWeight: Typography.weights.bold,
+  errorBannerHint: {
+    fontSize: Typography.sizes.caption,
+    color: Colors.textSecondary,
+    marginTop: 4,
   },
   bottomBar: {
     backgroundColor: Colors.surface,

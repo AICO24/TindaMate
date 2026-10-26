@@ -5,13 +5,16 @@ import {
 } from '@/types/product';
 import {
   CartItem,
+  CartSaleItemInput,
   CartSummary,
+  CompletedCartSaleResult,
   CompletedSaleResult,
   DashboardSalesData,
   DateGroupedSales,
   PaymentStatus,
   PaymentValidationResult,
   Sale,
+  SaleItem,
   SaleQuantityValidation,
   TodaySalesSummary,
 } from '@/types/sale';
@@ -443,11 +446,13 @@ function normalizeSaleRow(row: Record<string, unknown>): Sale {
     : calculateSaleTotal(unitPrice, quantity);
 
   const unitRaw = typeof row.unit === 'string' ? row.unit.trim() : '';
+  const itemCountRaw = Number(row.item_count ?? 1);
+  const itemCount = Number.isFinite(itemCountRaw) && itemCountRaw > 0 ? Math.trunc(itemCountRaw) : 1;
 
   return {
     id: String(row.id ?? ''),
     store_id: String(row.store_id ?? ''),
-    product_id: String(row.product_id ?? ''),
+    product_id: row.product_id ? String(row.product_id) : null,
     product_name:
       typeof row.product_name === 'string' && row.product_name.trim().length > 0
         ? row.product_name.trim()
@@ -456,6 +461,59 @@ function normalizeSaleRow(row: Record<string, unknown>): Sale {
     quantity,
     unit_price: unitPrice,
     total_amount: totalAmount,
+    item_count: itemCount,
+    idempotency_key: row.idempotency_key ? String(row.idempotency_key) : null,
+    created_at: String(row.created_at ?? new Date().toISOString()),
+  };
+}
+
+/**
+ * Normalizes a raw Supabase `sale_items` row into a strongly-typed `SaleItem` entity.
+ */
+export function normalizeSaleItemRow(row: Record<string, unknown>): SaleItem {
+  const quantityRaw = Number(row.quantity ?? 0);
+  const quantity = Number.isFinite(quantityRaw)
+    ? Math.max(0, Math.trunc(quantityRaw))
+    : 0;
+
+  const unitPriceRaw = Number(row.unit_price ?? 0);
+  const unitPrice = Number.isFinite(unitPriceRaw)
+    ? Number(unitPriceRaw.toFixed(2))
+    : 0;
+
+  const costPriceRaw =
+    row.cost_price === null ||
+    row.cost_price === undefined ||
+    row.cost_price === ''
+      ? null
+      : Number(row.cost_price);
+  const costPrice =
+    costPriceRaw !== null && Number.isFinite(costPriceRaw)
+      ? Number(costPriceRaw.toFixed(2))
+      : null;
+
+  const subtotalRaw = Number(row.subtotal ?? 0);
+  const subtotal = Number.isFinite(subtotalRaw)
+    ? Number(subtotalRaw.toFixed(2))
+    : calculateSaleTotal(unitPrice, quantity);
+
+  return {
+    id: String(row.id ?? ''),
+    sale_id: String(row.sale_id ?? ''),
+    store_id: String(row.store_id ?? ''),
+    product_id: String(row.product_id ?? ''),
+    product_name:
+      typeof row.product_name === 'string' && row.product_name.trim().length > 0
+        ? row.product_name.trim()
+        : 'Store Product',
+    unit:
+      typeof row.unit === 'string' && row.unit.trim().length > 0
+        ? row.unit.trim()
+        : DEFAULT_PRODUCT_UNIT,
+    quantity,
+    unit_price: unitPrice,
+    cost_price: costPrice,
+    subtotal,
     created_at: String(row.created_at ?? new Date().toISOString()),
   };
 }
@@ -543,15 +601,29 @@ export function mapSaleDatabaseError(error: unknown, fallback: string): string {
   }
 
   if (code === 'P0001' || message.includes('not enough stock')) {
-    return 'Not enough stock available.';
+    if (rawMessage.toLowerCase().includes('not enough stock')) {
+      return rawMessage;
+    }
+    return 'Not enough stock available for one or more products.';
   }
 
   if (
     code === 'P0002' ||
     message.includes('product not found') ||
+    message.includes('was not found') ||
     message.includes('does not belong to your store')
   ) {
+    if (
+      rawMessage.toLowerCase().includes('was not found') ||
+      rawMessage.toLowerCase().includes('does not belong')
+    ) {
+      return rawMessage;
+    }
     return 'This product could not be found or no longer belongs to your store.';
+  }
+
+  if (code === '22023') {
+    return rawMessage.length > 0 ? rawMessage : 'Invalid cart checkout request.';
   }
 
   if (code === '42501' || message.includes('row-level security')) {
@@ -812,6 +884,117 @@ export async function recordProductSale(
 }
 
 /**
+ * Generates an RFC4122 v4 UUID for checkout idempotency.
+ * Used to safely track checkout submission attempts and prevent duplicate transactions.
+ */
+export function generateIdempotencyKey(): string {
+  if (typeof globalThis !== 'undefined' && globalThis.crypto?.randomUUID) {
+    try {
+      return globalThis.crypto.randomUUID();
+    } catch {
+      // fallback below
+    }
+  }
+
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
+/**
+ * Executes the atomic multi-item POS cart sale RPC (`public.record_cart_sale`).
+ *
+ * Responsibilities:
+ * - Validates input items array is non-empty and well-formed
+ * - Verifies authenticated store session
+ * - Maps local cart to exact payload contract: `[{ product_id: string, quantity: number }]`
+ * - Passes `p_idempotency_key` (UUID) for duplicate submission protection & safe retries
+ * - Normalizes server-authoritative response (`sale`, `items`, `updatedProducts`, `isRetry`)
+ * - Preserves atomic consistency (all items succeed or whole transaction rolls back)
+ */
+export async function recordCartSale(
+  items: CartItem[] | CartSaleItemInput[],
+  idempotencyKey?: string | null
+): Promise<CompletedCartSaleResult> {
+  if (!items || items.length === 0) {
+    throw new Error('Your cart is empty. Please add at least one product.');
+  }
+
+  // Pre-validate store authentication
+  await getAuthenticatedStoreId();
+
+  // Map to exact payload contract required by record_cart_sale(p_items jsonb, p_idempotency_key uuid)
+  const payloadItems: CartSaleItemInput[] = items.map((item) => {
+    const productId = 'productId' in item ? item.productId : item.product_id;
+    const quantity = item.quantity;
+
+    if (!productId || typeof productId !== 'string' || !productId.trim()) {
+      throw new Error('Each item in your cart must specify a valid product.');
+    }
+    if (!Number.isSafeInteger(quantity) || quantity <= 0) {
+      throw new Error(
+        'Quantity for each product must be a whole number greater than 0.'
+      );
+    }
+
+    return {
+      product_id: productId.trim(),
+      quantity,
+    };
+  });
+
+  const { data: rpcData, error: rpcError } = await supabase.rpc(
+    'record_cart_sale',
+    {
+      p_items: payloadItems,
+      p_idempotency_key: idempotencyKey ?? null,
+    }
+  );
+
+  if (rpcError) {
+    throw new Error(
+      mapSaleDatabaseError(
+        rpcError,
+        'Could not complete the sale. Please try again.'
+      )
+    );
+  }
+
+  if (!rpcData || typeof rpcData !== 'object') {
+    throw new Error('Checkout completed with an invalid response format.');
+  }
+
+  const raw = rpcData as {
+    sale?: Record<string, unknown>;
+    items?: Record<string, unknown>[];
+    updated_products?: Record<string, unknown>[];
+    is_retry?: boolean;
+  };
+
+  if (!raw.sale) {
+    throw new Error('Checkout transaction did not return a valid sale record.');
+  }
+
+  const sale = normalizeSaleRow(raw.sale);
+  const saleItems = Array.isArray(raw.items)
+    ? raw.items.map((i) => normalizeSaleItemRow(i))
+    : [];
+  const updatedProducts = Array.isArray(raw.updated_products)
+    ? raw.updated_products.map((p) => normalizeUpdatedProductRow(p))
+    : [];
+  const isRetry = Boolean(raw.is_retry);
+
+  return {
+    sale,
+    items: saleItems,
+    updatedProducts,
+    isRetry,
+  };
+}
+
+/**
  * Fetches recorded sales for the authenticated user's store, newest first.
  * Established as part of the Sales Foundation for upcoming Sales History & Summary features.
  */
@@ -821,7 +1004,7 @@ export async function fetchStoreSales(): Promise<Sale[]> {
   const { data, error } = await supabase
     .from('sales')
     .select(
-      'id, store_id, product_id, product_name, unit, quantity, unit_price, total_amount, created_at'
+      'id, store_id, product_id, product_name, unit, quantity, unit_price, total_amount, item_count, idempotency_key, created_at'
     )
     .eq('store_id', storeId)
     .order('created_at', { ascending: false });
@@ -854,7 +1037,7 @@ export async function fetchStoreSaleById(saleId: string): Promise<Sale | null> {
   const { data, error } = await supabase
     .from('sales')
     .select(
-      'id, store_id, product_id, product_name, unit, quantity, unit_price, total_amount, created_at'
+      'id, store_id, product_id, product_name, unit, quantity, unit_price, total_amount, item_count, idempotency_key, created_at'
     )
     .eq('id', saleId.trim())
     .eq('store_id', storeId)

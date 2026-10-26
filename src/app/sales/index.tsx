@@ -31,6 +31,7 @@ import { ProductCard } from '@/components/products/ProductCard';
 import { ProductScreenHeader } from '@/components/products/ProductScreenHeader';
 import { CartItemCard } from '@/components/sales/CartItemCard';
 import { CheckoutModal } from '@/components/sales/CheckoutModal';
+import { SaleSuccessModal } from '@/components/sales/SaleSuccessModal';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { TindaMateButton } from '@/components/ui/TindaMateButton';
 import {
@@ -46,13 +47,15 @@ import {
   addProductToCart,
   calculateCartSummary,
   filterSellableProducts,
+  generateIdempotencyKey,
+  recordCartSale,
   removeCartItem,
   syncCartWithLatestProducts,
   updateCartItemQuantity,
 } from '@/lib/sales';
 import { supabase } from '@/lib/supabase';
 import { Product } from '@/types/product';
-import { CartItem } from '@/types/sale';
+import { CartItem, CompletedCartSaleResult } from '@/types/sale';
 
 /**
  * TindaMate Sales Screen (`/sales`)
@@ -87,6 +90,21 @@ export default function SalesScreen() {
 
   // Local Checkout Modal State (Batch 7B-2)
   const [isCheckoutVisible, setIsCheckoutVisible] = useState(false);
+
+  // Atomic Checkout Submission State (Batch 7B-3)
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const activeIdempotencyKeyRef = useRef<string | null>(null);
+
+  // Completed Transaction State (Batch 7B-3)
+  const [completedSaleResult, setCompletedSaleResult] =
+    useState<CompletedCartSaleResult | null>(null);
+  const [completedPaymentInfo, setCompletedPaymentInfo] = useState<{
+    amountTendered: number;
+    change: number;
+    priceDifferenceNotice: string | null;
+  } | null>(null);
+  const [isSuccessModalVisible, setIsSuccessModalVisible] = useState(false);
 
   // Derived metrics
   const sellableProducts = filterSellableProducts(allProducts);
@@ -211,30 +229,116 @@ export default function SalesScreen() {
   };
 
   /**
-   * Handles checkout confirmation in Batch 7B-2 (UI verification mode).
-   * Verifies calculations and displays summary without submitting to database or deducting stock.
+   * Closes the checkout modal and resets idempotency key if not currently submitting.
    */
-  const handleConfirmSalePreview = (amountTendered: number, change: number) => {
-    const title = 'Checkout Verification';
-    const message =
-      `Payment calculation verified!\n\n` +
-      `• Total Amount: ${formatPesoCurrency(cartSummary.totalAmount)}\n` +
-      `• Amount Tendered: ${formatPesoCurrency(amountTendered)}\n` +
-      `• Change (Sukli): ${formatPesoCurrency(change)}\n\n` +
-      `[Batch 7B-2 UI Verification]\n` +
-      `Database checkout integration is scheduled for Batch 7B-3. No inventory stock has been deducted yet.`;
-
-    if (Platform.OS === 'web') {
-      window.alert(message);
-      setIsCheckoutVisible(false);
-    } else {
-      Alert.alert(title, message, [
-        {
-          text: 'Got it!',
-          onPress: () => setIsCheckoutVisible(false),
-        },
-      ]);
+  const handleCloseCheckout = () => {
+    if (isSubmitting) {
+      return;
     }
+    activeIdempotencyKeyRef.current = null;
+    setCheckoutError(null);
+    setIsCheckoutVisible(false);
+  };
+
+  /**
+   * Executes atomic multi-item checkout via `public.record_cart_sale` RPC.
+   *
+   * Enforces:
+   * 1. Double-tap prevention (isSubmitting guard)
+   * 2. Idempotency UUID generation and preservation across network retries
+   * 3. Server-authoritative totals and stock deductions
+   * 4. Cart clearing ONLY on confirmed database success
+   * 5. Inventory catalog reload to reflect actual deducted stock
+   */
+  const handleConfirmSale = async (
+    amountTendered: number,
+    _estimatedChange: number
+  ) => {
+    if (isSubmitting) {
+      return;
+    }
+
+    // 1. Generate or reuse the idempotency key for this checkout attempt
+    if (!activeIdempotencyKeyRef.current) {
+      activeIdempotencyKeyRef.current = generateIdempotencyKey();
+    }
+    const idempotencyKey = activeIdempotencyKeyRef.current;
+
+    setIsSubmitting(true);
+    setCheckoutError(null);
+
+    try {
+      // 2. Execute atomic database RPC transaction
+      const result = await recordCartSale(cartItems, idempotencyKey);
+
+      // 3. Server-authoritative calculations
+      const serverTotal = result.sale.total_amount;
+      const clientEstimatedTotal = cartSummary.totalAmount;
+      const serverTotalCentavos = Math.round(serverTotal * 100);
+      const tenderedCentavos = Math.round(amountTendered * 100);
+      const actualChangeCentavos = Math.max(
+        0,
+        tenderedCentavos - serverTotalCentavos
+      );
+      const actualChange = Number((actualChangeCentavos / 100).toFixed(2));
+
+      let priceNotice: string | null = null;
+      if (serverTotal !== clientEstimatedTotal) {
+        priceNotice = `Server price applied: Final total is ${formatPesoCurrency(
+          serverTotal
+        )} (estimated was ${formatPesoCurrency(clientEstimatedTotal)}).`;
+      }
+
+      // 4. Reset submission state & idempotency key
+      activeIdempotencyKeyRef.current = null;
+      setIsSubmitting(false);
+
+      // 5. Clear cart ONLY after confirmed success
+      setCartItems([]);
+
+      // 6. Close checkout modal
+      setIsCheckoutVisible(false);
+
+      // 7. Store completed sale information and display success modal
+      setCompletedSaleResult(result);
+      setCompletedPaymentInfo({
+        amountTendered,
+        change: actualChange,
+        priceDifferenceNotice: priceNotice,
+      });
+      setIsSuccessModalVisible(true);
+
+      // 8. Refresh store inventory from Supabase so stock reflects completed sale
+      loadAvailableProducts(false);
+    } catch (err) {
+      setIsSubmitting(false);
+      // Cart remains intact!
+      // activeIdempotencyKeyRef.current is intentionally preserved so retry uses the same key
+      const errorMsg =
+        err instanceof Error
+          ? err.message
+          : 'Could not complete the sale. Please try again.';
+      setCheckoutError(errorMsg);
+    }
+  };
+
+  /**
+   * Dismisses the sale success modal to record another sale.
+   */
+  const handleDismissSuccess = () => {
+    setIsSuccessModalVisible(false);
+    setCompletedSaleResult(null);
+    setCompletedPaymentInfo(null);
+  };
+
+  /**
+   * Navigates to the transaction details screen.
+   */
+  const handleViewSaleDetails = (saleId: string) => {
+    setIsSuccessModalVisible(false);
+    setCompletedSaleResult(null);
+    setCompletedPaymentInfo(null);
+    router.push(`/sales/${saleId}`);
   };
 
   const handleBackNavigation = () => {
@@ -586,13 +690,29 @@ export default function SalesScreen() {
         />
       </KeyboardAvoidingView>
 
-      {/* POS Checkout & Payment Modal (Batch 7B-2) */}
+      {/* POS Checkout & Payment Modal (Batch 7B-3) */}
       <CheckoutModal
         visible={isCheckoutVisible}
         cartItems={cartItems}
         cartSummary={cartSummary}
-        onClose={() => setIsCheckoutVisible(false)}
-        onConfirmSale={handleConfirmSalePreview}
+        isSubmitting={isSubmitting}
+        submissionError={checkoutError}
+        onClearError={() => setCheckoutError(null)}
+        onClose={handleCloseCheckout}
+        onConfirmSale={handleConfirmSale}
+      />
+
+      {/* POS Sale Success & Receipt Summary Modal (Batch 7B-3) */}
+      <SaleSuccessModal
+        visible={isSuccessModalVisible}
+        sale={completedSaleResult?.sale ?? null}
+        items={completedSaleResult?.items ?? []}
+        amountTendered={completedPaymentInfo?.amountTendered ?? null}
+        change={completedPaymentInfo?.change ?? 0}
+        isRetry={completedSaleResult?.isRetry}
+        priceDifferenceNotice={completedPaymentInfo?.priceDifferenceNotice}
+        onDismiss={handleDismissSuccess}
+        onViewDetails={handleViewSaleDetails}
       />
     </SafeAreaView>
   );
