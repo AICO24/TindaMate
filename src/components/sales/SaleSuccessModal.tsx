@@ -1,7 +1,6 @@
 import React from 'react';
 import {
   Modal,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -20,6 +19,7 @@ import {
   Typography,
 } from '@/constants/theme';
 import { formatPesoCurrency } from '@/lib/products';
+import { formatSaleDate, formatSaleTime } from '@/lib/sales';
 import { Sale, SaleItem } from '@/types/sale';
 
 export interface SaleSuccessModalProps {
@@ -46,13 +46,14 @@ export interface SaleSuccessModalProps {
 /**
  * SaleSuccessModal
  *
- * Implements Batch 7B-3 POS transaction completion screen:
- * - Confirmed server-authoritative total amount
- * - Large high-contrast Change Due (Sukli) display for the cashier
- * - Item count and unit breakdown
- * - Transaction reference number
- * - Retried transaction indicator (idempotency verification)
- * - Clear actions to record another sale or inspect full receipt details
+ * Implements Batch 7C-1: Receipt / Sale Completion Experience
+ * - Lightweight mobile receipt layout tailored for sari-sari store cashiers
+ * - Complete itemized product breakdown (name, quantity, unit, unit price, subtotal)
+ * - Server-authoritative transaction total amount
+ * - Prominent Amount Tendered and Change Due (Sukli) display
+ * - Transaction reference number (#XXXXXXXX) and timestamp (Date • Time)
+ * - Scrollable receipt body preserving sticky action buttons ("Record Another Sale" / "View Sale Details")
+ * - Safe fallback handling for single-item and multi-item transactions
  */
 export function SaleSuccessModal({
   visible,
@@ -65,15 +66,40 @@ export function SaleSuccessModal({
   onDismiss,
   onViewDetails,
 }: SaleSuccessModalProps) {
-  const { width: windowWidth } = useWindowDimensions();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const isNarrow = windowWidth < 360;
+  const isShortScreen = windowHeight < 680;
 
   if (!sale) {
     return null;
   }
 
-  const distinctCount = sale.item_count ?? items.length;
+  // Fallback to sale header if items array is empty
+  const displayItems =
+    items && items.length > 0
+      ? items.map((i) => ({
+          id: i.id || i.product_id,
+          productName: i.product_name,
+          quantity: i.quantity,
+          unit: i.unit,
+          unitPrice: i.unit_price,
+          subtotal: i.subtotal,
+        }))
+      : [
+          {
+            id: sale.id,
+            productName: sale.product_name,
+            quantity: sale.quantity,
+            unit: sale.unit,
+            unitPrice: sale.unit_price,
+            subtotal: sale.total_amount,
+          },
+        ];
+
+  const distinctCount = sale.item_count ?? displayItems.length;
   const totalUnits = sale.quantity;
+  const formattedDate = formatSaleDate(sale.created_at);
+  const formattedTime = formatSaleTime(sale.created_at);
 
   return (
     <Modal
@@ -84,25 +110,32 @@ export function SaleSuccessModal({
       onRequestClose={onDismiss}>
       <View style={styles.backdrop}>
         <SafeAreaView style={styles.safeArea}>
-          <View style={[styles.modalCard, isNarrow && styles.modalCardNarrow]}>
-            <ScrollView
-              style={styles.scrollView}
-              contentContainerStyle={styles.scrollContent}
-              showsVerticalScrollIndicator={false}>
-              {/* Top Success Badge */}
-              <View style={styles.iconContainer}>
-                <View style={styles.iconCircle}>
-                  <CheckIcon size={32} color={Colors.surface} />
-                </View>
+          <View
+            style={[
+              styles.modalCard,
+              isNarrow && styles.modalCardNarrow,
+              isShortScreen && styles.modalCardShort,
+            ]}>
+            {/* Header: Success Badge, Title, Timestamp & Reference */}
+            <View style={styles.headerBlock}>
+              <View style={styles.iconCircle}>
+                <CheckIcon size={28} color={Colors.surface} />
               </View>
 
-              {/* Title & Status */}
               <Text style={styles.title} accessibilityRole="header">
                 Sale Recorded!
               </Text>
-              <Text style={styles.subtitle}>
-                Transaction saved to your store database.
-              </Text>
+
+              {/* Meta details: Reference & Timestamp */}
+              <View style={styles.metaRow}>
+                <Text style={styles.refText}>
+                  Ref: #{sale.id.slice(0, 8).toUpperCase()}
+                </Text>
+                <Text style={styles.metaDot}>•</Text>
+                <Text style={styles.dateText}>
+                  {formattedDate} • {formattedTime}
+                </Text>
+              </View>
 
               {/* Idempotency Retry Badge */}
               {isRetry && (
@@ -121,58 +154,126 @@ export function SaleSuccessModal({
                   </Text>
                 </View>
               ) : null}
+            </View>
 
-              {/* Total Amount Hero Card */}
-              <View style={styles.amountCard}>
-                <Text style={styles.amountLabel}>FINAL TOTAL AMOUNT</Text>
-                <Text
-                  style={styles.amountValue}
-                  adjustsFontSizeToFit
-                  minimumFontScale={0.8}
-                  numberOfLines={1}>
-                  {formatPesoCurrency(sale.total_amount)}
-                </Text>
-                <Text style={styles.amountItemsSub}>
-                  {distinctCount} {distinctCount === 1 ? 'product' : 'products'} · {totalUnits} {totalUnits === 1 ? 'unit' : 'units'}
-                </Text>
-              </View>
-
-              {/* Payment & Change Breakdown */}
-              <View style={styles.breakdownCard}>
-                {amountTendered !== null && (
-                  <View style={styles.breakdownRow}>
-                    <Text style={styles.breakdownLabel}>Amount Tendered:</Text>
-                    <Text style={styles.breakdownValue}>
-                      {formatPesoCurrency(amountTendered)}
-                    </Text>
-                  </View>
-                )}
-
-                <View style={[styles.breakdownRow, styles.changeRow]}>
-                  <Text style={styles.changeLabel}>Change Due (Sukli):</Text>
-                  <Text style={styles.changeValue}>
-                    {formatPesoCurrency(change)}
+            {/* Scrollable Receipt Body */}
+            <ScrollView
+              style={styles.receiptScrollView}
+              contentContainerStyle={styles.receiptScrollContent}
+              showsVerticalScrollIndicator={true}>
+              <View style={styles.receiptPaper}>
+                {/* Receipt Section Title */}
+                <View style={styles.receiptSectionHeader}>
+                  <Text style={styles.receiptSectionTitle}>
+                    ITEMS SOLD ({distinctCount})
+                  </Text>
+                  <Text style={styles.receiptSectionSubtitle}>
+                    {totalUnits} {totalUnits === 1 ? 'unit' : 'units'} total
                   </Text>
                 </View>
 
-                <View style={styles.divider} />
+                {/* Line Items List */}
+                <View style={styles.itemsList}>
+                  {displayItems.map((item, index) => (
+                    <View
+                      key={`${item.id}-${index}`}
+                      style={[
+                        styles.itemRow,
+                        index < displayItems.length - 1 && styles.itemRowDivider,
+                      ]}>
+                      <View style={styles.itemInfoCol}>
+                        <Text style={styles.itemName} numberOfLines={2}>
+                          {item.productName}
+                        </Text>
+                        <Text style={styles.itemCalculation}>
+                          {item.quantity} {item.unit} × {formatPesoCurrency(item.unitPrice)}
+                        </Text>
+                      </View>
+                      <Text style={styles.itemSubtotal}>
+                        {formatPesoCurrency(item.subtotal)}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
 
-                <View style={styles.breakdownRow}>
-                  <Text style={styles.refLabel}>Reference No.:</Text>
-                  <Text style={styles.refValue}>
-                    #{sale.id.slice(0, 8).toUpperCase()}
+                {/* Dashed Separator */}
+                <View style={styles.dashedDivider} />
+
+                {/* Authoritative Total */}
+                <View style={styles.totalRow}>
+                  <View>
+                    <Text style={styles.totalLabel}>TOTAL AMOUNT</Text>
+                    <Text style={styles.totalSub}>
+                      {distinctCount} {distinctCount === 1 ? 'product' : 'products'} · {totalUnits} {totalUnits === 1 ? 'unit' : 'units'}
+                    </Text>
+                  </View>
+                  <Text
+                    style={styles.totalAmount}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.8}
+                    numberOfLines={1}>
+                    {formatPesoCurrency(sale.total_amount)}
                   </Text>
+                </View>
+
+                {/* Payment Breakdown (Tendered & Change) */}
+                <View style={styles.paymentSection}>
+                  {amountTendered !== null && (
+                    <View style={styles.paymentRow}>
+                      <Text style={styles.paymentLabel}>Amount Tendered:</Text>
+                      <Text style={styles.paymentValue}>
+                        {formatPesoCurrency(amountTendered)}
+                      </Text>
+                    </View>
+                  )}
+
+                  <View
+                    style={[
+                      styles.changeContainer,
+                      change === 0
+                        ? styles.changeContainerExact
+                        : styles.changeContainerOverpaid,
+                    ]}>
+                    <View style={styles.changeLabelCol}>
+                      <Text
+                        style={[
+                          styles.changeLabel,
+                          change === 0
+                            ? styles.changeLabelExact
+                            : styles.changeLabelOverpaid,
+                        ]}>
+                        Change / Sukli:
+                      </Text>
+                      {change === 0 && (
+                        <Text style={styles.exactPaymentHint}>
+                          Exact Payment (Sakto)
+                        </Text>
+                      )}
+                    </View>
+                    <Text
+                      style={[
+                        styles.changeAmount,
+                        change === 0
+                          ? styles.changeAmountExact
+                          : styles.changeAmountOverpaid,
+                      ]}
+                      adjustsFontSizeToFit
+                      minimumFontScale={0.8}
+                      numberOfLines={1}>
+                      {formatPesoCurrency(change)}
+                    </Text>
+                  </View>
                 </View>
               </View>
             </ScrollView>
 
-            {/* Bottom Actions */}
+            {/* Sticky Bottom Actions Bar */}
             <View style={styles.actionsWrap}>
               <TindaMateButton
                 title="Record Another Sale"
                 variant="primary"
                 onPress={onDismiss}
-                accessibilityLabel="Record another sale"
+                accessibilityLabel="Record another sale and return to cashier"
                 style={styles.actionBtn}
               />
 
@@ -181,7 +282,7 @@ export function SaleSuccessModal({
                   title="View Sale Details"
                   variant="secondary"
                   onPress={() => onViewDetails(sale.id)}
-                  accessibilityLabel="View full sale details"
+                  accessibilityLabel="View full sale details in history"
                   style={styles.actionBtn}
                 />
               )}
@@ -196,70 +297,85 @@ export function SaleSuccessModal({
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(6, 78, 59, 0.55)', // Deep forest green backdrop
+    backgroundColor: 'rgba(6, 78, 59, 0.65)', // High-contrast forest green scrim
     justifyContent: 'center',
     alignItems: 'center',
   },
   safeArea: {
     width: '100%',
-    maxWidth: 420,
-    maxHeight: '90%',
+    maxWidth: 440,
+    maxHeight: '94%',
     paddingHorizontal: Spacing.md,
   },
   modalCard: {
     backgroundColor: Colors.surface,
     borderRadius: BorderRadius.xl,
-    padding: Spacing.lg,
+    padding: Spacing.md,
     maxHeight: '100%',
+    flexDirection: 'column',
     ...Shadows.md,
   },
   modalCardNarrow: {
-    padding: Spacing.md,
+    padding: Spacing.sm,
   },
-  scrollView: {
-    maxHeight: 460,
+  modalCardShort: {
+    padding: Spacing.xs,
   },
-  scrollContent: {
+  headerBlock: {
     alignItems: 'center',
-    paddingBottom: Spacing.md,
-  },
-  iconContainer: {
-    marginBottom: Spacing.sm,
+    paddingBottom: Spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borderSubtle,
   },
   iconCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     backgroundColor: Colors.success,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: Spacing.xs,
     ...Shadows.sm,
   },
   title: {
-    fontSize: Typography.sizes.xl,
+    fontSize: Typography.sizes.lg,
     fontWeight: Typography.weights.extraBold,
     color: Colors.textBrand,
     textAlign: 'center',
   },
-  subtitle: {
-    fontSize: Typography.sizes.xs,
-    color: Colors.textSecondary,
-    textAlign: 'center',
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+    gap: 4,
     marginTop: 2,
-    marginBottom: Spacing.md,
+  },
+  refText: {
+    fontSize: Typography.sizes.caption,
+    fontWeight: Typography.weights.bold,
+    color: Colors.textMuted,
+  },
+  metaDot: {
+    fontSize: Typography.sizes.caption,
+    color: Colors.textMuted,
+  },
+  dateText: {
+    fontSize: Typography.sizes.caption,
+    color: Colors.textMuted,
   },
   retryBadge: {
     backgroundColor: Colors.pastel.blue.bg,
     borderWidth: 1,
     borderColor: Colors.pastel.blue.border,
     paddingHorizontal: Spacing.sm,
-    paddingVertical: 4,
+    paddingVertical: 3,
     borderRadius: BorderRadius.sm,
-    marginBottom: Spacing.sm,
+    marginTop: Spacing.xs,
     width: '100%',
   },
   retryBadgeText: {
-    fontSize: Typography.sizes.xs,
+    fontSize: Typography.sizes.caption,
     color: Colors.pastel.blue.accent,
     textAlign: 'center',
     fontWeight: Typography.weights.semiBold,
@@ -269,101 +385,186 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.accentBorder,
     paddingHorizontal: Spacing.sm,
-    paddingVertical: 6,
+    paddingVertical: 4,
     borderRadius: BorderRadius.sm,
-    marginBottom: Spacing.sm,
+    marginTop: Spacing.xs,
     width: '100%',
   },
   priceNoticeText: {
-    fontSize: Typography.sizes.xs,
+    fontSize: Typography.sizes.caption,
     color: Colors.warningText,
     textAlign: 'center',
   },
-  amountCard: {
-    backgroundColor: Colors.pastel.green.bg,
-    borderWidth: 1.5,
-    borderColor: Colors.pastel.green.border,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
-    alignItems: 'center',
-    width: '100%',
-    marginBottom: Spacing.md,
+  receiptScrollView: {
+    flexShrink: 1,
+    marginVertical: Spacing.xs,
   },
-  amountLabel: {
+  receiptScrollContent: {
+    paddingVertical: Spacing.xs,
+  },
+  receiptPaper: {
+    backgroundColor: Colors.backgroundWarm,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: Spacing.md,
+  },
+  receiptSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: Spacing.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    marginBottom: Spacing.xs,
+  },
+  receiptSectionTitle: {
     fontSize: Typography.sizes.caption,
     fontWeight: Typography.weights.bold,
     color: Colors.primaryDark,
     letterSpacing: 0.5,
   },
-  amountValue: {
-    fontSize: Typography.sizes.display,
-    fontWeight: Typography.weights.extraBold,
-    color: Colors.primaryDark,
-    marginVertical: 4,
+  receiptSectionSubtitle: {
+    fontSize: Typography.sizes.caption,
+    color: Colors.textMuted,
   },
-  amountItemsSub: {
-    fontSize: Typography.sizes.xs,
-    color: Colors.textSecondary,
-    fontWeight: Typography.weights.medium,
-  },
-  breakdownCard: {
-    backgroundColor: Colors.backgroundAlt,
-    borderRadius: BorderRadius.md,
-    padding: Spacing.md,
-    width: '100%',
+  itemsList: {
     gap: Spacing.xs,
-    borderWidth: 1,
-    borderColor: Colors.border,
   },
-  breakdownRow: {
+  itemRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
+    paddingVertical: 6,
   },
-  breakdownLabel: {
-    fontSize: Typography.sizes.bodySm,
-    color: Colors.textSecondary,
+  itemRowDivider: {
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borderSubtle,
   },
-  breakdownValue: {
+  itemInfoCol: {
+    flex: 1,
+    paddingRight: Spacing.sm,
+  },
+  itemName: {
     fontSize: Typography.sizes.bodySm,
     fontWeight: Typography.weights.semiBold,
     color: Colors.textPrimary,
+    lineHeight: 18,
   },
-  changeRow: {
-    backgroundColor: Colors.successLight,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 6,
-    borderRadius: BorderRadius.sm,
-    marginTop: 4,
+  itemCalculation: {
+    fontSize: Typography.sizes.xs,
+    color: Colors.textMuted,
+    marginTop: 2,
   },
-  changeLabel: {
-    fontSize: Typography.sizes.body,
+  itemSubtotal: {
+    fontSize: Typography.sizes.bodySm,
     fontWeight: Typography.weights.bold,
-    color: Colors.successText,
+    color: Colors.textPrimary,
+    textAlign: 'right',
   },
-  changeValue: {
+  dashedDivider: {
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    borderStyle: 'dashed',
+    marginVertical: Spacing.sm,
+  },
+  totalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.pastel.green.bg,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    borderColor: Colors.pastel.green.border,
+    marginBottom: Spacing.sm,
+  },
+  totalLabel: {
+    fontSize: Typography.sizes.caption,
+    fontWeight: Typography.weights.bold,
+    color: Colors.primaryDark,
+    letterSpacing: 0.5,
+  },
+  totalSub: {
+    fontSize: Typography.sizes.caption,
+    color: Colors.textSecondary,
+    marginTop: 1,
+  },
+  totalAmount: {
     fontSize: Typography.sizes.lg,
     fontWeight: Typography.weights.extraBold,
+    color: Colors.primaryDark,
+  },
+  paymentSection: {
+    gap: Spacing.xs,
+  },
+  paymentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 2,
+  },
+  paymentLabel: {
+    fontSize: Typography.sizes.xs,
+    color: Colors.textSecondary,
+  },
+  paymentValue: {
+    fontSize: Typography.sizes.xs,
+    fontWeight: Typography.weights.semiBold,
+    color: Colors.textPrimary,
+  },
+  changeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    marginTop: 2,
+  },
+  changeContainerExact: {
+    backgroundColor: Colors.surface,
+    borderColor: Colors.border,
+  },
+  changeContainerOverpaid: {
+    backgroundColor: Colors.successLight,
+    borderColor: Colors.success,
+  },
+  changeLabelCol: {
+    flex: 1,
+  },
+  changeLabel: {
+    fontSize: Typography.sizes.bodySm,
+    fontWeight: Typography.weights.bold,
+  },
+  changeLabelExact: {
+    color: Colors.textSecondary,
+  },
+  changeLabelOverpaid: {
     color: Colors.successText,
   },
-  divider: {
-    height: 1,
-    backgroundColor: Colors.border,
-    marginVertical: 4,
-  },
-  refLabel: {
+  exactPaymentHint: {
     fontSize: Typography.sizes.caption,
     color: Colors.textMuted,
   },
-  refValue: {
-    fontSize: Typography.sizes.caption,
-    fontWeight: Typography.weights.bold,
-    color: Colors.textMuted,
+  changeAmount: {
+    fontSize: Typography.sizes.base,
+    fontWeight: Typography.weights.extraBold,
+  },
+  changeAmountExact: {
+    color: Colors.textSecondary,
+  },
+  changeAmountOverpaid: {
+    color: Colors.success,
   },
   actionsWrap: {
     width: '100%',
     gap: Spacing.xs,
-    marginTop: Spacing.md,
+    paddingTop: Spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: Colors.borderSubtle,
   },
   actionBtn: {
     width: '100%',
