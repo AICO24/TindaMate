@@ -133,6 +133,10 @@ export default function SalesHistoryScreen() {
       router.replace('/products');
       return;
     }
+    if (tab === 'utang') {
+      router.replace('/customers' as any);
+      return;
+    }
 
     const tabNames: Record<NavTab, string> = {
       home: 'Home',

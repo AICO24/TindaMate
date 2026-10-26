@@ -102,6 +102,10 @@ export default function RootLayout() {
         <Stack.Screen name="sales/index" options={{ headerShown: false }} />
         <Stack.Screen name="sales/history" options={{ headerShown: false }} />
         <Stack.Screen name="sales/[id]" options={{ headerShown: false }} />
+        <Stack.Screen name="customers/index" options={{ headerShown: false }} />
+        <Stack.Screen name="customers/add" options={{ headerShown: false }} />
+        <Stack.Screen name="customers/[id]/index" options={{ headerShown: false }} />
+        <Stack.Screen name="customers/[id]/edit" options={{ headerShown: false }} />
         <Stack.Screen name="explore" options={{ headerShown: false }} />
       </Stack>
     </ThemeProvider>

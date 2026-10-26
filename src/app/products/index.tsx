@@ -115,6 +115,10 @@ export default function ProductsListScreen() {
       router.replace('/sales' as any);
       return;
     }
+    if (tab === 'utang') {
+      router.replace('/customers' as any);
+      return;
+    }
     const tabNames: Record<NavTab, string> = {
       home: 'Home',
       products: 'Products Catalog',

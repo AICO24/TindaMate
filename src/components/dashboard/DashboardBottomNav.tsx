@@ -32,7 +32,9 @@ export function resolveActiveNavTab(pathname: string): NavTab {
   const normalized = pathname.toLowerCase();
   if (normalized.startsWith('/products')) return 'products';
   if (normalized.startsWith('/sales')) return 'sales';
-  if (normalized.startsWith('/utang')) return 'utang';
+  if (normalized.startsWith('/customers') || normalized.startsWith('/utang')) {
+    return 'utang';
+  }
   if (normalized.startsWith('/more') || normalized.startsWith('/profile') || normalized.startsWith('/settings')) {
     return 'more';
   }

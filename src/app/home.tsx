@@ -372,6 +372,15 @@ export default function AuthenticatedDashboardScreen() {
       return;
     }
 
+    if (tab === 'utang') {
+      if (isGuestMode) {
+        handleModuleClick('Customers & Utang', 'Batch 8');
+        return;
+      }
+      router.push('/customers' as any);
+      return;
+    }
+
     if (tab === 'more') {
       setIsProfileModalVisible(true);
       return;
@@ -465,9 +474,15 @@ export default function AuthenticatedDashboardScreen() {
       id: 'utang',
       title: 'Outstanding Utang',
       value: '₱0.00',
-      subtitle: 'No outstanding balance',
+      subtitle: 'Customer credit ledger',
       theme: 'purple',
-      onPress: () => handleModuleClick('Utang Tracker', 'Batch 4'),
+      onPress: () => {
+        if (isGuestMode) {
+          handleModuleClick('Customers & Utang', 'Batch 8');
+          return;
+        }
+        router.push('/customers' as any);
+      },
     },
   ];
 
