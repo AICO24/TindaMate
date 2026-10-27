@@ -187,3 +187,17 @@ export interface PaymentAmountValidation {
   error?: string;
 }
 
+/**
+ * Summary metrics of customer credit/utang for the Dashboard (Batch 8F).
+ * Authoritatively derived from the customer credit ledger and credit summaries:
+ * - totalOutstandingUtang: Total outstanding customer credit balance (charges - payments)
+ * - customersWithBalanceCount: Count of distinct customers with a positive outstanding balance (> 0)
+ * - todayPaymentsTotal: Total payments received and recorded in the credit ledger today
+ */
+export interface DashboardUtangSummary {
+  totalOutstandingUtang: number;
+  customersWithBalanceCount: number;
+  todayPaymentsTotal: number;
+}
+
+

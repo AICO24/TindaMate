@@ -12,6 +12,7 @@ import {
   CustomerFormErrors,
   CustomerFormValues,
   CustomerWithCredit,
+  DashboardUtangSummary,
   PaymentAmountValidation,
   RecordPaymentInput,
   UpdateCustomerInput,
@@ -913,4 +914,88 @@ async function recordCustomerPaymentFallback(params: {
     isRetry: false,
   };
 }
+
+/**
+ * Fetches store credit/utang summary metrics for the Main Dashboard (Batch 8F).
+ * Scoped strictly to the authenticated store owner (`auth.uid()`).
+ *
+ * Metrics derived:
+ * 1. Total Outstanding Utang: SUM(current_balance) from `customer_credit_summaries` where current_balance > 0
+ * 2. Customers with Balance: COUNT of distinct customers from `customer_credit_summaries` where current_balance > 0
+ * 3. Today's Payments: SUM(amount) from `credit_transactions` where transaction_type = 'payment' and created_at >= startOfToday
+ */
+export async function fetchDashboardUtangSummary(): Promise<DashboardUtangSummary> {
+  const storeId = await getAuthenticatedStoreId();
+
+  // Local start of today (matching established sales convention in src/lib/sales.ts)
+  const now = new Date();
+  const startOfToday = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+    0,
+    0,
+    0,
+    0
+  );
+
+  // Parallel fetch: summaries from view + payments from immutable ledger
+  const [summariesRes, paymentsRes] = await Promise.all([
+    supabase
+      .from('customer_credit_summaries')
+      .select('customer_id, current_balance')
+      .eq('store_id', storeId),
+    supabase
+      .from('credit_transactions')
+      .select('amount')
+      .eq('store_id', storeId)
+      .eq('transaction_type', 'payment')
+      .gte('created_at', startOfToday.toISOString()),
+  ]);
+
+  if (summariesRes.error) {
+    throw new Error(
+      mapCustomerDatabaseError(
+        summariesRes.error,
+        'Could not load customer credit summaries.'
+      )
+    );
+  }
+
+  if (paymentsRes.error) {
+    throw new Error(
+      mapCustomerDatabaseError(
+        paymentsRes.error,
+        "Could not load today's credit payments."
+      )
+    );
+  }
+
+  let totalOutstandingUtang = 0;
+  let customersWithBalanceCount = 0;
+
+  for (const row of summariesRes.data ?? []) {
+    const rawBalance = Number(row.current_balance);
+    const balance = Number.isFinite(rawBalance) ? rawBalance : 0;
+    if (balance > 0) {
+      totalOutstandingUtang += balance;
+      customersWithBalanceCount += 1;
+    }
+  }
+
+  let todayPaymentsTotal = 0;
+  for (const row of paymentsRes.data ?? []) {
+    const rawAmount = Number(row.amount);
+    if (Number.isFinite(rawAmount) && rawAmount > 0) {
+      todayPaymentsTotal += rawAmount;
+    }
+  }
+
+  return {
+    totalOutstandingUtang: Math.round(totalOutstandingUtang * 100) / 100,
+    customersWithBalanceCount,
+    todayPaymentsTotal: Math.round(todayPaymentsTotal * 100) / 100,
+  };
+}
+
 

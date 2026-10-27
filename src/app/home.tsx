@@ -29,6 +29,7 @@ import { CalendarFilterIcon } from '@/components/dashboard/DashboardNavIcons';
 import { QuickActionItem, QuickActionTile } from '@/components/dashboard/QuickActionTile';
 import { RecentActivitySection } from '@/components/dashboard/RecentActivitySection';
 import { OverviewItem, StoreOverviewCard } from '@/components/dashboard/StoreOverviewCard';
+import { UtangOverviewCard } from '@/components/dashboard/UtangOverviewCard';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { TindaMateButton } from '@/components/ui/TindaMateButton';
 import { LogoutConfirmModal } from '@/components/ui/LogoutConfirmModal';
@@ -43,10 +44,12 @@ import {
 } from '@/constants/theme';
 import { fetchStoreProductSummary, formatPesoCurrency } from '@/lib/products';
 import { fetchDashboardSalesData } from '@/lib/sales';
+import { fetchDashboardUtangSummary } from '@/lib/customers';
 import { parseAndApplyOAuthTokens } from '@/lib/oauth';
 import { supabase } from '@/lib/supabase';
 import { StoreProductSummary } from '@/types/product';
 import { Sale, TodaySalesSummary } from '@/types/sale';
+import { DashboardUtangSummary } from '@/types/customer';
 
 /**
  * TindaMate Main Dashboard Screen
@@ -81,6 +84,12 @@ export default function AuthenticatedDashboardScreen() {
     transactionCount: 0,
   });
   const [recentSales, setRecentSales] = useState<Sale[]>([]);
+  const [utangSummary, setUtangSummary] = useState<DashboardUtangSummary>({
+    totalOutstandingUtang: 0,
+    customersWithBalanceCount: 0,
+    todayPaymentsTotal: 0,
+  });
+  const [utangError, setUtangError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isCardLoading, setIsCardLoading] = useState(false);
@@ -108,13 +117,20 @@ export default function AuthenticatedDashboardScreen() {
         transactionCount: 0,
       });
       setRecentSales([]);
+      setUtangSummary({
+        totalOutstandingUtang: 0,
+        customersWithBalanceCount: 0,
+        todayPaymentsTotal: 0,
+      });
+      setUtangError(null);
       return;
     }
 
     try {
-      const [productRes, salesRes] = await Promise.allSettled([
+      const [productRes, salesRes, utangRes] = await Promise.allSettled([
         fetchStoreProductSummary(),
         fetchDashboardSalesData(),
+        fetchDashboardUtangSummary(),
       ]);
 
       if (productRes.status === 'fulfilled') {
@@ -130,7 +146,23 @@ export default function AuthenticatedDashboardScreen() {
         console.warn('[Dashboard Sales Error]:', salesRes.reason);
       }
 
-      if (productRes.status === 'rejected' && salesRes.status === 'rejected') {
+      if (utangRes.status === 'fulfilled') {
+        setUtangSummary(utangRes.value);
+        setUtangError(null);
+      } else {
+        console.warn('[Dashboard Utang Error]:', utangRes.reason);
+        setUtangError(
+          utangRes.reason instanceof Error
+            ? utangRes.reason.message
+            : 'Could not load Utang summary.'
+        );
+      }
+
+      if (
+        productRes.status === 'rejected' &&
+        salesRes.status === 'rejected' &&
+        utangRes.status === 'rejected'
+      ) {
         const msg =
           productRes.reason instanceof Error
             ? productRes.reason.message
@@ -473,8 +505,18 @@ export default function AuthenticatedDashboardScreen() {
     {
       id: 'utang',
       title: 'Outstanding Utang',
-      value: '₱0.00',
-      subtitle: 'Customer credit ledger',
+      value: isGuestMode
+        ? '₱0.00'
+        : formatPesoCurrency(utangSummary.totalOutstandingUtang),
+      subtitle: isGuestMode
+        ? 'Customer credit ledger'
+        : utangSummary.customersWithBalanceCount === 0
+          ? 'No outstanding utang'
+          : `${utangSummary.customersWithBalanceCount} ${
+              utangSummary.customersWithBalanceCount === 1
+                ? 'customer with utang'
+                : 'customers with utang'
+            }`,
       theme: 'purple',
       onPress: () => {
         if (isGuestMode) {
@@ -647,7 +689,24 @@ export default function AuthenticatedDashboardScreen() {
               </View>
             </View>
 
-            {/* 4. Quick Actions Section */}
+            {/* 4. Utang Overview Section */}
+            <View style={styles.section}>
+              <UtangOverviewCard
+                summary={utangSummary}
+                isLoading={isCardLoading}
+                error={utangError}
+                onRetry={loadDashboardData}
+                onViewCustomers={() => {
+                  if (isGuestMode) {
+                    handleModuleClick('Customers & Utang', 'Batch 8');
+                    return;
+                  }
+                  router.push('/customers' as any);
+                }}
+              />
+            </View>
+
+            {/* 5. Quick Actions Section */}
             <View style={styles.section}>
               <SectionHeader
                 title="Quick Actions"
