@@ -101,6 +101,9 @@ export function TindaMateButton({
           />
         )}
         <Text
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.85}
           style={[
             styles.baseText,
             variant === 'primary' && styles.primaryText,
