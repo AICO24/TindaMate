@@ -329,6 +329,8 @@ export function RecordPaymentModal({
                 variant="secondary"
                 onPress={onClose}
                 disabled={isSubmitting}
+                style={styles.modalBtn}
+                textStyle={styles.modalBtnText}
                 accessibilityLabel="Cancel payment"
               />
             </View>
@@ -339,6 +341,8 @@ export function RecordPaymentModal({
                 variant="primary"
                 onPress={handleSubmit}
                 disabled={!validation.isValid || isSubmitting}
+                style={styles.modalBtn}
+                textStyle={styles.modalBtnText}
                 accessibilityLabel="Confirm and record payment"
               />
             </View>
@@ -664,5 +668,17 @@ const styles = StyleSheet.create({
   },
   actionButtonWrap: {
     flex: 1,
+  },
+  modalBtn: {
+    height: 48,
+    minHeight: 48,
+    paddingVertical: 0,
+    paddingHorizontal: Spacing.two,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalBtnText: {
+    fontSize: Typography.sizes.bodySm,
+    fontWeight: Typography.weights.bold,
   },
 });
