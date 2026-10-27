@@ -62,6 +62,28 @@ export interface CreditTransaction {
 }
 
 /**
+ * Associated sale metadata for a credit transaction.
+ */
+export interface CreditTransactionSaleInfo {
+  id: string;
+  product_name: string;
+  unit?: string;
+  quantity: number;
+  unit_price: number;
+  total_amount: number;
+  item_count?: number;
+  payment_method?: string;
+  created_at: string;
+}
+
+/**
+ * Extended Credit Transaction with associated sale details (if transaction originated from a sale).
+ */
+export interface CustomerCreditTransaction extends CreditTransaction {
+  sale?: CreditTransactionSaleInfo | null;
+}
+
+/**
  * Derivable balance summary for a customer's credit account.
  * Derived from public.customer_credit_summaries view:
  * - current_balance = total_charged - total_paid
@@ -130,3 +152,38 @@ export interface CustomerFormErrors {
  * Filter tabs available on the customer management list.
  */
 export type CustomerFilterTab = 'All' | 'Active' | 'With Utang' | 'Inactive';
+
+/**
+ * Input for recording a customer payment against their outstanding credit.
+ */
+export interface RecordPaymentInput {
+  customerId: string;
+  amount: number;
+  notes?: string | null;
+  idempotencyKey?: string | null;
+}
+
+/**
+ * Result returned after a customer payment is atomically recorded.
+ */
+export interface CompletedPaymentResult {
+  payment: CreditTransaction;
+  customerId: string;
+  creditAccountId: string;
+  amount: number;
+  previousBalance: number;
+  remainingBalance: number;
+  isFullyPaid: boolean;
+  isRetry: boolean;
+}
+
+/**
+ * Client validation result for the payment amount input.
+ */
+export interface PaymentAmountValidation {
+  isValid: boolean;
+  amount: number | null;
+  remainingBalance: number;
+  error?: string;
+}
+
