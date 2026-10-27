@@ -15,6 +15,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 
+import { CreditTransactionCard } from '@/components/customers/CreditTransactionCard';
+import { PaymentSuccessModal } from '@/components/customers/PaymentSuccessModal';
+import { RecordPaymentModal } from '@/components/customers/RecordPaymentModal';
 import { DashboardErrorBanner } from '@/components/dashboard/DashboardErrorBanner';
 import { ProductScreenHeader } from '@/components/products/ProductScreenHeader';
 import { TindaMateButton } from '@/components/ui/TindaMateButton';
@@ -27,13 +30,19 @@ import {
   Typography,
 } from '@/constants/theme';
 import {
+  fetchCustomerCreditTransactions,
   fetchStoreCustomerById,
+  recordCustomerPayment,
   toggleCustomerActiveStatus,
 } from '@/lib/customers';
 import { formatPesoCurrency } from '@/lib/products';
 import { formatSaleDate } from '@/lib/sales';
 import { supabase } from '@/lib/supabase';
-import { CustomerWithCredit } from '@/types/customer';
+import {
+  CompletedPaymentResult,
+  CustomerCreditTransaction,
+  CustomerWithCredit,
+} from '@/types/customer';
 
 function getCustomerInitials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -43,13 +52,15 @@ function getCustomerInitials(name: string): string {
 }
 
 /**
- * TindaMate Customer Details Screen (`/customers/[id]`)
+ * TindaMate Customer Details & Utang Ledger Screen (`/customers/[id]`)
  *
- * Implements Batch 8B: Customer Details view:
- * - Customer Profile: Name, Phone, Notes, Active Status
- * - Credit Summary: Current Utang Balance, Total Charged, Total Paid, Last Transaction Date
- * - Edit customer navigation
- * - Deactivate / Reactivate customer action
+ * Implements Batch 8D: Customer Utang / Ledger Details:
+ * 1. Customer profile: Name, phone (tap-to-call), notes, active status
+ * 2. Prominent outstanding balance derived from credit ledger source of truth
+ * 3. Credit / Utang transaction history in reverse-chronological order
+ * 4. Tap-through to complete historical Sale Details receipt for linked POS utang sales
+ * 5. Honest loading, empty, and error states
+ * 6. Completely read-only (No payment or settlement actions in Batch 8D)
  */
 export default function CustomerDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -58,10 +69,22 @@ export default function CustomerDetailsScreen() {
   const isNarrowPhone = windowWidth < 360;
 
   const [customer, setCustomer] = useState<CustomerWithCredit | null>(null);
+  const [transactions, setTransactions] = useState<CustomerCreditTransaction[]>(
+    []
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Payment Modal & Submission State
+  const [isPaymentModalVisible, setIsPaymentModalVisible] = useState(false);
+  const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
+  const [paymentSubmissionError, setPaymentSubmissionError] = useState<
+    string | null
+  >(null);
+  const [paymentResult, setPaymentResult] =
+    useState<CompletedPaymentResult | null>(null);
 
   const loadCustomer = useCallback(
     async (showRefreshIndicator = false) => {
@@ -84,13 +107,19 @@ export default function CustomerDetailsScreen() {
           return;
         }
 
-        const details = await fetchStoreCustomerById(customerId);
+        // Fetch customer profile & balance summary alongside full transaction ledger
+        const [details, txList] = await Promise.all([
+          fetchStoreCustomerById(customerId),
+          fetchCustomerCreditTransactions(customerId),
+        ]);
+
         if (!details) {
           setErrorMessage(
             'This customer could not be found or does not belong to your store.'
           );
         } else {
           setCustomer(details);
+          setTransactions(txList);
         }
       } catch (err: unknown) {
         const msg =
@@ -130,6 +159,55 @@ export default function CustomerDetailsScreen() {
     Linking.openURL(`tel:${customer.phone}`);
   };
 
+  const handlePressSale = (saleId: string) => {
+    router.push(`/sales/${saleId}` as any);
+  };
+
+  const handleOpenPaymentModal = () => {
+    setPaymentSubmissionError(null);
+    setIsPaymentModalVisible(true);
+  };
+
+  const handleClosePaymentModal = () => {
+    if (isSubmittingPayment) return;
+    setPaymentSubmissionError(null);
+    setIsPaymentModalVisible(false);
+  };
+
+  const handleSubmitPayment = async (amount: number, notes?: string) => {
+    if (!customer || isSubmittingPayment) return;
+
+    try {
+      setIsSubmittingPayment(true);
+      setPaymentSubmissionError(null);
+
+      const result = await recordCustomerPayment({
+        customerId: customer.id,
+        amount,
+        notes,
+      });
+
+      // Close payment input modal and open confirmation receipt
+      setIsPaymentModalVisible(false);
+      setPaymentResult(result);
+
+      // Re-fetch authoritative customer balance and credit ledger transactions
+      await loadCustomer(false);
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : 'Could not record customer payment. Please try again.';
+      setPaymentSubmissionError(msg);
+    } finally {
+      setIsSubmittingPayment(false);
+    }
+  };
+
+  const handleDismissSuccessModal = () => {
+    setPaymentResult(null);
+  };
+
   const handleToggleActive = () => {
     if (!customer || isUpdatingStatus) return;
 
@@ -139,7 +217,10 @@ export default function CustomerDetailsScreen() {
     const confirmAction = async () => {
       try {
         setIsUpdatingStatus(true);
-        const updated = await toggleCustomerActiveStatus(customer.id, nextActive);
+        const updated = await toggleCustomerActiveStatus(
+          customer.id,
+          nextActive
+        );
         setCustomer(updated);
       } catch (err: unknown) {
         const msg =
@@ -188,7 +269,9 @@ export default function CustomerDetailsScreen() {
   const formattedBalance = formatPesoCurrency(balance);
   const formattedCharged = formatPesoCurrency(totalCharged);
   const formattedPaid = formatPesoCurrency(totalPaid);
-  const formattedDate = lastTransAt ? formatSaleDate(lastTransAt) : 'No transactions yet';
+  const formattedDate = lastTransAt
+    ? formatSaleDate(lastTransAt)
+    : 'No transactions yet';
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
@@ -196,7 +279,9 @@ export default function CustomerDetailsScreen() {
         {/* Screen Header */}
         <ProductScreenHeader
           title={customer ? customer.name : 'Customer Details'}
-          subtitle={customer?.is_active ? 'Active Customer' : 'Inactive Customer'}
+          subtitle={
+            customer?.is_active ? 'Active Customer' : 'Inactive Customer'
+          }
           showBack={true}
           onBack={handleBack}
           rightActionLabel={customer ? 'Edit' : undefined}
@@ -219,8 +304,8 @@ export default function CustomerDetailsScreen() {
             />
           }>
           <View style={styles.bodyContainer}>
-            {/* Error Banner */}
-            {errorMessage ? (
+            {/* Error Banner when customer was already loaded */}
+            {errorMessage && customer ? (
               <DashboardErrorBanner
                 message={errorMessage}
                 onRetry={() => loadCustomer(true)}
@@ -228,13 +313,42 @@ export default function CustomerDetailsScreen() {
               />
             ) : null}
 
-            {/* Loading State */}
+            {/* 1. Loading State */}
             {isLoading ? (
               <View style={styles.loadingCard}>
                 <ActivityIndicator size="large" color={Colors.primaryDark} />
-                <Text style={styles.loadingText}>Loading Customer Profile...</Text>
+                <Text style={styles.loadingText}>
+                  Loading Customer Profile & Ledger...
+                </Text>
               </View>
-            ) : customer ? (
+            ) : !customer ? (
+              /* 2. Error / Not Found State */
+              <View style={styles.errorCard}>
+                <View style={styles.errorIconCircle}>
+                  <Text style={styles.errorIconText}>!</Text>
+                </View>
+                <Text style={styles.errorTitle}>Customer Not Found</Text>
+                <Text style={styles.errorSubtitle}>
+                  {errorMessage ??
+                    'This customer could not be found or does not belong to your store.'}
+                </Text>
+                <View style={styles.errorActions}>
+                  {errorMessage ? (
+                    <TindaMateButton
+                      title="Retry"
+                      variant="primary"
+                      onPress={() => loadCustomer(true)}
+                    />
+                  ) : null}
+                  <TindaMateButton
+                    title="Back to Customers"
+                    variant="secondary"
+                    onPress={handleBack}
+                  />
+                </View>
+              </View>
+            ) : (
+              /* 3. Normal State: Customer Profile + Balance + History */
               <>
                 {/* 1. Customer Profile Card */}
                 <View style={styles.profileCard}>
@@ -256,7 +370,9 @@ export default function CustomerDetailsScreen() {
                     </View>
 
                     <View style={styles.profileInfoCol}>
-                      <Text style={styles.customerName} maxFontSizeMultiplier={1.3}>
+                      <Text
+                        style={styles.customerName}
+                        maxFontSizeMultiplier={1.3}>
                         {customer.name}
                       </Text>
 
@@ -283,7 +399,9 @@ export default function CustomerDetailsScreen() {
                                 ? styles.statusPillTextActive
                                 : styles.statusPillTextInactive,
                             ]}>
-                            {customer.is_active ? 'Active Customer' : 'Inactive'}
+                            {customer.is_active
+                              ? 'Active Customer'
+                              : 'Inactive'}
                           </Text>
                         </View>
                       </View>
@@ -369,6 +487,25 @@ export default function CustomerDetailsScreen() {
                     </Text>
                   </View>
 
+                  {/* Payment Action: Record Payment when balance > 0, Fully Paid badge when 0 */}
+                  {balance > 0 ? (
+                    <View style={styles.recordPaymentActionBox}>
+                      <TindaMateButton
+                        title="Record Payment"
+                        variant="primary"
+                        showArrow
+                        onPress={handleOpenPaymentModal}
+                        accessibilityLabel={`Record payment for ${customer.name}`}
+                      />
+                    </View>
+                  ) : (
+                    <View style={styles.fullyPaidBadgeBox}>
+                      <Text style={styles.fullyPaidBadgeText}>
+                        ✓ Fully Paid · No Outstanding Balance
+                      </Text>
+                    </View>
+                  )}
+
                   {/* Stat Breakdown Grid */}
                   <View style={styles.statsGrid}>
                     <View style={styles.statBox}>
@@ -385,19 +522,66 @@ export default function CustomerDetailsScreen() {
                   </View>
 
                   <View style={styles.lastActivityRow}>
-                    <Text style={styles.lastActivityLabel}>Last Credit Activity:</Text>
+                    <Text style={styles.lastActivityLabel}>
+                      Last Credit Activity:
+                    </Text>
                     <Text style={styles.lastActivityValue}>{formattedDate}</Text>
                   </View>
 
-                  {/* Guidance Notice */}
+                  {/* Informational Hint */}
                   <View style={styles.infoBanner}>
                     <Text style={styles.infoBannerText}>
-                      💡 Direct utang checkout from POS and payment settlements will be enabled in upcoming batches.
+                      💡 Purchases recorded as Utang from the POS are automatically logged into this customer's credit ledger.
                     </Text>
                   </View>
                 </View>
 
-                {/* 3. Customer Status Action */}
+                {/* 3. Utang / Credit Transaction History Section */}
+                <View style={styles.historySection}>
+                  <View style={styles.historyHeaderRow}>
+                    <View style={styles.historyHeaderLeft}>
+                      <Text style={styles.historySectionTitle}>
+                        Credit & Utang History
+                      </Text>
+                      <View style={styles.historyCountBadge}>
+                        <Text style={styles.historyCountBadgeText}>
+                          {transactions.length}
+                        </Text>
+                      </View>
+                    </View>
+                    {transactions.length > 0 && (
+                      <Text style={styles.historySubtitle}>Newest first</Text>
+                    )}
+                  </View>
+
+                  {transactions.length === 0 ? (
+                    /* Clean Empty State for Customer with no credit transactions */
+                    <View style={styles.emptyHistoryCard}>
+                      <View style={styles.emptyIconCircle}>
+                        <Text style={styles.emptyIconEmoji}>📋</Text>
+                      </View>
+                      <Text style={styles.emptyHistoryTitle}>
+                        No Credit Transactions Yet
+                      </Text>
+                      <Text style={styles.emptyHistorySubtitle}>
+                        This customer currently has no recorded utang or credit transactions in your store.
+                      </Text>
+                    </View>
+                  ) : (
+                    /* Populated Transaction List */
+                    <View style={styles.transactionsList}>
+                      {transactions.map((tx) => (
+                        <CreditTransactionCard
+                          key={tx.id}
+                          transaction={tx}
+                          onPressSale={handlePressSale}
+                        />
+                      ))}
+                    </View>
+                  )}
+                </View>
+
+                {/* 4. Customer Status Action */}
                 <View style={styles.actionCard}>
                   <TindaMateButton
                     title={
@@ -423,10 +607,32 @@ export default function CustomerDetailsScreen() {
                   </Text>
                 </View>
               </>
-            ) : null}
+            )}
           </View>
         </ScrollView>
       </View>
+
+      {/* Record Payment Input Modal */}
+      {customer && (
+        <RecordPaymentModal
+          visible={isPaymentModalVisible}
+          customerName={customer.name}
+          currentBalance={balance}
+          isSubmitting={isSubmittingPayment}
+          submissionError={paymentSubmissionError}
+          onClearError={() => setPaymentSubmissionError(null)}
+          onClose={handleClosePaymentModal}
+          onSubmitPayment={handleSubmitPayment}
+        />
+      )}
+
+      {/* Payment Success Confirmation Receipt */}
+      <PaymentSuccessModal
+        visible={paymentResult !== null}
+        customerName={customer?.name ?? 'Customer'}
+        paymentResult={paymentResult}
+        onDismiss={handleDismissSuccessModal}
+      />
     </SafeAreaView>
   );
 }
@@ -467,6 +673,49 @@ const styles = StyleSheet.create({
     fontSize: Typography.sizes.body,
     color: Colors.textSecondary,
     fontWeight: Typography.weights.medium,
+  },
+  errorCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.xl,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: Spacing.four,
+    alignItems: 'center',
+    gap: Spacing.two,
+    marginTop: Spacing.two,
+    ...Shadows.xs,
+  },
+  errorIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: BorderRadius.full,
+    backgroundColor: Colors.errorLight,
+    borderWidth: 1,
+    borderColor: Colors.errorBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  errorIconText: {
+    fontSize: Typography.sizes.lg,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.error,
+  },
+  errorTitle: {
+    fontSize: Typography.sizes.base,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.textPrimary,
+    textAlign: 'center',
+  },
+  errorSubtitle: {
+    fontSize: Typography.sizes.bodySm,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: Typography.lineHeights.normal,
+  },
+  errorActions: {
+    width: '100%',
+    gap: Spacing.two,
+    marginTop: Spacing.two,
   },
   profileCard: {
     backgroundColor: Colors.surface,
@@ -694,6 +943,27 @@ const styles = StyleSheet.create({
   balanceCalloutAmountClear: {
     color: Colors.pastel.green.accent,
   },
+  recordPaymentActionBox: {
+    width: '100%',
+    marginTop: Spacing.one,
+  },
+  fullyPaidBadgeBox: {
+    width: '100%',
+    backgroundColor: Colors.pastel.green.bg,
+    borderWidth: 1,
+    borderColor: Colors.pastel.green.border,
+    borderRadius: BorderRadius.md,
+    paddingVertical: Spacing.twoHalf,
+    paddingHorizontal: Spacing.three,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: Spacing.one,
+  },
+  fullyPaidBadgeText: {
+    fontSize: Typography.sizes.bodySm,
+    fontWeight: Typography.weights.bold,
+    color: Colors.pastel.green.accent,
+  },
   statsGrid: {
     flexDirection: 'row',
     gap: Spacing.twoHalf,
@@ -750,6 +1020,83 @@ const styles = StyleSheet.create({
     color: Colors.pastel.blue.accent,
     lineHeight: Typography.lineHeights.normal,
   },
+  historySection: {
+    gap: Spacing.twoHalf,
+  },
+  historyHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.xs,
+  },
+  historyHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  historySectionTitle: {
+    fontSize: Typography.sizes.base,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.textBrand,
+  },
+  historyCountBadge: {
+    backgroundColor: Colors.pastel.green.bg,
+    borderWidth: 1,
+    borderColor: Colors.pastel.green.border,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: 1,
+    borderRadius: BorderRadius.full,
+  },
+  historyCountBadgeText: {
+    fontSize: Typography.sizes.xs,
+    fontWeight: Typography.weights.bold,
+    color: Colors.pastel.green.accent,
+  },
+  historySubtitle: {
+    fontSize: Typography.sizes.caption,
+    color: Colors.textMuted,
+    fontWeight: Typography.weights.medium,
+  },
+  emptyHistoryCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.xl,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: Spacing.six,
+    alignItems: 'center',
+    gap: Spacing.two,
+    ...Shadows.xs,
+  },
+  emptyIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: Colors.pastel.green.bg,
+    borderWidth: 1,
+    borderColor: Colors.pastel.green.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.one,
+  },
+  emptyIconEmoji: {
+    fontSize: 22,
+  },
+  emptyHistoryTitle: {
+    fontSize: Typography.sizes.base,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.textPrimary,
+    textAlign: 'center',
+  },
+  emptyHistorySubtitle: {
+    fontSize: Typography.sizes.bodySm,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: Typography.lineHeights.normal,
+    maxWidth: 280,
+  },
+  transactionsList: {
+    gap: Spacing.twoHalf,
+  },
   actionCard: {
     backgroundColor: Colors.surface,
     borderRadius: BorderRadius.xl,
@@ -765,4 +1112,3 @@ const styles = StyleSheet.create({
     lineHeight: Typography.lineHeights.normal,
   },
 });
-
