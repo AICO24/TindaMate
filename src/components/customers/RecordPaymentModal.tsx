@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -47,12 +46,13 @@ export interface RecordPaymentModalProps {
  * RecordPaymentModal
  *
  * Implements Batch 8E: Customer Payment & Settlement UI
- * - Real-time client-side preview of remaining balance using integer centavo arithmetic
- * - Quick "Pay Full Balance" 1-tap option
- * - Strict input validation against zero, negative, invalid, and overpayment
+ * - Cross-platform clean input with zero browser outline bleeding on web
+ * - High-contrast, reassuring financial layout for sari-sari store owners
+ * - Real-time breakdown of current balance, payment deducted, and remaining balance
+ * - 1-tap "Pay Full Amount" shortcut
+ * - Strict client-side validation against zero, negative, invalid, and overpayment
  * - Notes field for optional payment memo
- * - Keyboard-adaptive mobile layout preserving full scrollability and touch access
- * - Duplicate-tap lock during active database submission
+ * - Keyboard-adaptive mobile layout
  */
 export function RecordPaymentModal({
   visible,
@@ -69,18 +69,24 @@ export function RecordPaymentModal({
 
   const [amountInput, setAmountInput] = useState('');
   const [notesInput, setNotesInput] = useState('');
+  const [isAmountFocused, setIsAmountFocused] = useState(false);
+  const [isNotesFocused, setIsNotesFocused] = useState(false);
 
   // Reset inputs whenever modal opens
   useEffect(() => {
     if (visible) {
       setAmountInput('');
       setNotesInput('');
+      setIsAmountFocused(false);
+      setIsNotesFocused(false);
       onClearError?.();
     }
   }, [visible, onClearError]);
 
   const validation = validatePaymentAmountInput(amountInput, currentBalance);
   const formattedBalance = formatPesoCurrency(currentBalance);
+  const hasInput = amountInput.trim().length > 0;
+  const showError = Boolean(validation.error && hasInput);
 
   const handleAmountChange = (text: string) => {
     setAmountInput(text);
@@ -152,43 +158,47 @@ export function RecordPaymentModal({
             showsVerticalScrollIndicator={false}>
             {/* 1. Outstanding Balance Card */}
             <View style={styles.balanceCard}>
-              <Text style={styles.balanceLabel}>Current Outstanding Balance</Text>
+              <View style={styles.balanceBadge}>
+                <Text style={styles.balanceBadgeText}>Current Outstanding Utang</Text>
+              </View>
               <Text style={styles.balanceAmount}>{formattedBalance}</Text>
             </View>
 
             {/* 2. Amount Input Section */}
             <View style={styles.inputSection}>
-              <View style={styles.inputLabelRow}>
-                <Text style={styles.inputLabel}>Amount Received (Bayad)</Text>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`Pay full balance of ${formattedBalance}`}
-                  onPress={handlePayFullAmount}
-                  disabled={isSubmitting}
-                  style={styles.fullPayChip}>
-                  <Text style={styles.fullPayChipText}>Pay Full Amount</Text>
-                </Pressable>
-              </View>
+              <Text style={styles.inputLabel}>Amount Received (Bayad)</Text>
 
               <View
                 style={[
                   styles.currencyInputWrap,
-                  validation.error && amountInput.trim() !== '' && styles.currencyInputWrapError,
+                  isAmountFocused && styles.currencyInputWrapFocused,
+                  showError && styles.currencyInputWrapError,
                 ]}>
                 <Text style={styles.currencyPrefix}>₱</Text>
                 <TextInput
-                  style={styles.currencyInput}
+                  style={[
+                    styles.currencyInput,
+                    Platform.OS === 'web'
+                      ? ({
+                          outlineStyle: 'none',
+                          outlineWidth: 0,
+                          boxShadow: 'none',
+                        } as any)
+                      : {},
+                  ]}
                   placeholder="0.00"
                   placeholderTextColor={Colors.textPlaceholder}
                   keyboardType="decimal-pad"
                   value={amountInput}
                   onChangeText={handleAmountChange}
+                  onFocus={() => setIsAmountFocused(true)}
+                  onBlur={() => setIsAmountFocused(false)}
                   editable={!isSubmitting}
                   autoFocus
                   accessibilityLabel="Amount received input"
                   accessibilityHint="Enter payment amount in Philippine pesos"
                 />
-                {amountInput.length > 0 && !isSubmitting && (
+                {hasInput && !isSubmitting && (
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel="Clear amount"
@@ -199,9 +209,30 @@ export function RecordPaymentModal({
                 )}
               </View>
 
+              {/* Quick Action: Pay Full Amount */}
+              <View style={styles.quickOptionsRow}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Pay full balance of ${formattedBalance}`}
+                  onPress={handlePayFullAmount}
+                  disabled={isSubmitting}
+                  style={({ pressed }) => [
+                    styles.quickChipFull,
+                    amountInput === currentBalance.toFixed(2) && styles.quickChipFullActive,
+                    pressed && styles.quickChipPressed,
+                  ]}>
+                  <Text style={styles.quickChipFullText}>
+                    ⚡ Pay Full Amount ({formattedBalance})
+                  </Text>
+                </Pressable>
+              </View>
+
               {/* Validation / Helper Text */}
-              {validation.error && amountInput.trim() !== '' ? (
-                <Text style={styles.validationErrorText}>{validation.error}</Text>
+              {showError ? (
+                <View style={styles.errorTextRow}>
+                  <Text style={styles.errorTextIcon}>⚠️</Text>
+                  <Text style={styles.validationErrorText}>{validation.error}</Text>
+                </View>
               ) : (
                 <Text style={styles.helperText}>
                   Enter the amount paid by the customer. Cannot exceed outstanding balance.
@@ -209,47 +240,46 @@ export function RecordPaymentModal({
               )}
             </View>
 
-            {/* 3. Live Remaining Balance Preview */}
+            {/* 3. Live Payment Breakdown Preview */}
             {validation.isValid && validation.amount !== null && (
               <View
                 style={[
-                  styles.previewCard,
+                  styles.summaryBox,
                   validation.remainingBalance === 0
-                    ? styles.previewCardSettled
-                    : styles.previewCardPartial,
+                    ? styles.summaryBoxSettled
+                    : styles.summaryBoxPartial,
                 ]}>
-                <View style={styles.previewRow}>
-                  <View style={styles.previewInfo}>
-                    <Text style={styles.previewLabel}>Remaining Balance</Text>
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>Current Balance:</Text>
+                  <Text style={styles.summaryValueMuted}>{formattedBalance}</Text>
+                </View>
+
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>Amount Received:</Text>
+                  <Text style={styles.summaryValuePayment}>
+                    - {formatPesoCurrency(validation.amount)}
+                  </Text>
+                </View>
+
+                <View style={styles.summaryDivider} />
+
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryTotalLabel}>Remaining Balance:</Text>
+                  <View style={styles.summaryTotalRight}>
                     <Text
                       style={[
-                        styles.previewAmount,
+                        styles.summaryTotalValue,
                         validation.remainingBalance === 0
-                          ? styles.previewAmountSettled
-                          : styles.previewAmountPartial,
+                          ? styles.summaryTotalValueSettled
+                          : styles.summaryTotalValuePartial,
                       ]}>
                       {formatPesoCurrency(validation.remainingBalance)}
                     </Text>
-                  </View>
-
-                  <View
-                    style={[
-                      styles.previewBadge,
-                      validation.remainingBalance === 0
-                        ? styles.previewBadgeSettled
-                        : styles.previewBadgePartial,
-                    ]}>
-                    <Text
-                      style={[
-                        styles.previewBadgeText,
-                        validation.remainingBalance === 0
-                          ? styles.previewBadgeTextSettled
-                          : styles.previewBadgeTextPartial,
-                      ]}>
-                      {validation.remainingBalance === 0
-                        ? '✨ Fully Settled'
-                        : 'Partial Payment'}
-                    </Text>
+                    {validation.remainingBalance === 0 ? (
+                      <View style={styles.settledPill}>
+                        <Text style={styles.settledPillText}>✓ Fully Settled</Text>
+                      </View>
+                    ) : null}
                   </View>
                 </View>
               </View>
@@ -259,11 +289,23 @@ export function RecordPaymentModal({
             <View style={styles.notesSection}>
               <Text style={styles.inputLabel}>Payment Notes (Optional)</Text>
               <TextInput
-                style={styles.notesInput}
+                style={[
+                  styles.notesInput,
+                  isNotesFocused && styles.notesInputFocused,
+                  Platform.OS === 'web'
+                    ? ({
+                        outlineStyle: 'none',
+                        outlineWidth: 0,
+                        boxShadow: 'none',
+                      } as any)
+                    : {},
+                ]}
                 placeholder="e.g. Cash bayad, partial payment"
                 placeholderTextColor={Colors.textPlaceholder}
                 value={notesInput}
                 onChangeText={setNotesInput}
+                onFocus={() => setIsNotesFocused(true)}
+                onBlur={() => setIsNotesFocused(false)}
                 editable={!isSubmitting}
                 maxLength={120}
                 accessibilityLabel="Optional payment notes"
@@ -310,7 +352,7 @@ export function RecordPaymentModal({
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    backgroundColor: 'rgba(15, 23, 42, 0.65)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: Spacing.four,
@@ -320,8 +362,8 @@ const styles = StyleSheet.create({
   },
   modalCard: {
     width: '100%',
-    maxWidth: 480,
-    maxHeight: '90%',
+    maxWidth: 440,
+    maxHeight: '92%',
     backgroundColor: Colors.surface,
     borderRadius: BorderRadius.xl,
     borderWidth: 1,
@@ -340,7 +382,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.threeHalf,
     borderBottomWidth: 1,
     borderBottomColor: Colors.borderSubtle,
-    backgroundColor: Colors.backgroundAlt,
+    backgroundColor: Colors.backgroundWarm,
   },
   headerTitleCol: {
     flex: 1,
@@ -357,74 +399,65 @@ const styles = StyleSheet.create({
     fontWeight: Typography.weights.medium,
   },
   closeButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: Colors.backgroundWarm,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: Colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   closeButtonPressed: {
     opacity: 0.7,
   },
   closeButtonText: {
-    fontSize: 16,
+    fontSize: 14,
     color: Colors.textSecondary,
     fontWeight: Typography.weights.bold,
   },
   scrollBody: {
-    maxHeight: 460,
+    maxHeight: 500,
   },
   scrollContent: {
     padding: Spacing.four,
     gap: Spacing.threeHalf,
   },
   balanceCard: {
-    backgroundColor: Colors.pastel.orange.bg,
+    backgroundColor: '#FFF7ED',
     borderRadius: BorderRadius.lg,
     borderWidth: 1.5,
-    borderColor: Colors.pastel.orange.border,
+    borderColor: '#FED7AA',
     padding: Spacing.threeHalf,
     alignItems: 'center',
-    gap: 2,
+    gap: Spacing.one,
   },
-  balanceLabel: {
-    fontSize: Typography.sizes.caption,
+  balanceBadge: {
+    backgroundColor: '#FFEDD5',
+    paddingHorizontal: Spacing.twoHalf,
+    paddingVertical: 3,
+    borderRadius: BorderRadius.full,
+  },
+  balanceBadgeText: {
+    fontSize: Typography.sizes.xs,
     fontWeight: Typography.weights.bold,
-    color: Colors.pastel.orange.text,
+    color: '#C2410C',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.4,
   },
   balanceAmount: {
-    fontSize: Typography.sizes.displaySm,
+    fontSize: 30,
     fontWeight: Typography.weights.extraBold,
-    color: Colors.pastel.orange.accent,
+    color: Colors.accent,
   },
   inputSection: {
-    gap: Spacing.two,
-  },
-  inputLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: Spacing.one,
   },
   inputLabel: {
     fontSize: Typography.sizes.bodySm,
     fontWeight: Typography.weights.bold,
     color: Colors.textPrimary,
-  },
-  fullPayChip: {
-    backgroundColor: Colors.pastel.green.bg,
-    borderWidth: 1,
-    borderColor: Colors.pastel.green.border,
-    paddingHorizontal: Spacing.twoHalf,
-    paddingVertical: 3,
-    borderRadius: BorderRadius.full,
-  },
-  fullPayChipText: {
-    fontSize: Typography.sizes.xs,
-    fontWeight: Typography.weights.bold,
-    color: Colors.pastel.green.accent,
+    marginBottom: 2,
   },
   currencyInputWrap: {
     flexDirection: 'row',
@@ -432,9 +465,14 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderWidth: 1.5,
     borderColor: Colors.border,
-    borderRadius: BorderRadius.md,
-    paddingHorizontal: Spacing.three,
-    height: 52,
+    borderRadius: BorderRadius.lg,
+    paddingHorizontal: Spacing.threeHalf,
+    height: 54,
+  },
+  currencyInputWrapFocused: {
+    borderColor: Colors.primary,
+    backgroundColor: '#FFFFFF',
+    ...Shadows.xs,
   },
   currencyInputWrapError: {
     borderColor: Colors.error,
@@ -448,11 +486,14 @@ const styles = StyleSheet.create({
   },
   currencyInput: {
     flex: 1,
+    minWidth: 0,
+    width: '100%',
     fontSize: Typography.sizes.xl,
     fontWeight: Typography.weights.extraBold,
     color: Colors.textPrimary,
     height: '100%',
     paddingVertical: 0,
+    paddingHorizontal: 0,
   },
   clearInputButton: {
     padding: Spacing.one,
@@ -462,6 +503,40 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     fontWeight: Typography.weights.bold,
   },
+  quickOptionsRow: {
+    marginTop: Spacing.one,
+  },
+  quickChipFull: {
+    backgroundColor: Colors.pastel.green.bg,
+    borderWidth: 1,
+    borderColor: Colors.pastel.green.border,
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    borderRadius: BorderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickChipFullActive: {
+    backgroundColor: Colors.primaryLight,
+    borderColor: Colors.primary,
+  },
+  quickChipPressed: {
+    opacity: 0.8,
+  },
+  quickChipFullText: {
+    fontSize: Typography.sizes.caption,
+    fontWeight: Typography.weights.bold,
+    color: Colors.primaryDark,
+  },
+  errorTextRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
+    marginTop: 2,
+  },
+  errorTextIcon: {
+    fontSize: 12,
+  },
   validationErrorText: {
     fontSize: Typography.sizes.caption,
     color: Colors.error,
@@ -470,79 +545,94 @@ const styles = StyleSheet.create({
   helperText: {
     fontSize: Typography.sizes.caption,
     color: Colors.textMuted,
+    marginTop: 2,
   },
-  previewCard: {
-    borderRadius: BorderRadius.md,
-    padding: Spacing.three,
+  summaryBox: {
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.threeHalf,
     borderWidth: 1,
+    gap: Spacing.two,
   },
-  previewCardPartial: {
-    backgroundColor: Colors.pastel.blue.bg,
-    borderColor: Colors.pastel.blue.border,
+  summaryBoxPartial: {
+    backgroundColor: '#F8FAFC',
+    borderColor: Colors.border,
   },
-  previewCardSettled: {
+  summaryBoxSettled: {
     backgroundColor: Colors.pastel.green.bg,
     borderColor: Colors.pastel.green.border,
   },
-  previewRow: {
+  summaryRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  previewInfo: {
-    gap: 2,
-  },
-  previewLabel: {
-    fontSize: Typography.sizes.xs,
+  summaryLabel: {
+    fontSize: Typography.sizes.caption,
     color: Colors.textSecondary,
     fontWeight: Typography.weights.medium,
   },
-  previewAmount: {
-    fontSize: Typography.sizes.lg,
+  summaryValueMuted: {
+    fontSize: Typography.sizes.bodySm,
+    fontWeight: Typography.weights.bold,
+    color: Colors.textSecondary,
+  },
+  summaryValuePayment: {
+    fontSize: Typography.sizes.bodySm,
+    fontWeight: Typography.weights.bold,
+    color: Colors.pastel.green.accent,
+  },
+  summaryDivider: {
+    height: 1,
+    backgroundColor: Colors.borderSubtle,
+    marginVertical: 4,
+  },
+  summaryTotalLabel: {
+    fontSize: Typography.sizes.bodySm,
+    fontWeight: Typography.weights.bold,
+    color: Colors.textPrimary,
+  },
+  summaryTotalRight: {
+    alignItems: 'flex-end',
+    gap: 2,
+  },
+  summaryTotalValue: {
+    fontSize: Typography.sizes.base,
     fontWeight: Typography.weights.extraBold,
   },
-  previewAmountPartial: {
-    color: Colors.pastel.blue.accent,
+  summaryTotalValuePartial: {
+    color: Colors.accent,
   },
-  previewAmountSettled: {
+  summaryTotalValueSettled: {
     color: Colors.pastel.green.accent,
   },
-  previewBadge: {
-    paddingHorizontal: Spacing.twoHalf,
-    paddingVertical: 4,
-    borderRadius: BorderRadius.full,
-    borderWidth: 1,
+  settledPill: {
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: Spacing.two,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.xs,
   },
-  previewBadgePartial: {
-    backgroundColor: Colors.surface,
-    borderColor: Colors.pastel.blue.border,
-  },
-  previewBadgeSettled: {
-    backgroundColor: Colors.surface,
-    borderColor: Colors.pastel.green.border,
-  },
-  previewBadgeText: {
-    fontSize: Typography.sizes.xs,
+  settledPillText: {
+    fontSize: 10,
     fontWeight: Typography.weights.bold,
-  },
-  previewBadgeTextPartial: {
-    color: Colors.pastel.blue.accent,
-  },
-  previewBadgeTextSettled: {
-    color: Colors.pastel.green.accent,
+    color: Colors.successText,
   },
   notesSection: {
-    gap: Spacing.two,
+    gap: Spacing.one,
   },
   notesInput: {
     backgroundColor: Colors.backgroundAlt,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: Colors.border,
     borderRadius: BorderRadius.md,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.twoHalf,
     fontSize: Typography.sizes.bodySm,
     color: Colors.textPrimary,
+    minHeight: 44,
+  },
+  notesInputFocused: {
+    borderColor: Colors.primary,
+    backgroundColor: '#FFFFFF',
   },
   errorBanner: {
     flexDirection: 'row',
@@ -570,7 +660,7 @@ const styles = StyleSheet.create({
     padding: Spacing.four,
     borderTopWidth: 1,
     borderTopColor: Colors.borderSubtle,
-    backgroundColor: Colors.backgroundAlt,
+    backgroundColor: Colors.backgroundWarm,
   },
   actionButtonWrap: {
     flex: 1,
