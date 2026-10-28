@@ -1,15 +1,13 @@
 import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
-import { ChevronLeftIcon } from './AuthIcons';
-import { TindaMateCartLogo } from './TindaMateCartLogo';
+import { ArrowLeftIcon } from './AuthIcons';
+import { StorefrontLogo } from './StorefrontLogo';
 import {
   AuthMaxContentWidth,
-  BorderRadius,
   Colors,
-  IconSizes,
-  Shadows,
   Spacing,
 } from '@/constants/theme';
 
@@ -18,17 +16,26 @@ interface AuthHeaderProps {
   onBack?: () => void;
   /** Whether to show the back button (default: true) */
   showBack?: boolean;
+  /** Optional logo scale multiplier (default: 1.02) */
+  logoScale?: number;
 }
 
 /**
  * AuthHeader
  *
- * Unified authentication navigation header used across Login and Register screens:
- * - Warm soft backdrop curve connecting Welcome, Login, Register, and Dashboard
- * - Accessible circular back button on the left
- * - Centered official TindaMate Cart & Sprouting Leaves emblem + tagline
+ * Unified authentication header matching the primary visual reference for Login & Register:
+ * 1. Top navigation bar clearing the device notch / Dynamic Island with a clean back arrow (←)
+ * 2. Prominent centered TindaMate Storefront Emblem & Tagline directly below
  */
-export function AuthHeader({ onBack, showBack = true }: AuthHeaderProps) {
+export function AuthHeader({
+  onBack,
+  showBack = true,
+  logoScale = 1.02,
+}: AuthHeaderProps) {
+  const insets = useSafeAreaInsets();
+  // Guarantees clearance below Dynamic Island / status bar on both native devices and web mobile viewers
+  const safeTopPadding = Math.max(insets.top, 42) + 4;
+
   const handleBack = () => {
     if (onBack) {
       onBack();
@@ -43,10 +50,10 @@ export function AuthHeader({ onBack, showBack = true }: AuthHeaderProps) {
   };
 
   return (
-    <View style={styles.outerWrapper}>
+    <View style={[styles.outerWrapper, { paddingTop: safeTopPadding }]}>
       <View style={styles.container}>
-        {/* Back Button Area */}
-        <View style={styles.sideSlot}>
+        {/* Top Row: Back Navigation Arrow */}
+        <View style={styles.navRow}>
           {showBack && (
             <Pressable
               accessibilityRole="button"
@@ -57,18 +64,15 @@ export function AuthHeader({ onBack, showBack = true }: AuthHeaderProps) {
                 styles.backButton,
                 pressed && styles.backButtonPressed,
               ]}>
-              <ChevronLeftIcon size={IconSizes.nav} color={Colors.primaryDark} />
+              <ArrowLeftIcon size={24} color={Colors.primaryDark} />
             </Pressable>
           )}
         </View>
 
-        {/* Centered Official TindaMate Cart Logo & Tagline */}
-        <View style={styles.centerSlot}>
-          <TindaMateCartLogo scale={0.95} showTagline={true} />
+        {/* Brand Row: Prominent Centered TindaMate Storefront Logo */}
+        <View style={styles.brandRow}>
+          <StorefrontLogo scale={logoScale} layout="horizontal" align="center" />
         </View>
-
-        {/* Right spacer to balance the back button */}
-        <View style={styles.sideSlot} />
       </View>
     </View>
   );
@@ -77,50 +81,36 @@ export function AuthHeader({ onBack, showBack = true }: AuthHeaderProps) {
 const styles = StyleSheet.create({
   outerWrapper: {
     width: '100%',
-    backgroundColor: Colors.backgroundWarm,
-    borderBottomLeftRadius: BorderRadius.xl,
-    borderBottomRightRadius: BorderRadius.xl,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.borderSubtle,
+    backgroundColor: 'transparent',
   },
   container: {
     width: '100%',
-    maxWidth: AuthMaxContentWidth + Spacing.four * 2,
+    maxWidth: AuthMaxContentWidth,
     alignSelf: 'center',
+    paddingHorizontal: Spacing.four,
+  },
+  navRow: {
+    width: '100%',
+    height: 32,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.twoHalf,
-    paddingBottom: Spacing.three,
+    justifyContent: 'flex-start',
   },
-  sideSlot: {
-    width: 42,
-    height: 42,
+  backButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     justifyContent: 'center',
     alignItems: 'flex-start',
   },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: BorderRadius.full,
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...Shadows.xs,
-  },
   backButtonPressed: {
-    backgroundColor: Colors.primaryLight,
-    borderColor: Colors.primaryBorder,
-    transform: [{ scale: 0.96 }],
+    opacity: 0.6,
   },
-  centerSlot: {
-    flex: 1,
+  brandRow: {
+    width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: 2,
+    marginBottom: Spacing.two,
   },
 });
-
-
