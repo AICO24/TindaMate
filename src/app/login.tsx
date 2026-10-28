@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { router } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Animated,
@@ -11,7 +12,6 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
 
 import { AuthBottomDecorations } from '@/components/ui/AuthBottomDecorations';
 import { AuthErrorBanner } from '@/components/ui/AuthErrorBanner';
