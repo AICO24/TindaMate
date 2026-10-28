@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Alert,
+  Animated,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -12,13 +13,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
-import { AuthDivider } from '@/components/ui/AuthDivider';
+import { AuthBottomDecorations } from '@/components/ui/AuthBottomDecorations';
 import { AuthErrorBanner } from '@/components/ui/AuthErrorBanner';
 import { AuthHeader } from '@/components/ui/AuthHeader';
-import { CheckIcon, LockIcon, MailIcon } from '@/components/ui/AuthIcons';
+import { LockIcon, MailIcon } from '@/components/ui/AuthIcons';
 import { AuthSuccessModal } from '@/components/ui/AuthSuccessModal';
-import { FacebookSignInButton } from '@/components/ui/FacebookSignInButton';
-import { GoogleSignInButton } from '@/components/ui/GoogleSignInButton';
 import { TindaMateButton } from '@/components/ui/TindaMateButton';
 import { TindaMateInput } from '@/components/ui/TindaMateInput';
 import {
@@ -26,26 +25,43 @@ import {
   BorderRadius,
   Colors,
   IconSizes,
+  Shadows,
   Spacing,
   Typography,
 } from '@/constants/theme';
-import { performOAuthSignIn } from '@/lib/oauth';
 import { supabase } from '@/lib/supabase';
 
 export default function LoginScreen() {
   // Form State
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
 
   // Submission & Error State
   const [isLoading, setIsLoading] = useState(false);
-  const [oauthLoadingProvider, setOauthLoadingProvider] = useState<'google' | 'facebook' | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   // Field-level Validation Error State
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+
+  // Subtle screen entrance animation
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(12)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 260,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 260,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [fadeAnim, slideAnim]);
 
   /**
    * Basic client-side validation for Login
@@ -98,7 +114,6 @@ export default function LoginScreen() {
   const handleLogin = async () => {
     if (isLoading) return;
 
-    // Reset previous general auth error
     setAuthError(null);
 
     const isValid = validateForm();
@@ -127,7 +142,6 @@ export default function LoginScreen() {
       }
 
       if (data.session) {
-        // Successful login: directly navigate to dashboard screen
         router.replace('/home');
       } else {
         const unconfirmedMsg =
@@ -155,7 +169,7 @@ export default function LoginScreen() {
   };
 
   /**
-   * Handle Forgot Password click (Preview placeholder until Batch 6)
+   * Handle Forgot Password click
    */
   const handleForgotPassword = () => {
     const message =
@@ -168,174 +182,139 @@ export default function LoginScreen() {
     }
   };
 
-  /**
-   * Handle OAuth Sign In (Google & Facebook)
-   */
-  const handleOAuthSignIn = async (provider: 'google' | 'facebook') => {
-    if (isLoading || oauthLoadingProvider) return;
-    setAuthError(null);
-    setOauthLoadingProvider(provider);
-
-    try {
-      const result = await performOAuthSignIn(provider);
-      if (result.success) {
-        // Successful OAuth login: directly navigate to dashboard screen
-        router.replace('/home');
-      } else if (result.error) {
-        setAuthError(mapAuthError(result.error));
-      }
-    } catch (err: unknown) {
-      const msg =
-        err instanceof Error ? err.message : 'Social sign-in failed. Please try again.';
-      setAuthError(msg);
-    } finally {
-      setOauthLoadingProvider(null);
-    }
-  };
-
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
       <KeyboardAvoidingView
         style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        {/* Unified Top Header with Back Button and Official TindaMate Emblem */}
-        <AuthHeader />
+        {/* ========================================================
+            [STEP 1] Top Navigation & Prominent TindaMate Brand
+           ======================================================== */}
+        <AuthHeader logoScale={1.06} />
 
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
-          <View style={styles.contentContainer}>
-            {/* Screen Heading & Supporting Text */}
+          <Animated.View
+            style={[
+              styles.contentContainer,
+              {
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }],
+              },
+            ]}>
+            {/* ========================================================
+                [STEP 2] Welcome Back Headline & Supporting Copy
+               ======================================================== */}
             <View style={styles.headingBlock}>
               <Text style={styles.heading} accessibilityRole="header">
-                Welcome Back!
+                Welcome back
               </Text>
               <Text style={styles.supportingText}>
-                Log in to your TindaMate store account to continue.
+                Let&apos;s get your store running.
               </Text>
             </View>
 
             {/* Reusable Auth Error Banner */}
             <AuthErrorBanner message={authError} />
 
-            {/* Email Field */}
-            <TindaMateInput
-              label="Email address"
-              placeholder="juan@example.com"
-              value={email}
-              onChangeText={(text) => {
-                setEmail(text);
-                if (authError) setAuthError(null);
-                if (errors.email) {
-                  setErrors((prev) => ({ ...prev, email: undefined }));
-                }
-              }}
-              leftIcon={<MailIcon size={IconSizes.md} />}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-              returnKeyType="next"
-              errorMessage={errors.email}
-              accessibilityLabel="Email address"
-            />
+            {/* ========================================================
+                [STEP 3] Login Form (Email, Password, Forgot Password)
+               ======================================================== */}
+            <View style={styles.formSection}>
+              <TindaMateInput
+                label="Email Address"
+                placeholder="you@example.com"
+                value={email}
+                onChangeText={(text) => {
+                  setEmail(text);
+                  if (authError) setAuthError(null);
+                  if (errors.email) {
+                    setErrors((prev) => ({ ...prev, email: undefined }));
+                  }
+                }}
+                leftIcon={<MailIcon size={IconSizes.sm} color={Colors.textSecondary} />}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                returnKeyType="next"
+                errorMessage={errors.email}
+                accessibilityLabel="Email Address"
+              />
 
-            {/* Password Field */}
-            <TindaMateInput
-              label="Password"
-              placeholder="••••••••"
-              value={password}
-              onChangeText={(text) => {
-                setPassword(text);
-                if (authError) setAuthError(null);
-                if (errors.password) {
-                  setErrors((prev) => ({ ...prev, password: undefined }));
-                }
-              }}
-              leftIcon={<LockIcon size={IconSizes.md} variant="green" />}
-              isPassword
-              returnKeyType="done"
-              onSubmitEditing={handleLogin}
-              errorMessage={errors.password}
-              accessibilityLabel="Password"
-            />
-
-            {/* Remember Me & Forgot Password Row */}
-            <View style={styles.optionsRow}>
-              {/* Remember Me Checkbox */}
-              <Pressable
-                accessibilityRole="checkbox"
-                accessibilityState={{ checked: rememberMe }}
-                accessibilityLabel="Remember me"
-                onPress={() => setRememberMe((prev) => !prev)}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                style={styles.checkboxContainer}>
-                <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
-                  {rememberMe && <CheckIcon size={10} color={Colors.textInverse} />}
-                </View>
-                <Text style={styles.rememberMeText}>Remember me</Text>
-              </Pressable>
+              <TindaMateInput
+                label="Password"
+                placeholder="Enter your password"
+                value={password}
+                onChangeText={(text) => {
+                  setPassword(text);
+                  if (authError) setAuthError(null);
+                  if (errors.password) {
+                    setErrors((prev) => ({ ...prev, password: undefined }));
+                  }
+                }}
+                leftIcon={<LockIcon size={IconSizes.sm} color={Colors.textSecondary} />}
+                isPassword
+                returnKeyType="done"
+                onSubmitEditing={handleLogin}
+                errorMessage={errors.password}
+                accessibilityLabel="Password"
+              />
 
               {/* Forgot Password Link */}
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Forgot password"
-                onPress={handleForgotPassword}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                style={({ pressed }) => pressed && styles.linkPressed}>
-                <Text style={styles.forgotPasswordText}>Forgot password?</Text>
-              </Pressable>
+              <View style={styles.forgotPasswordRow}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Forgot password"
+                  onPress={handleForgotPassword}
+                  hitSlop={{ top: 10, bottom: 10, left: 12, right: 12 }}
+                  style={({ pressed }) => pressed && styles.linkPressed}>
+                  <Text style={styles.forgotPasswordText}>Forgot password?</Text>
+                </Pressable>
+              </View>
             </View>
 
-            {/* Primary CTA: Login Button */}
+            {/* ========================================================
+                [STEP 4] Primary Login CTA
+               ======================================================== */}
             <View style={styles.ctaContainer}>
               <TindaMateButton
-                title={isLoading ? 'Signing In...' : 'Log In'}
+                title={isLoading ? 'Signing in...' : 'Log In'}
                 loading={isLoading}
                 onPress={handleLogin}
                 disabled={isLoading}
                 accessibilityLabel="Log in to your account"
+                style={styles.loginButton}
+                textStyle={styles.loginButtonText}
               />
             </View>
 
-            {/* Divider: OR */}
-            <AuthDivider label="OR" />
+            {/* ========================================================
+                [STEP 5] Balanced Bottom Account Switch Section
+               ======================================================== */}
+            <View style={styles.bottomSection}>
+              <View style={styles.subtleDivider} />
 
-            {/* Social Logins: Google & Facebook */}
-            <View style={styles.socialButtonsContainer}>
-              <GoogleSignInButton
-                onPress={() => handleOAuthSignIn('google')}
-                loading={oauthLoadingProvider === 'google'}
-                disabled={isLoading || Boolean(oauthLoadingProvider)}
-              />
-
-              <FacebookSignInButton
-                onPress={() => handleOAuthSignIn('facebook')}
-                loading={oauthLoadingProvider === 'facebook'}
-                disabled={isLoading || Boolean(oauthLoadingProvider)}
-              />
-            </View>
-
-            {/* Bottom Navigation: Don't have an account? Register */}
-            <View style={styles.bottomNavContainer}>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Don't have an account? Go to Register"
+                accessibilityLabel="New to TindaMate? Create an account"
                 onPress={() => router.push('/register')}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                hitSlop={{ top: 10, bottom: 10, left: 16, right: 16 }}
                 style={({ pressed }) => [
                   styles.bottomNavPressable,
                   pressed && styles.linkPressed,
                 ]}>
-                <Text style={styles.bottomNavText}>
-                  Don&apos;t have an account?{' '}
-                  <Text style={styles.bottomNavAction}>Register</Text>
-                </Text>
+                <Text style={styles.bottomPromptText}>New to TindaMate?</Text>
+                <Text style={styles.bottomActionText}>Create an account</Text>
               </Pressable>
             </View>
-          </View>
+          </Animated.View>
         </ScrollView>
+
+        {/* Restrained organic TindaMate green & orange corner shapes */}
+        <AuthBottomDecorations />
       </KeyboardAvoidingView>
 
       {/* Smooth Direct Redirect Modal */}
@@ -356,72 +335,52 @@ const styles = StyleSheet.create({
   },
   keyboardView: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: Colors.backgroundWarm,
   },
   scrollView: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: 'transparent',
   },
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: Spacing.four,
-    paddingBottom: Spacing.five,
+    paddingBottom: 88,
   },
   contentContainer: {
     width: '100%',
     maxWidth: AuthMaxContentWidth,
     alignSelf: 'center',
-    paddingTop: Spacing.four,
+    flex: 1,
+    paddingTop: 16,
   },
   headingBlock: {
-    marginBottom: Spacing.four,
+    marginBottom: 24,
   },
   heading: {
-    fontSize: Typography.sizes.xl,
+    fontSize: 30,
+    lineHeight: 36,
     fontWeight: Typography.weights.extraBold,
-    color: Colors.textBrand,
-    letterSpacing: -0.3,
-    marginBottom: Spacing.one,
+    color: Colors.primaryDark,
+    letterSpacing: -0.6,
+    marginBottom: 5,
   },
   supportingText: {
-    fontSize: Typography.sizes.bodySm,
+    fontSize: Typography.sizes.base,
     color: Colors.textSecondary,
-    lineHeight: Typography.lineHeights.normal,
-  },
-  optionsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: Spacing.xxs,
-    marginBottom: Spacing.four,
-  },
-  checkboxContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: BorderRadius.xs,
-    borderWidth: 1.5,
-    borderColor: Colors.border,
-    backgroundColor: Colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkboxChecked: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
-  },
-  rememberMeText: {
-    fontSize: Typography.sizes.bodySm,
-    color: Colors.textSecondary,
+    lineHeight: 22,
     fontWeight: Typography.weights.medium,
+  },
+  formSection: {
+    width: '100%',
+  },
+  forgotPasswordRow: {
+    alignItems: 'flex-end',
+    marginTop: 2,
+    marginBottom: 24,
   },
   forgotPasswordText: {
     fontSize: Typography.sizes.bodySm,
-    color: Colors.primary,
+    color: Colors.primaryDark,
     fontWeight: Typography.weights.bold,
   },
   linkPressed: {
@@ -429,30 +388,46 @@ const styles = StyleSheet.create({
   },
   ctaContainer: {
     width: '100%',
-    marginTop: Spacing.one,
+    marginBottom: 28,
   },
-  bottomNavContainer: {
+  loginButton: {
+    width: '100%',
+    minHeight: 56,
+    borderRadius: BorderRadius.md,
+    backgroundColor: Colors.primary,
+    ...Shadows.primaryButton,
+  },
+  loginButtonText: {
+    fontSize: 17,
+    fontWeight: Typography.weights.bold,
+    letterSpacing: 0.2,
+  },
+  bottomSection: {
+    width: '100%',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: Spacing.four,
-    paddingVertical: Spacing.two,
+    marginTop: 4,
+  },
+  subtleDivider: {
+    width: '100%',
+    height: 1,
+    backgroundColor: '#E8E3D3',
+    marginBottom: 20,
   },
   bottomNavPressable: {
-    paddingVertical: Spacing.one,
-    paddingHorizontal: Spacing.two,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+    gap: 4,
   },
-  bottomNavText: {
+  bottomPromptText: {
     fontSize: Typography.sizes.bodySm,
-    color: Colors.textSecondary,
+    color: Colors.textMuted,
+    fontWeight: Typography.weights.medium,
   },
-  bottomNavAction: {
-    color: Colors.primary,
+  bottomActionText: {
+    fontSize: Typography.sizes.base,
+    color: Colors.primaryDark,
     fontWeight: Typography.weights.extraBold,
   },
-  socialButtonsContainer: {
-    width: '100%',
-    gap: Spacing.twoHalf,
-  },
 });
-
-
