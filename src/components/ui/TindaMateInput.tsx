@@ -56,10 +56,12 @@ export interface TindaMateInputProps {
 /**
  * TindaMateInput
  *
- * Unified design-system form input component shared across Login, Register,
- * and future TindaMate store forms.
- * Features a full-card touch target, stacked label, left icon slot, right password toggle,
- * clear focus/error states, and reliable keyboard handling across Android, iOS, and Web.
+ * Production-quality form input matching the TindaMate visual reference:
+ * - Strong top label with warm brand-dark contrast
+ * - Elevated white card surface (#FFFFFF) with warm stone border (#E5E0D0) and 14pt radius
+ * - Left icon slot + right password visibility toggle
+ * - Crisp TindaMate green focus border (#0D7A4D) with subtle elevation
+ * - Clear inline validation feedback
  */
 export function TindaMateInput({
   label,
@@ -83,7 +85,6 @@ export function TindaMateInput({
 
   const hasError = Boolean(errorMessage);
 
-  /** Modern inputMode for rock-solid stability on Android & Web */
   const computedInputMode =
     keyboardType === 'email-address'
       ? 'email'
@@ -99,7 +100,17 @@ export function TindaMateInput({
 
   return (
     <View style={[styles.wrapper, style]}>
-      {/* Outer Card Container with full touch focus */}
+      {/* Top Field Label */}
+      <Text
+        style={[
+          styles.label,
+          isFocused && styles.labelFocused,
+          hasError && styles.labelError,
+        ]}>
+        {label}
+      </Text>
+
+      {/* Input Card Container */}
       <Pressable
         onPress={handleContainerPress}
         accessible={false}
@@ -111,57 +122,46 @@ export function TindaMateInput({
         {/* Left Icon Slot */}
         {leftIcon && <View style={styles.iconSlot}>{leftIcon}</View>}
 
-        {/* Input & Label Content Area */}
-        <View style={styles.inputArea} pointerEvents="box-none">
-          <Text
-            style={[
-              styles.label,
-              isFocused && styles.labelFocused,
-              hasError && styles.labelError,
-            ]}>
-            {label}
-          </Text>
-
-          <TextInput
-            ref={inputRef}
-            value={value}
-            onChangeText={onChangeText}
-            placeholder={placeholder}
-            placeholderTextColor={Colors.textPlaceholder}
-            secureTextEntry={isPassword && !showPassword}
-            inputMode={computedInputMode}
-            keyboardType={Platform.OS === 'ios' ? keyboardType : undefined}
-            autoCapitalize={autoCapitalize}
-            autoCorrect={autoCorrect}
-            autoComplete={keyboardType === 'email-address' ? 'email' : undefined}
-            textContentType={
-              keyboardType === 'email-address'
-                ? 'emailAddress'
-                : isPassword
-                ? 'password'
-                : undefined
-            }
-            returnKeyType={returnKeyType}
-            onSubmitEditing={onSubmitEditing}
-            onFocus={() => setIsFocused(true)}
-            onBlur={() => setIsFocused(false)}
-            accessibilityLabel={accessibilityLabel ?? label}
-            style={styles.textInput}
-          />
-        </View>
+        {/* Text Input */}
+        <TextInput
+          ref={inputRef}
+          value={value}
+          onChangeText={onChangeText}
+          placeholder={placeholder}
+          placeholderTextColor={Colors.textPlaceholder}
+          secureTextEntry={isPassword && !showPassword}
+          inputMode={computedInputMode}
+          keyboardType={Platform.OS === 'ios' ? keyboardType : undefined}
+          autoCapitalize={autoCapitalize}
+          autoCorrect={autoCorrect}
+          autoComplete={keyboardType === 'email-address' ? 'email' : undefined}
+          textContentType={
+            keyboardType === 'email-address'
+              ? 'emailAddress'
+              : isPassword
+              ? 'password'
+              : undefined
+          }
+          returnKeyType={returnKeyType}
+          onSubmitEditing={onSubmitEditing}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          accessibilityLabel={accessibilityLabel ?? label}
+          style={styles.textInput}
+        />
 
         {/* Right Action Slot (Password Visibility Toggle) */}
         {isPassword && (
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
-            hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             onPress={() => setShowPassword((prev) => !prev)}
             style={({ pressed }) => [styles.eyeButton, pressed && styles.eyePressed]}>
             {showPassword ? (
               <EyeOffIcon size={IconSizes.md} color={hasError ? Colors.error : Colors.primary} />
             ) : (
-              <EyeIcon size={IconSizes.md} color={Colors.textSecondary} />
+              <EyeIcon size={IconSizes.md} color={Colors.textMuted} />
             )}
           </Pressable>
         )}
@@ -181,7 +181,20 @@ export function TindaMateInput({
 const styles = StyleSheet.create({
   wrapper: {
     width: '100%',
-    marginBottom: Spacing.three,
+    marginBottom: 18,
+  },
+  label: {
+    fontSize: Typography.sizes.bodySm,
+    fontWeight: Typography.weights.bold,
+    color: Colors.textPrimary,
+    marginBottom: 8,
+    letterSpacing: 0.1,
+  },
+  labelFocused: {
+    color: Colors.primaryDark,
+  },
+  labelError: {
+    color: Colors.error,
   },
   container: {
     flexDirection: 'row',
@@ -189,56 +202,41 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderRadius: BorderRadius.md,
     borderWidth: 1.4,
-    borderColor: Colors.border,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: 9,
-    minHeight: 60,
+    borderColor: '#E5E0D0',
+    paddingHorizontal: 14,
+    height: 54,
+    ...Shadows.xs,
   },
   containerFocused: {
-    borderColor: Colors.borderFocused,
+    borderColor: Colors.primary,
+    borderWidth: 1.8,
     backgroundColor: Colors.surface,
-    ...Shadows.xs,
+    ...Shadows.sm,
   },
   containerError: {
     borderColor: Colors.error,
     backgroundColor: Colors.errorLight,
   },
   iconSlot: {
-    width: 28,
+    width: 26,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: Spacing.twoHalf,
-  },
-  inputArea: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  label: {
-    fontSize: Typography.sizes.caption,
-    fontWeight: Typography.weights.semiBold,
-    color: Colors.textSecondary,
-    marginBottom: 2,
-    letterSpacing: 0.2,
-  },
-  labelFocused: {
-    color: Colors.primary,
-  },
-  labelError: {
-    color: Colors.error,
+    marginRight: 10,
   },
   textInput: {
+    flex: 1,
     fontSize: Typography.sizes.body,
     fontWeight: Typography.weights.medium,
     color: Colors.textPrimary,
     paddingVertical: Platform.OS === 'android' ? 2 : 0,
     paddingHorizontal: 0,
-    minHeight: 26,
-    textAlignVertical: 'center',
+    height: '100%',
   },
   eyeButton: {
     padding: 6,
     alignItems: 'center',
     justifyContent: 'center',
+    marginLeft: Spacing.one,
   },
   eyePressed: {
     opacity: 0.6,
