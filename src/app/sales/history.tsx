@@ -1,8 +1,7 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
-  Platform,
+  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -18,10 +17,12 @@ import {
   resolveActiveNavTab,
 } from '@/components/dashboard/DashboardBottomNav';
 import { DashboardErrorBanner } from '@/components/dashboard/DashboardErrorBanner';
-import { DashboardBadgeVectorIcon } from '@/components/dashboard/DashboardNavIcons';
+import {
+  DashboardBadgeVectorIcon,
+  TrendChartVectorIcon,
+} from '@/components/dashboard/DashboardNavIcons';
 import { ProductScreenHeader } from '@/components/products/ProductScreenHeader';
 import { SaleHistoryItemCard } from '@/components/sales/SaleHistoryItemCard';
-import { TodaySalesSummaryCard } from '@/components/sales/TodaySalesSummaryCard';
 import { TindaMateButton } from '@/components/ui/TindaMateButton';
 import {
   BorderRadius,
@@ -31,71 +32,74 @@ import {
   Spacing,
   Typography,
 } from '@/constants/theme';
-import {
-  computeTodaySalesSummary,
-  fetchStoreSales,
-  groupSalesByDate,
-} from '@/lib/sales';
+import { formatPesoCurrency } from '@/lib/products';
+import { fetchStoreSales, groupSalesByDate } from '@/lib/sales';
 import { supabase } from '@/lib/supabase';
 import { Sale } from '@/types/sale';
 
+type HistoryPeriodFilter = 'This Week' | 'This Month' | 'Today' | 'All';
+
+const PERIOD_FILTERS: HistoryPeriodFilter[] = [
+  'This Week',
+  'This Month',
+  'Today',
+  'All',
+];
+
 /**
- * TindaMate Sales History Screen (`/sales/history`)
+ * TindaMate Sales History Screen (`/sales/history`) — Design 2.0
  *
- * Displays:
- * 1. Top Screen Header with "+ Record Sale" quick action
- * 2. Current day sales metric summary (Today's Sales total & transaction count)
- * 3. Chronological sales log grouped by human-readable date (Today, Yesterday, Date)
- * 4. Tap on any sale item to inspect complete historical Sale Details
- * 5. Honest loading, error, and empty states
- * 6. Route-aware persistent bottom navigation
+ * Clean transaction-history pattern matching the Design 2.0 reference:
+ * - Deep Green Header ("Sales History" + Trend Chart Icon + "+ New Sale")
+ * - Period Filter Chips ("This Week", "This Month", "Today", "All")
+ * - Total Sales Summary & Trend Card
+ * - Chronological transaction cards with receipt badge, Date • Time, Peso amount, item count & "View ›" pill
  */
 export default function SalesHistoryScreen() {
   const pathname = usePathname();
   const activeTab = resolveActiveNavTab(pathname);
 
   const [sales, setSales] = useState<Sale[]>([]);
+  const [selectedPeriod, setSelectedPeriod] =
+    useState<HistoryPeriodFilter>('This Week');
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const loadSalesHistory = useCallback(
-    async (showRefreshIndicator = false) => {
-      try {
-        if (showRefreshIndicator) {
-          setIsRefreshing(true);
-        }
-        setErrorMessage(null);
-
-        const { data: sessionData, error: sessionError } =
-          await supabase.auth.getSession();
-        if (sessionError) {
-          setErrorMessage(
-            'Unable to verify your store session. Check your connection and retry.'
-          );
-          return;
-        }
-
-        if (!sessionData?.session) {
-          router.replace('/');
-          return;
-        }
-
-        const items = await fetchStoreSales();
-        setSales(items);
-      } catch (err: unknown) {
-        const msg =
-          err instanceof Error
-            ? err.message
-            : 'Could not load your sales history. Please try again.';
-        setErrorMessage(msg);
-      } finally {
-        setIsInitialLoading(false);
-        setIsRefreshing(false);
+  const loadSalesHistory = useCallback(async (showRefreshIndicator = false) => {
+    try {
+      if (showRefreshIndicator) {
+        setIsRefreshing(true);
       }
-    },
-    []
-  );
+      setErrorMessage(null);
+
+      const { data: sessionData, error: sessionError } =
+        await supabase.auth.getSession();
+      if (sessionError) {
+        setErrorMessage(
+          'Unable to verify your store session. Check your connection and retry.'
+        );
+        return;
+      }
+
+      if (!sessionData?.session) {
+        router.replace('/');
+        return;
+      }
+
+      const items = await fetchStoreSales();
+      setSales(items);
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : 'Could not load your sales history. Please try again.';
+      setErrorMessage(msg);
+    } finally {
+      setIsInitialLoading(false);
+      setIsRefreshing(false);
+    }
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -108,15 +112,6 @@ export default function SalesHistoryScreen() {
       router.back();
     } else {
       router.replace('/sales' as any);
-    }
-  };
-
-  const handleFutureModuleNotice = (moduleName: string, batchNote: string) => {
-    const message = `${moduleName} will be connected to your Supabase store database in ${batchNote}!`;
-    if (Platform.OS === 'web') {
-      window.alert(message);
-    } else {
-      Alert.alert(moduleName, message, [{ text: 'Got it!' }]);
     }
   };
 
@@ -137,15 +132,10 @@ export default function SalesHistoryScreen() {
       router.replace('/customers' as any);
       return;
     }
-
-    const tabNames: Record<NavTab, string> = {
-      home: 'Home',
-      products: 'Products Catalog',
-      sales: 'Daily Sales & Cashier',
-      utang: 'Lista ng Utang',
-      more: 'Settings & Profile',
-    };
-    handleFutureModuleNotice(tabNames[tab], 'an upcoming batch');
+    if (tab === 'more') {
+      router.push('/more' as any);
+      return;
+    }
   };
 
   const handleSelectSale = (sale: Sale) => {
@@ -155,30 +145,76 @@ export default function SalesHistoryScreen() {
     });
   };
 
-  const todaySummary = computeTodaySalesSummary(sales);
-  const dateGroups = groupSalesByDate(sales);
+  // Filter sales by selected period
+  const filteredSales = useMemo(() => {
+    if (selectedPeriod === 'All') {
+      return sales;
+    }
+    const now = new Date();
+    const startOfToday = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate()
+    );
 
-  const headerSubtitle = isInitialLoading
-    ? 'Loading store sales log...'
-    : sales.length === 0
-    ? 'No sales recorded yet'
-    : `${sales.length} ${
-        sales.length === 1 ? 'transaction' : 'transactions'
-      } on record`;
+    if (selectedPeriod === 'Today') {
+      return sales.filter((s) => new Date(s.created_at) >= startOfToday);
+    }
+    if (selectedPeriod === 'This Week') {
+      const sevenDaysAgo = new Date(startOfToday);
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+      return sales.filter((s) => new Date(s.created_at) >= sevenDaysAgo);
+    }
+    if (selectedPeriod === 'This Month') {
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      return sales.filter((s) => new Date(s.created_at) >= startOfMonth);
+    }
+    return sales;
+  }, [sales, selectedPeriod]);
+
+  const periodTotalAmount = useMemo(() => {
+    const sum = filteredSales.reduce(
+      (acc, item) => acc + (Number(item.total_amount) || 0),
+      0
+    );
+    return Number(sum.toFixed(2));
+  }, [filteredSales]);
+
+  // Compute 6-bar mini sparkline heights from filteredSales
+  const miniTrendBars = useMemo(() => {
+    if (filteredSales.length === 0) {
+      return [0.25, 0.35, 0.3, 0.45, 0.4, 0.5];
+    }
+    const buckets = [0, 0, 0, 0, 0, 0];
+    filteredSales.forEach((s, idx) => {
+      buckets[idx % 6] += Number(s.total_amount) || 0;
+    });
+    const maxVal = Math.max(...buckets, 1);
+    return buckets.map((v) => Math.max(0.22, Math.min(1, v / maxVal)));
+  }, [filteredSales]);
+
+  const dateGroups = useMemo(
+    () => groupSalesByDate(filteredSales),
+    [filteredSales]
+  );
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <View style={styles.mainContainer}>
-        {/* Top Screen Header */}
-        <ProductScreenHeader
-          title="Sales History"
-          subtitle={headerSubtitle}
-          showBack={true}
-          onBack={handleBack}
-          rightActionLabel="+ Record Sale"
-          rightActionAccessibilityLabel="Record a new product sale"
-          onRightActionPress={() => router.push('/sales' as any)}
-        />
+        {/* Deep Green Top Screen Header */}
+        <View style={styles.heroHeaderZone}>
+          <ProductScreenHeader
+            title="Sales History"
+            showBack={true}
+            onBack={handleBack}
+            leftIcon={
+              <TrendChartVectorIcon color={Colors.textInverse} size={20} />
+            }
+            rightActionLabel="+ New Sale"
+            rightActionAccessibilityLabel="Record a new product sale"
+            onRightActionPress={() => router.push('/sales' as any)}
+          />
+        </View>
 
         {/* Scrollable Content */}
         <ScrollView
@@ -195,6 +231,36 @@ export default function SalesHistoryScreen() {
             />
           }>
           <View style={styles.bodyContainer}>
+            {/* Period Filter Strip */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.periodStrip}>
+              {PERIOD_FILTERS.map((period) => {
+                const isSelected = selectedPeriod === period;
+                return (
+                  <Pressable
+                    key={period}
+                    accessibilityRole="tab"
+                    accessibilityState={{ selected: isSelected }}
+                    accessibilityLabel={`Filter sales by ${period}`}
+                    onPress={() => setSelectedPeriod(period)}
+                    style={[
+                      styles.periodChip,
+                      isSelected && styles.periodChipActive,
+                    ]}>
+                    <Text
+                      style={[
+                        styles.periodChipText,
+                        isSelected && styles.periodChipTextActive,
+                      ]}>
+                      {period}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+
             {/* Error Banner */}
             {errorMessage ? (
               <DashboardErrorBanner
@@ -275,41 +341,92 @@ export default function SalesHistoryScreen() {
                 </View>
               </View>
             ) : (
-              /* 4. Populated State */
+              /* 4. Populated State: Total Sales Summary + Chronological List */
               <>
-                {/* Feature 3: Simple Today's Sales Summary */}
-                <TodaySalesSummaryCard summary={todaySummary} />
+                {/* Period Total Sales KPI & Trend Visual Card */}
+                <View style={styles.summaryHeroCard}>
+                  <View style={styles.summaryLeftCol}>
+                    <Text style={styles.summaryLabel}>Total Sales</Text>
+                    <Text
+                      style={styles.summaryBigAmount}
+                      adjustsFontSizeToFit
+                      minimumFontScale={0.8}
+                      numberOfLines={1}>
+                      {formatPesoCurrency(periodTotalAmount)}
+                    </Text>
+                    <View style={styles.summaryBadgePill}>
+                      <Text style={styles.summaryBadgeText}>
+                        ↑ {filteredSales.length}{' '}
+                        {filteredSales.length === 1
+                          ? 'sale'
+                          : 'transactions'}{' '}
+                        ({selectedPeriod})
+                      </Text>
+                    </View>
+                  </View>
 
-                {/* Date Grouped Sales Log */}
-                <View style={styles.groupedContainer}>
-                  {dateGroups.map((group) => (
-                    <View key={group.dateTitle} style={styles.groupSection}>
-                      {/* Section Date Header */}
-                      <View style={styles.dateHeaderRow}>
-                        <View style={styles.dateHeaderBadge}>
+                  {/* Mini Green Sparkline Area Bars */}
+                  <View style={styles.sparklineBox}>
+                    {miniTrendBars.map((ratio, index) => (
+                      <View
+                        key={index}
+                        style={[
+                          styles.sparkBar,
+                          {
+                            height: Math.round(ratio * 54),
+                            backgroundColor:
+                              index === miniTrendBars.length - 1
+                                ? Colors.primary
+                                : '#86EFAC',
+                          },
+                        ]}
+                      />
+                    ))}
+                  </View>
+                </View>
+
+                {filteredSales.length === 0 ? (
+                  <View style={styles.stateCard}>
+                    <Text style={styles.stateTitle}>
+                      No sales in &ldquo;{selectedPeriod}&rdquo;
+                    </Text>
+                    <Text style={styles.stateSubtitle}>
+                      Switch to &ldquo;All&rdquo; to view all {sales.length}{' '}
+                      recorded store transactions.
+                    </Text>
+                    <TindaMateButton
+                      title="Show All Sales"
+                      variant="secondary"
+                      onPress={() => setSelectedPeriod('All')}
+                    />
+                  </View>
+                ) : (
+                  <View style={styles.groupedContainer}>
+                    {dateGroups.map((group) => (
+                      <View key={group.dateTitle} style={styles.groupSection}>
+                        <View style={styles.dateHeaderRow}>
                           <Text style={styles.dateHeaderText}>
                             {group.dateTitle}
                           </Text>
+                          <Text style={styles.groupItemCount}>
+                            {group.data.length}{' '}
+                            {group.data.length === 1 ? 'sale' : 'sales'}
+                          </Text>
                         </View>
-                        <Text style={styles.groupItemCount}>
-                          {group.data.length}{' '}
-                          {group.data.length === 1 ? 'sale' : 'sales'}
-                        </Text>
-                      </View>
 
-                      {/* Sale Items in Group */}
-                      <View style={styles.itemsList}>
-                        {group.data.map((sale) => (
-                          <SaleHistoryItemCard
-                            key={sale.id}
-                            sale={sale}
-                            onPress={handleSelectSale}
-                          />
-                        ))}
+                        <View style={styles.itemsList}>
+                          {group.data.map((sale) => (
+                            <SaleHistoryItemCard
+                              key={sale.id}
+                              sale={sale}
+                              onPress={handleSelectSale}
+                            />
+                          ))}
+                        </View>
                       </View>
-                    </View>
-                  ))}
-                </View>
+                    ))}
+                  </View>
+                )}
               </>
             )}
           </View>
@@ -328,12 +445,19 @@ export default function SalesHistoryScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: Colors.backgroundWarm,
+    backgroundColor: Colors.primaryDark,
   },
   mainContainer: {
     flex: 1,
     backgroundColor: Colors.background,
     justifyContent: 'space-between',
+  },
+  heroHeaderZone: {
+    backgroundColor: Colors.primaryDark,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    paddingBottom: Spacing.one,
+    ...Shadows.sm,
   },
   scrollView: {
     flex: 1,
@@ -349,6 +473,88 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     paddingTop: Spacing.three,
     gap: Spacing.three,
+  },
+  periodStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 2,
+  },
+  periodChip: {
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+    borderRadius: BorderRadius.full,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    ...Shadows.xs,
+  },
+  periodChipActive: {
+    backgroundColor: Colors.primaryDark,
+    borderColor: Colors.primaryDark,
+  },
+  periodChipText: {
+    fontSize: Typography.sizes.xs,
+    fontWeight: Typography.weights.bold,
+    color: Colors.textSecondary,
+  },
+  periodChipTextActive: {
+    color: Colors.textInverse,
+  },
+  // Period Total Sales Summary Hero Card
+  summaryHeroCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.xxl,
+    borderWidth: 1,
+    borderColor: Colors.borderSubtle,
+    paddingVertical: 18,
+    paddingHorizontal: Spacing.four,
+    gap: 14,
+    ...Shadows.sm,
+  },
+  summaryLeftCol: {
+    flex: 1,
+    gap: 4,
+  },
+  summaryLabel: {
+    fontSize: Typography.sizes.xs,
+    fontWeight: Typography.weights.bold,
+    color: Colors.textSecondary,
+  },
+  summaryBigAmount: {
+    fontSize: 30,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.textPrimary,
+    letterSpacing: -0.5,
+  },
+  summaryBadgePill: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: BorderRadius.full,
+  },
+  summaryBadgeText: {
+    fontSize: 11,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.primaryDark,
+  },
+  sparklineBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 6,
+    height: 60,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    backgroundColor: '#F0FDF4',
+    borderRadius: BorderRadius.lg,
+  },
+  sparkBar: {
+    width: 9,
+    borderRadius: 4,
   },
   stateCard: {
     backgroundColor: Colors.surface,
@@ -439,38 +645,30 @@ const styles = StyleSheet.create({
     marginTop: Spacing.two,
   },
   groupedContainer: {
-    gap: Spacing.four,
+    gap: Spacing.threeHalf,
   },
   groupSection: {
-    gap: Spacing.two,
+    gap: 10,
   },
   dateHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: Spacing.one,
-  },
-  dateHeaderBadge: {
-    backgroundColor: Colors.backgroundWarm,
-    paddingHorizontal: Spacing.twoHalf,
-    paddingVertical: 4,
-    borderRadius: BorderRadius.full,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    paddingHorizontal: 4,
   },
   dateHeaderText: {
-    fontSize: Typography.sizes.caption,
+    fontSize: Typography.sizes.xs,
     fontWeight: Typography.weights.extraBold,
-    color: Colors.textBrand,
-    letterSpacing: 0.2,
+    color: Colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
   },
   groupItemCount: {
     fontSize: Typography.sizes.caption,
-    fontWeight: Typography.weights.medium,
+    fontWeight: Typography.weights.semiBold,
     color: Colors.textMuted,
   },
   itemsList: {
-    gap: Spacing.two,
+    gap: 10,
   },
 });
-
