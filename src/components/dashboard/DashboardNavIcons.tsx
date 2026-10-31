@@ -283,6 +283,7 @@ export function DashboardBadgeVectorIcon({
     | 'products'
     | 'low_stock'
     | 'utang'
+    | 'expenses'
     | 'add_product'
     | 'record_sale'
     | 'add_expense'
@@ -462,6 +463,7 @@ export function DashboardBadgeVectorIcon({
         </View>
       );
 
+    case 'expenses':
     case 'add_expense':
       return (
         <View style={[styles.center, { width: IconSizes.lg, height: IconSizes.lg }]}>

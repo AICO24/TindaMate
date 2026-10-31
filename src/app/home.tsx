@@ -30,6 +30,7 @@ import { QuickActionItem, QuickActionTile } from '@/components/dashboard/QuickAc
 import { RecentActivitySection } from '@/components/dashboard/RecentActivitySection';
 import { OverviewItem, StoreOverviewCard } from '@/components/dashboard/StoreOverviewCard';
 import { UtangOverviewCard } from '@/components/dashboard/UtangOverviewCard';
+import { ExpenseOverviewCard } from '@/components/dashboard/ExpenseOverviewCard';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { TindaMateButton } from '@/components/ui/TindaMateButton';
 import { LogoutConfirmModal } from '@/components/ui/LogoutConfirmModal';
@@ -45,11 +46,13 @@ import {
 import { fetchStoreProductSummary, formatPesoCurrency } from '@/lib/products';
 import { fetchDashboardSalesData } from '@/lib/sales';
 import { fetchDashboardUtangSummary } from '@/lib/customers';
+import { fetchDashboardExpenseSummary } from '@/lib/expenses';
 import { parseAndApplyOAuthTokens } from '@/lib/oauth';
 import { supabase } from '@/lib/supabase';
 import { StoreProductSummary } from '@/types/product';
 import { Sale, TodaySalesSummary } from '@/types/sale';
 import { DashboardUtangSummary } from '@/types/customer';
+import { DashboardExpenseSummary } from '@/types/expense';
 
 /**
  * TindaMate Main Dashboard Screen
@@ -90,6 +93,11 @@ export default function AuthenticatedDashboardScreen() {
     todayPaymentsTotal: 0,
   });
   const [utangError, setUtangError] = useState<string | null>(null);
+  const [expenseSummary, setExpenseSummary] = useState<DashboardExpenseSummary>({
+    totalExpenses: 0,
+    expenseCount: 0,
+  });
+  const [expenseError, setExpenseError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isCardLoading, setIsCardLoading] = useState(false);
@@ -123,14 +131,20 @@ export default function AuthenticatedDashboardScreen() {
         todayPaymentsTotal: 0,
       });
       setUtangError(null);
+      setExpenseSummary({
+        totalExpenses: 0,
+        expenseCount: 0,
+      });
+      setExpenseError(null);
       return;
     }
 
     try {
-      const [productRes, salesRes, utangRes] = await Promise.allSettled([
+      const [productRes, salesRes, utangRes, expenseRes] = await Promise.allSettled([
         fetchStoreProductSummary(),
         fetchDashboardSalesData(),
         fetchDashboardUtangSummary(),
+        fetchDashboardExpenseSummary(),
       ]);
 
       if (productRes.status === 'fulfilled') {
@@ -158,10 +172,23 @@ export default function AuthenticatedDashboardScreen() {
         );
       }
 
+      if (expenseRes.status === 'fulfilled') {
+        setExpenseSummary(expenseRes.value);
+        setExpenseError(null);
+      } else {
+        console.warn('[Dashboard Expense Error]:', expenseRes.reason);
+        setExpenseError(
+          expenseRes.reason instanceof Error
+            ? expenseRes.reason.message
+            : 'Could not load Expense summary.'
+        );
+      }
+
       if (
         productRes.status === 'rejected' &&
         salesRes.status === 'rejected' &&
-        utangRes.status === 'rejected'
+        utangRes.status === 'rejected' &&
+        expenseRes.status === 'rejected'
       ) {
         const msg =
           productRes.reason instanceof Error
@@ -712,7 +739,24 @@ export default function AuthenticatedDashboardScreen() {
               />
             </View>
 
-            {/* 5. Quick Actions Section */}
+            {/* 5. Expense Overview Section */}
+            <View style={styles.section}>
+              <ExpenseOverviewCard
+                summary={expenseSummary}
+                isLoading={isCardLoading}
+                error={expenseError}
+                onRetry={loadDashboardData}
+                onViewExpenses={() => {
+                  if (isGuestMode) {
+                    handleModuleClick('Expense Management', 'Batch 9A');
+                    return;
+                  }
+                  router.push('/expenses' as any);
+                }}
+              />
+            </View>
+
+            {/* 6. Quick Actions Section */}
             <View style={styles.section}>
               <SectionHeader
                 title="Quick Actions"
