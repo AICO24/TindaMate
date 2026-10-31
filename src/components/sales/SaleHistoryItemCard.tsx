@@ -45,9 +45,8 @@ export function SaleHistoryItemCard({
   const formattedDate = formatSaleDate(sale.created_at);
   const formattedTime = formatSaleTime(sale.created_at);
 
-  const itemCountLabel = isMultiItem
-    ? `${sale.quantity} ${sale.quantity === 1 ? 'item' : 'items'} · ${sale.product_name}`
-    : `${sale.quantity} ${sale.unit} · ${sale.product_name}`;
+  const itemCount = sale.item_count ?? sale.quantity ?? 1;
+  const itemCountLabel = `${itemCount} ${itemCount === 1 ? 'item' : 'items'}`;
 
   const paymentDesc = isUtang
     ? `Utang credit sale${sale.customer_name ? ` to ${sale.customer_name}` : ''}`
@@ -151,9 +150,9 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   receiptIconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 42,
+    height: 42,
+    borderRadius: 12,
     backgroundColor: '#16A34A',
     alignItems: 'center',
     justifyContent: 'center',
@@ -161,6 +160,7 @@ const styles = StyleSheet.create({
   },
   receiptIconCircleUtang: {
     backgroundColor: Colors.accent,
+    borderRadius: 12,
   },
   infoCol: {
     flex: 1,

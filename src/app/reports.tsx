@@ -485,12 +485,7 @@ export default function ReportsScreen() {
                                       12,
                                       item.sharePercent
                                     )}%`,
-                                    backgroundColor:
-                                      idx === 0
-                                        ? Colors.accent
-                                        : idx === 1
-                                        ? Colors.accentMedium
-                                        : Colors.primary,
+                                    backgroundColor: Colors.accent,
                                   },
                                 ]}
                               />
