@@ -2,7 +2,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 
-import { ChevronLeftIcon } from '@/components/ui/AuthIcons';
+import { ArrowLeftIcon } from '@/components/ui/AuthIcons';
 import {
   BorderRadius,
   Colors,
@@ -18,28 +18,33 @@ interface ProductScreenHeaderProps {
   subtitle?: string;
   showBack?: boolean;
   onBack?: () => void;
+  leftIcon?: React.ReactNode;
   rightActionLabel?: string;
   onRightActionPress?: () => void;
   rightActionAccessibilityLabel?: string;
+  rightElement?: React.ReactNode;
 }
 
 /**
- * ProductScreenHeader
+ * ProductScreenHeader (TindaMate Design 2.0)
  *
- * Unified header bar for the Products module (List, Details, Add, Edit):
- * - Warm curved backdrop matching the Batch 2 Dashboard hero aesthetic
- * - Accessible circular back button
- * - Clear title and supporting subtitle hierarchy
- * - Optional primary pill CTA on the right (e.g., "+ Add Product" or "Edit")
+ * Unified deep forest green header bar across POS, Products, Customers,
+ * Sales History, Expenses, Reports, and More screens:
+ * - Rich TindaMate Deep Green (#064E3B) surface with subtle emerald & warm organic accents
+ * - Accessible back button or custom module icon
+ * - Crisp white title and soft mint subtitle hierarchy
+ * - Optional primary green pill CTA or custom action element on the right
  */
 export function ProductScreenHeader({
   title,
   subtitle,
   showBack = true,
   onBack,
+  leftIcon,
   rightActionLabel,
   onRightActionPress,
   rightActionAccessibilityLabel,
+  rightElement,
 }: ProductScreenHeaderProps) {
   const handleBack = () => {
     if (onBack) {
@@ -55,6 +60,18 @@ export function ProductScreenHeader({
 
   return (
     <View style={styles.outerZone}>
+      {/* Subtle Decorative Organic Header Curves */}
+      <View
+        style={styles.decorCircleRight}
+        importantForAccessibility="no"
+        pointerEvents="none"
+      />
+      <View
+        style={styles.decorWarmAccent}
+        importantForAccessibility="no"
+        pointerEvents="none"
+      />
+
       <View style={styles.innerContainer}>
         <View style={styles.topRow}>
           <View style={styles.leftRow}>
@@ -69,11 +86,13 @@ export function ProductScreenHeader({
                   styles.backButton,
                   pressed && styles.backButtonPressed,
                 ]}>
-                <ChevronLeftIcon
+                <ArrowLeftIcon
                   size={IconSizes.nav}
-                  color={Colors.primaryDark}
+                  color={Colors.textInverse}
                 />
               </Pressable>
+            ) : leftIcon ? (
+              <View style={styles.leftIconBadge}>{leftIcon}</View>
             ) : null}
 
             <View style={styles.titleBlock}>
@@ -95,7 +114,9 @@ export function ProductScreenHeader({
             </View>
           </View>
 
-          {rightActionLabel && onRightActionPress ? (
+          {rightElement ? (
+            rightElement
+          ) : rightActionLabel && onRightActionPress ? (
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={
@@ -124,13 +145,35 @@ export function ProductScreenHeader({
 const styles = StyleSheet.create({
   outerZone: {
     width: '100%',
-    backgroundColor: Colors.backgroundWarm,
+    backgroundColor: Colors.primaryDark,
     borderBottomLeftRadius: BorderRadius.xl,
     borderBottomRightRadius: BorderRadius.xl,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.borderSubtle,
-    paddingTop: Spacing.two,
-    paddingBottom: Spacing.three,
+    paddingTop: Spacing.twoHalf,
+    paddingBottom: Spacing.threeHalf,
+    overflow: 'hidden',
+    position: 'relative',
+    ...Shadows.sm,
+  },
+  decorCircleRight: {
+    position: 'absolute',
+    right: -28,
+    top: -36,
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: Colors.primary,
+    opacity: 0.35,
+  },
+  decorWarmAccent: {
+    position: 'absolute',
+    right: -40,
+    bottom: -48,
+    width: 110,
+    height: 80,
+    borderRadius: 50,
+    backgroundColor: Colors.accentWarm,
+    opacity: 0.22,
+    transform: [{ rotate: '-18deg' }],
   },
   innerContainer: {
     width: '100%',
@@ -151,20 +194,28 @@ const styles = StyleSheet.create({
     gap: Spacing.twoHalf,
   },
   backButton: {
-    width: 40,
-    height: 40,
+    width: 38,
+    height: 38,
     borderRadius: BorderRadius.full,
-    backgroundColor: Colors.surface,
+    backgroundColor: 'rgba(255, 255, 255, 0.14)',
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: 'rgba(255, 255, 255, 0.22)',
     alignItems: 'center',
     justifyContent: 'center',
-    ...Shadows.xs,
   },
   backButtonPressed: {
-    backgroundColor: Colors.primaryLight,
-    borderColor: Colors.primaryBorder,
-    transform: [{ scale: 0.96 }],
+    backgroundColor: 'rgba(255, 255, 255, 0.26)',
+    transform: [{ scale: 0.95 }],
+  },
+  leftIconBadge: {
+    width: 38,
+    height: 38,
+    borderRadius: BorderRadius.md,
+    backgroundColor: 'rgba(255, 255, 255, 0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.22)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   titleBlock: {
     flex: 1,
@@ -173,23 +224,25 @@ const styles = StyleSheet.create({
   title: {
     fontSize: Typography.sizes.lg,
     fontWeight: Typography.weights.extraBold,
-    color: Colors.textBrand,
+    color: Colors.textInverse,
     letterSpacing: -0.3,
   },
   subtitle: {
     fontSize: Typography.sizes.xs,
-    color: Colors.textSecondary,
+    color: '#D1FAE5',
     fontWeight: Typography.weights.medium,
     marginTop: 2,
   },
   rightActionPill: {
     backgroundColor: Colors.primary,
     paddingHorizontal: Spacing.three,
-    paddingVertical: 9,
+    paddingVertical: 8,
     borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.28)',
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 38,
+    minHeight: 36,
     ...Shadows.xs,
   },
   rightActionPillPressed: {

@@ -4,13 +4,14 @@ import { usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
+  NavFloatingCenterIcon,
   NavHomeIcon,
   NavMoreIcon,
+  NavPosIcon,
   NavProductsIcon,
-  NavSalesIcon,
-  NavUtangIcon,
 } from './DashboardNavIcons';
 import {
+  BorderRadius,
   Colors,
   Shadows,
   Spacing,
@@ -32,11 +33,11 @@ export function resolveActiveNavTab(pathname: string): NavTab {
   const normalized = pathname.toLowerCase();
   if (normalized.startsWith('/products')) return 'products';
   if (normalized.startsWith('/sales')) return 'sales';
-  if (normalized.startsWith('/customers') || normalized.startsWith('/utang')) {
-    return 'utang';
-  }
   if (
+    normalized.startsWith('/customers') ||
+    normalized.startsWith('/utang') ||
     normalized.startsWith('/expenses') ||
+    normalized.startsWith('/reports') ||
     normalized.startsWith('/more') ||
     normalized.startsWith('/profile') ||
     normalized.startsWith('/settings')
@@ -47,13 +48,13 @@ export function resolveActiveNavTab(pathname: string): NavTab {
 }
 
 /**
- * DashboardBottomNav
+ * DashboardBottomNav (TindaMate Design 2.0)
  *
- * Route-aware persistent bottom navigation bar using the TindaMate Design System:
- * - Derives active tab from Expo Router's `usePathname()` (with optional controlled `activeTab` override)
- * - Pure vector icons with standardized IconSizes.nav (22px)
- * - Active tab highlighted in Colors.primaryDark with bottom indicator bar
- * - Inactive tabs in Colors.textMuted
+ * Modern asymmetric 4-tab + Floating Center Action navigation bar:
+ * - Left side: Home, POS
+ * - Center: Prominent floating circular TindaMate POS/Scan action button rising above the bar
+ * - Right side: Products, More
+ * - Clean white surface with rounded upper edges, subtle elevation, and safe-area inset support
  */
 export function DashboardBottomNav({
   activeTab,
@@ -61,31 +62,38 @@ export function DashboardBottomNav({
 }: DashboardBottomNavProps) {
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
-  const currentTab = activeTab ?? resolveActiveNavTab(pathname);
+  const rawTab = activeTab ?? resolveActiveNavTab(pathname);
+  const currentTab: NavTab = rawTab === 'utang' ? 'more' : rawTab;
 
   // Flow the clean white surface through the bottom safe area on devices with a home indicator bar
   const bottomInsetPadding = insets.bottom > 0 ? insets.bottom : Spacing.two;
 
-  const tabs: { key: NavTab; label: string; renderIcon: (color: string) => React.ReactNode }[] = [
+  const leftTabs: {
+    key: NavTab;
+    label: string;
+    renderIcon: (color: string) => React.ReactNode;
+  }[] = [
     {
       key: 'home',
       label: 'Home',
       renderIcon: (color) => <NavHomeIcon color={color} />,
     },
     {
+      key: 'sales',
+      label: 'POS',
+      renderIcon: (color) => <NavPosIcon color={color} />,
+    },
+  ];
+
+  const rightTabs: {
+    key: NavTab;
+    label: string;
+    renderIcon: (color: string) => React.ReactNode;
+  }[] = [
+    {
       key: 'products',
       label: 'Products',
       renderIcon: (color) => <NavProductsIcon color={color} />,
-    },
-    {
-      key: 'sales',
-      label: 'Sales',
-      renderIcon: (color) => <NavSalesIcon color={color} />,
-    },
-    {
-      key: 'utang',
-      label: 'Utang',
-      renderIcon: (color) => <NavUtangIcon color={color} />,
     },
     {
       key: 'more',
@@ -94,84 +102,190 @@ export function DashboardBottomNav({
     },
   ];
 
+  const renderTabButton = (tab: {
+    key: NavTab;
+    label: string;
+    renderIcon: (color: string) => React.ReactNode;
+  }) => {
+    const isActive = currentTab === tab.key;
+    const iconColor = isActive ? Colors.primaryDark : Colors.textMuted;
+
+    return (
+      <Pressable
+        key={tab.key}
+        accessibilityRole="tab"
+        accessibilityState={{ selected: isActive }}
+        accessibilityLabel={`${tab.label} tab${isActive ? ', selected' : ''}`}
+        accessibilityHint={`Navigates to ${tab.label} screen`}
+        onPress={() => onTabPress(tab.key)}
+        hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+        style={({ pressed }) => [
+          styles.tabItem,
+          pressed && styles.tabItemPressed,
+        ]}>
+        <View
+          style={[
+            styles.iconWrapper,
+            isActive && styles.iconWrapperActive,
+          ]}
+          accessible={false}
+          importantForAccessibility="no-hide-descendants">
+          {tab.renderIcon(iconColor)}
+        </View>
+
+        <Text
+          style={[styles.tabLabel, isActive && styles.activeTabLabel]}
+          numberOfLines={1}
+          maxFontSizeMultiplier={1.2}>
+          {tab.label}
+        </Text>
+
+        {isActive ? (
+          <View
+            style={styles.activeIndicatorBar}
+            importantForAccessibility="no"
+          />
+        ) : (
+          <View
+            style={styles.inactiveIndicatorBar}
+            importantForAccessibility="no"
+          />
+        )}
+      </Pressable>
+    );
+  };
+
+  const isPosActive = currentTab === 'sales';
+
   return (
-    <View
-      style={[styles.navBar, { paddingBottom: bottomInsetPadding }]}
-      accessibilityRole="tablist">
-      {tabs.map((tab) => {
-        const isActive = currentTab === tab.key;
-        const iconColor = isActive ? Colors.primaryDark : Colors.textMuted;
+    <View style={styles.outerWrapper}>
+      <View
+        style={[styles.navBar, { paddingBottom: bottomInsetPadding }]}
+        accessibilityRole="tablist">
+        {/* Left Side: Home & POS */}
+        <View style={styles.sideGroup}>
+          {leftTabs.map(renderTabButton)}
+        </View>
 
-        return (
-          <Pressable
-            key={tab.key}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: isActive }}
-            accessibilityLabel={`${tab.label} tab${isActive ? ', selected' : ''}`}
-            accessibilityHint={`Navigates to ${tab.label} screen`}
-            onPress={() => onTabPress(tab.key)}
-            hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
-            style={({ pressed }) => [
-              styles.tabItem,
-              pressed && styles.tabItemPressed,
-            ]}>
-            {/* Vector Icon */}
-            <View
-              style={styles.iconWrapper}
-              accessible={false}
-              importantForAccessibility="no-hide-descendants">
-              {tab.renderIcon(iconColor)}
-            </View>
+        {/* Center Slot Spacer + Floating Action Button */}
+        <View style={styles.centerSlot}>
+          <View style={styles.floatingCradle}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="New Sale POS Quick Action"
+              accessibilityHint="Opens the Point of Sale screen to record a new sale"
+              onPress={() => onTabPress('sales')}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              style={({ pressed }) => [
+                styles.floatingButton,
+                isPosActive && styles.floatingButtonActive,
+                pressed && styles.floatingButtonPressed,
+              ]}>
+              <View style={styles.floatingInnerRing}>
+                <NavFloatingCenterIcon color={Colors.textInverse} size={26} />
+              </View>
+            </Pressable>
+          </View>
+        </View>
 
-            {/* Label */}
-            <Text
-              style={[styles.tabLabel, isActive && styles.activeTabLabel]}
-              numberOfLines={1}
-              maxFontSizeMultiplier={1.25}>
-              {tab.label}
-            </Text>
-
-            {/* Active Green Underline Bar */}
-            {isActive ? (
-              <View style={styles.activeIndicatorBar} importantForAccessibility="no" />
-            ) : (
-              <View style={styles.inactiveIndicatorBar} importantForAccessibility="no" />
-            )}
-          </Pressable>
-        );
-      })}
+        {/* Right Side: Products & More */}
+        <View style={styles.sideGroup}>
+          {rightTabs.map(renderTabButton)}
+        </View>
+      </View>
     </View>
   );
 }
 
-
 const styles = StyleSheet.create({
+  outerWrapper: {
+    backgroundColor: 'transparent',
+  },
   navBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-around',
+    justifyContent: 'space-between',
     backgroundColor: Colors.surface,
+    borderTopLeftRadius: BorderRadius.xl,
+    borderTopRightRadius: BorderRadius.xl,
     borderTopWidth: 1,
-    borderTopColor: Colors.border,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: Colors.borderSubtle,
     paddingTop: Spacing.two,
-    paddingBottom: 6,
-    paddingHorizontal: Spacing.one,
+    paddingHorizontal: Spacing.two,
     ...Shadows.bottomNav,
+  },
+  sideGroup: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+  },
+  centerSlot: {
+    width: 76,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  floatingCradle: {
+    marginTop: -28,
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: Colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: Colors.borderSubtle,
+    ...Shadows.xs,
+  },
+  floatingButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: Colors.primaryDark,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Shadows.floatingCenter,
+  },
+  floatingButtonActive: {
+    backgroundColor: Colors.primary,
+    borderWidth: 2,
+    borderColor: '#A7F3D0',
+  },
+  floatingButtonPressed: {
+    backgroundColor: Colors.primaryPressed,
+    transform: [{ scale: 0.93 }],
+  },
+  floatingInnerRing: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.16)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   tabItem: {
     alignItems: 'center',
     justifyContent: 'center',
     flex: 1,
-    gap: 3,
+    gap: 2,
     minHeight: 48,
   },
   tabItemPressed: {
     opacity: 0.7,
+    transform: [{ scale: 0.96 }],
   },
   iconWrapper: {
-    height: 24,
+    width: 36,
+    height: 26,
+    borderRadius: BorderRadius.full,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  iconWrapperActive: {
+    backgroundColor: Colors.primarySoft,
   },
   tabLabel: {
     fontSize: Typography.sizes.caption,
@@ -183,17 +297,17 @@ const styles = StyleSheet.create({
     fontWeight: Typography.weights.extraBold,
   },
   activeIndicatorBar: {
-    width: 22,
+    width: 18,
     height: 3,
     borderRadius: 1.5,
     backgroundColor: Colors.primaryDark,
-    marginTop: 2,
+    marginTop: 1,
   },
   inactiveIndicatorBar: {
-    width: 22,
+    width: 18,
     height: 3,
     backgroundColor: 'transparent',
-    marginTop: 2,
+    marginTop: 1,
   },
 });
 
