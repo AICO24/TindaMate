@@ -146,7 +146,7 @@ export default function ExpensesListScreen() {
       return;
     }
     if (tab === 'more') {
-      router.replace('/home');
+      router.push('/more' as any);
       return;
     }
   };
@@ -453,7 +453,7 @@ export default function ExpensesListScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: Colors.backgroundWarm,
+    backgroundColor: Colors.primaryDark,
   },
   mainContainer: {
     flex: 1,

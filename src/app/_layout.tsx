@@ -109,6 +109,8 @@ export default function RootLayout() {
         <Stack.Screen name="expenses/index" options={{ headerShown: false }} />
         <Stack.Screen name="expenses/add" options={{ headerShown: false }} />
         <Stack.Screen name="expenses/[id]/edit" options={{ headerShown: false }} />
+        <Stack.Screen name="reports" options={{ headerShown: false }} />
+        <Stack.Screen name="more" options={{ headerShown: false }} />
         <Stack.Screen name="explore" options={{ headerShown: false }} />
       </Stack>
     </ThemeProvider>
