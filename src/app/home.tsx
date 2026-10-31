@@ -25,10 +25,14 @@ import {
 import { DashboardErrorBanner } from '@/components/dashboard/DashboardErrorBanner';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { DashboardHeroBanner } from '@/components/dashboard/DashboardHeroBanner';
-import { CalendarFilterIcon } from '@/components/dashboard/DashboardNavIcons';
+import {
+  CalendarFilterIcon,
+  CartVectorIcon,
+  DashboardBadgeVectorIcon,
+  TrendChartVectorIcon,
+} from '@/components/dashboard/DashboardNavIcons';
 import { QuickActionItem, QuickActionTile } from '@/components/dashboard/QuickActionTile';
 import { RecentActivitySection } from '@/components/dashboard/RecentActivitySection';
-import { OverviewItem, StoreOverviewCard } from '@/components/dashboard/StoreOverviewCard';
 import { UtangOverviewCard } from '@/components/dashboard/UtangOverviewCard';
 import { ExpenseOverviewCard } from '@/components/dashboard/ExpenseOverviewCard';
 import { SectionHeader } from '@/components/ui/SectionHeader';
@@ -44,9 +48,10 @@ import {
   Typography,
 } from '@/constants/theme';
 import { fetchStoreProductSummary, formatPesoCurrency } from '@/lib/products';
-import { fetchDashboardSalesData } from '@/lib/sales';
+import { fetchDashboardSalesData, fetchStoreSales } from '@/lib/sales';
 import { fetchDashboardUtangSummary } from '@/lib/customers';
 import { fetchDashboardExpenseSummary } from '@/lib/expenses';
+import { fetchStoreCOGSSummary } from '@/lib/profit';
 import { parseAndApplyOAuthTokens } from '@/lib/oauth';
 import { supabase } from '@/lib/supabase';
 import { StoreProductSummary } from '@/types/product';
@@ -87,6 +92,8 @@ export default function AuthenticatedDashboardScreen() {
     transactionCount: 0,
   });
   const [recentSales, setRecentSales] = useState<Sale[]>([]);
+  const [allStoreSales, setAllStoreSales] = useState<Sale[]>([]);
+  const [todayGrossProfit, setTodayGrossProfit] = useState<number | null>(null);
   const [utangSummary, setUtangSummary] = useState<DashboardUtangSummary>({
     totalOutstandingUtang: 0,
     customersWithBalanceCount: 0,
@@ -125,6 +132,8 @@ export default function AuthenticatedDashboardScreen() {
         transactionCount: 0,
       });
       setRecentSales([]);
+      setAllStoreSales([]);
+      setTodayGrossProfit(0);
       setUtangSummary({
         totalOutstandingUtang: 0,
         customersWithBalanceCount: 0,
@@ -140,12 +149,26 @@ export default function AuthenticatedDashboardScreen() {
     }
 
     try {
-      const [productRes, salesRes, utangRes, expenseRes] = await Promise.allSettled([
-        fetchStoreProductSummary(),
-        fetchDashboardSalesData(),
-        fetchDashboardUtangSummary(),
-        fetchDashboardExpenseSummary(),
-      ]);
+      const now = new Date();
+      const startOfToday = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate(),
+        0,
+        0,
+        0,
+        0
+      );
+
+      const [productRes, salesRes, utangRes, expenseRes, allSalesRes, cogsRes] =
+        await Promise.allSettled([
+          fetchStoreProductSummary(),
+          fetchDashboardSalesData(),
+          fetchDashboardUtangSummary(),
+          fetchDashboardExpenseSummary(),
+          fetchStoreSales(),
+          fetchStoreCOGSSummary({ startDate: startOfToday }),
+        ]);
 
       if (productRes.status === 'fulfilled') {
         setProductSummary(productRes.value);
@@ -158,6 +181,16 @@ export default function AuthenticatedDashboardScreen() {
         setRecentSales(salesRes.value.recentSales);
       } else {
         console.warn('[Dashboard Sales Error]:', salesRes.reason);
+      }
+
+      if (allSalesRes.status === 'fulfilled') {
+        setAllStoreSales(allSalesRes.value);
+      }
+
+      if (cogsRes.status === 'fulfilled') {
+        setTodayGrossProfit(cogsRes.value.grossProfit);
+      } else {
+        setTodayGrossProfit(null);
       }
 
       if (utangRes.status === 'fulfilled') {
@@ -441,18 +474,13 @@ export default function AuthenticatedDashboardScreen() {
     }
 
     if (tab === 'more') {
-      setIsProfileModalVisible(true);
+      if (isGuestMode) {
+        setIsProfileModalVisible(true);
+        return;
+      }
+      router.push('/more' as any);
       return;
     }
-
-    const tabNames: Record<NavTab, string> = {
-      home: 'Home',
-      products: 'Products Catalog',
-      sales: 'Daily Sales & Cashier',
-      utang: 'Lista ng Utang',
-      more: 'Settings & Profile',
-    };
-    handleModuleClick(tabNames[tab], 'an upcoming batch');
   };
 
   if (isLoading) {
@@ -470,96 +498,62 @@ export default function AuthenticatedDashboardScreen() {
       'Store Partner';
 
   // Real store product counts from Supabase (centralized stock-status rule)
-  const totalProductsCount: number = isGuestMode ? 0 : productSummary.totalProducts;
   const lowStockCount: number = isGuestMode ? 0 : productSummary.lowStockCount;
-  const isLowStockWarning = lowStockCount > 0;
+  const outOfStockCount: number = isGuestMode ? 0 : productSummary.outOfStockCount;
+  const alertProductCount = lowStockCount + outOfStockCount;
+  const isLowStockWarning = alertProductCount > 0;
 
-  // Four Store Overview KPI Cards (Label -> Primary Value -> Supporting Subtitle)
-  const overviewItems: OverviewItem[] = [
-    {
-      id: 'sales',
-      title: "Today's Sales",
-      value: isGuestMode ? '₱0.00' : formatPesoCurrency(todaySalesSummary.totalAmount),
-      subtitle: isGuestMode
-        ? 'No sales recorded yet'
-        : todaySalesSummary.transactionCount === 0
-          ? 'No sales recorded yet'
-          : `${todaySalesSummary.transactionCount} ${
-              todaySalesSummary.transactionCount === 1
-                ? 'transaction today'
-                : 'transactions today'
-            }`,
-      theme: 'green',
-      onPress: () => {
-        if (isGuestMode) {
-          handleModuleClick("Today's Sales", 'Batch 4');
-          return;
-        }
-        router.push('/sales/history');
-      },
-    },
-    {
-      id: 'products',
-      title: 'Products',
-      value: `${totalProductsCount} ${totalProductsCount === 1 ? 'item' : 'items'}`,
-      subtitle:
-        totalProductsCount === 0
-          ? 'No products added yet'
-          : `${productSummary.inStockCount} in stock`,
-      theme: 'blue',
-      onPress: () => {
-        if (isGuestMode) {
-          handleModuleClick('Product Inventory', 'Batch 3');
-          return;
-        }
-        router.push('/products');
-      },
-    },
-    {
-      id: 'low_stock',
-      title: 'Low Stock',
-      value: `${lowStockCount} ${lowStockCount === 1 ? 'item' : 'items'}`,
-      subtitle: isLowStockWarning ? 'Needs restocking soon' : 'No low-stock items',
-      theme: isLowStockWarning ? 'amber' : 'neutral',
-      onPress: () => {
-        if (isGuestMode) {
-          handleModuleClick('Stock Alerts', 'Batch 3');
-          return;
-        }
-        router.push('/products');
-      },
-    },
-    {
-      id: 'utang',
-      title: 'Outstanding Utang',
-      value: isGuestMode
-        ? '₱0.00'
-        : formatPesoCurrency(utangSummary.totalOutstandingUtang),
-      subtitle: isGuestMode
-        ? 'Customer credit ledger'
-        : utangSummary.customersWithBalanceCount === 0
-          ? 'No outstanding utang'
-          : `${utangSummary.customersWithBalanceCount} ${
-              utangSummary.customersWithBalanceCount === 1
-                ? 'customer with utang'
-                : 'customers with utang'
-            }`,
-      theme: 'purple',
-      onPress: () => {
-        if (isGuestMode) {
-          handleModuleClick('Customers & Utang', 'Batch 8');
-          return;
-        }
-        router.push('/customers' as any);
-      },
-    },
-  ];
+  // Compute last 7 days (Mon..Sun or rolling 7 days) sales bars from real store sales
+  const salesSource = allStoreSales.length > 0 ? allStoreSales : recentSales;
+  const nowDate = new Date();
+  const weeklyBars: { label: string; amount: number; isToday: boolean }[] = [];
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-  // Four Quick Action Tiles (Record Sale prioritized first with primary emphasis)
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(
+      nowDate.getFullYear(),
+      nowDate.getMonth(),
+      nowDate.getDate() - i
+    );
+    const y = d.getFullYear();
+    const m = d.getMonth();
+    const dayNum = d.getDate();
+    let dayCentavos = 0;
+
+    for (const s of salesSource) {
+      const sd = new Date(s.created_at);
+      if (
+        !Number.isNaN(sd.getTime()) &&
+        sd.getFullYear() === y &&
+        sd.getMonth() === m &&
+        sd.getDate() === dayNum
+      ) {
+        dayCentavos += Math.round(s.total_amount * 100);
+      }
+    }
+
+    weeklyBars.push({
+      label: dayNames[d.getDay()],
+      amount: Number((dayCentavos / 100).toFixed(2)),
+      isToday: i === 0,
+    });
+  }
+
+  const maxWeeklyAmount = Math.max(
+    ...weeklyBars.map((b) => b.amount),
+    todaySalesSummary.totalAmount,
+    1
+  );
+
+  const profitValueDisplay = isGuestMode
+    ? '₱0.00'
+    : formatPesoCurrency(todayGrossProfit ?? todaySalesSummary.totalAmount);
+
+  // Four Quick Action Tiles
   const quickActions: QuickActionItem[] = [
     {
       id: 'record_sale',
-      labelLine1: 'Record',
+      labelLine1: 'New',
       labelLine2: 'Sale',
       theme: 'orange',
       isPrimary: true,
@@ -586,14 +580,20 @@ export default function AuthenticatedDashboardScreen() {
     },
     {
       id: 'record_utang',
-      labelLine1: 'Record',
-      labelLine2: 'Utang',
+      labelLine1: 'Customers',
+      labelLine2: '& Utang',
       theme: 'purple',
-      onPress: () => handleModuleClick('Record Utang', 'Batch 4'),
+      onPress: () => {
+        if (isGuestMode) {
+          handleModuleClick('Customers & Utang', 'Batch 8');
+          return;
+        }
+        router.push('/customers' as any);
+      },
     },
     {
       id: 'add_expense',
-      labelLine1: 'Add',
+      labelLine1: 'Record',
       labelLine2: 'Expense',
       theme: 'blue',
       onPress: () => {
@@ -625,12 +625,31 @@ export default function AuthenticatedDashboardScreen() {
               progressBackgroundColor={Colors.surface}
             />
           }>
-          {/* 1. Full-Bleed Hero Zone with Warm Backdrop */}
+          {/* 1. Deep Forest Green Hero Zone (Design 2.0) */}
           <View style={styles.fullBleedHeroZone}>
+            <View
+              style={styles.heroDecorCircle}
+              importantForAccessibility="no"
+              pointerEvents="none"
+            />
+            <View
+              style={styles.heroDecorWarm}
+              importantForAccessibility="no"
+              pointerEvents="none"
+            />
+
             <View style={styles.heroInnerContainer}>
-              {/* Header: Prominent Logo + Profile Circle */}
+              {/* Header: Brand Bag Emblem + Notification Bell + Profile Circle */}
               <DashboardHeader
                 userEmail={isGuestMode ? undefined : user?.email}
+                notificationCount={alertProductCount}
+                onNotificationPress={() => {
+                  if (isGuestMode) {
+                    handleModuleClick('Stock Alerts', 'Batch 3');
+                    return;
+                  }
+                  router.push('/products');
+                }}
                 onProfilePress={() => setIsProfileModalVisible(true)}
               />
 
@@ -653,7 +672,7 @@ export default function AuthenticatedDashboardScreen() {
                 </Pressable>
               ) : null}
 
-              {/* Greeting + Marketplace Illustration */}
+              {/* Greeting Card + Marketplace Illustration */}
               <DashboardHeroBanner
                 displayName={displayName}
                 storeName="TindaMate Store"
@@ -673,56 +692,325 @@ export default function AuthenticatedDashboardScreen() {
               />
             ) : null}
 
-            {/* 3. Store Overview Section */}
-            <View style={styles.section}>
-              <SectionHeader
-                title="Store Overview"
-                rightElement={
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Date range filter: Today"
-                    accessibilityHint="Changes date filter range for store overview metrics"
-                    onPress={() => handleModuleClick('Date Filter', 'Batch 5')}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    style={({ pressed }) => [
-                      styles.filterPill,
-                      pressed && styles.filterPillPressed,
-                    ]}>
-                    <CalendarFilterIcon size={IconSizes.xs} color={Colors.primaryDark} />
-                    <Text style={styles.filterPillText} maxFontSizeMultiplier={1.25}>
-                      Today
-                    </Text>
-                    <Text style={styles.filterChevron} importantForAccessibility="no">
-                      ⌵
-                    </Text>
-                  </Pressable>
+            {/* 3. Main KPI Card: Today's Sales (Rich Deep Green Hero KPI) */}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Today's Sales: ${
+                isGuestMode ? '₱0.00' : formatPesoCurrency(todaySalesSummary.totalAmount)
+              }, ${todaySalesSummary.transactionCount} transactions today. Tap to view sales history.`}
+              onPress={() => {
+                if (isGuestMode) {
+                  handleModuleClick("Today's Sales", 'Batch 4');
+                  return;
                 }
-              />
-
-              {/* 2x2 Overview Cards Grid */}
-              <View style={[styles.gridRow, isNarrowPhone && styles.gridRowNarrow]}>
-                <StoreOverviewCard
-                  item={overviewItems[0]}
-                  isLoading={isCardLoading}
-                />
-                <StoreOverviewCard
-                  item={overviewItems[1]}
-                  isLoading={isCardLoading}
-                />
+                router.push('/sales/history');
+              }}
+              style={({ pressed }) => [
+                styles.mainSalesKpiCard,
+                pressed && styles.cardPressed,
+              ]}>
+              <View style={styles.mainSalesLeft}>
+                <View style={styles.mainSalesIconBox}>
+                  <TrendChartVectorIcon size={24} color={Colors.textInverse} />
+                </View>
+                <View style={styles.mainSalesTextCol}>
+                  <Text style={styles.mainSalesLabel}>Today&apos;s Sales</Text>
+                  <Text
+                    style={styles.mainSalesAmount}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.75}>
+                    {isGuestMode
+                      ? '₱0.00'
+                      : formatPesoCurrency(todaySalesSummary.totalAmount)}
+                  </Text>
+                </View>
               </View>
-              <View style={[styles.gridRow, isNarrowPhone && styles.gridRowNarrow]}>
-                <StoreOverviewCard
-                  item={overviewItems[2]}
-                  isLoading={isCardLoading}
-                />
-                <StoreOverviewCard
-                  item={overviewItems[3]}
-                  isLoading={isCardLoading}
-                />
+
+              <View style={styles.mainSalesBadgePill}>
+                <Text style={styles.mainSalesBadgeArrow}>↑</Text>
+                <Text style={styles.mainSalesBadgeText}>
+                  {todaySalesSummary.transactionCount}{' '}
+                  {todaySalesSummary.transactionCount === 1 ? 'sale' : 'sales'}
+                </Text>
+              </View>
+            </Pressable>
+
+            {/* 4. Secondary KPIs Row (3-Column Compact Cards: Total Sales, Profit, Low Stock) */}
+            <View
+              style={[
+                styles.secondaryKpiRow,
+                isNarrowPhone && styles.secondaryKpiRowNarrow,
+              ]}>
+              {/* Card 1: Total Sales Count */}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Total Sales: ${allStoreSales.length || todaySalesSummary.transactionCount} transactions`}
+                onPress={() => {
+                  if (isGuestMode) {
+                    handleModuleClick('Sales History', 'Batch 5');
+                    return;
+                  }
+                  router.push('/sales/history');
+                }}
+                style={({ pressed }) => [
+                  styles.secondaryKpiCard,
+                  pressed && styles.cardPressed,
+                ]}>
+                <View
+                  style={[
+                    styles.secondaryKpiIconCircle,
+                    { backgroundColor: Colors.pastel.blue.bg },
+                  ]}>
+                  <CartVectorIcon size={18} color={Colors.pastel.blue.iconBg} />
+                </View>
+                <Text
+                  style={styles.secondaryKpiValue}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit>
+                  {isGuestMode
+                    ? '0'
+                    : allStoreSales.length > 0
+                    ? allStoreSales.length
+                    : todaySalesSummary.transactionCount}
+                </Text>
+                <Text style={styles.secondaryKpiLabel} numberOfLines={1}>
+                  Total Sales
+                </Text>
+              </Pressable>
+
+              {/* Card 2: Gross Profit */}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Gross Profit: ${profitValueDisplay}. Tap to open Reports.`}
+                onPress={() => {
+                  if (isGuestMode) {
+                    handleModuleClick('Reports & Analytics', 'Batch 9');
+                    return;
+                  }
+                  router.push('/reports' as any);
+                }}
+                style={({ pressed }) => [
+                  styles.secondaryKpiCard,
+                  pressed && styles.cardPressed,
+                ]}>
+                <View
+                  style={[
+                    styles.secondaryKpiIconCircle,
+                    { backgroundColor: Colors.pastel.green.bg },
+                  ]}>
+                  <Text style={styles.pesoCoinSymbol}>₱</Text>
+                </View>
+                <Text
+                  style={[
+                    styles.secondaryKpiValue,
+                    { color: Colors.primaryDark },
+                  ]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.7}>
+                  {profitValueDisplay}
+                </Text>
+                <Text style={styles.secondaryKpiLabel} numberOfLines={1}>
+                  {todayGrossProfit !== null ? 'Gross Profit' : 'Net Revenue'}
+                </Text>
+              </Pressable>
+
+              {/* Card 3: Low Stock */}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Low Stock: ${lowStockCount} items`}
+                onPress={() => {
+                  if (isGuestMode) {
+                    handleModuleClick('Inventory', 'Batch 3');
+                    return;
+                  }
+                  router.push('/products');
+                }}
+                style={({ pressed }) => [
+                  styles.secondaryKpiCard,
+                  isLowStockWarning && styles.secondaryKpiCardAlert,
+                  pressed && styles.cardPressed,
+                ]}>
+                <View
+                  style={[
+                    styles.secondaryKpiIconCircle,
+                    {
+                      backgroundColor: isLowStockWarning
+                        ? Colors.pastel.orange.bg
+                        : Colors.pastel.neutral.bg,
+                    },
+                  ]}>
+                  <DashboardBadgeVectorIcon
+                    type="products"
+                    color={
+                      isLowStockWarning
+                        ? Colors.pastel.orange.iconBg
+                        : Colors.textSecondary
+                    }
+                  />
+                </View>
+                <Text
+                  style={[
+                    styles.secondaryKpiValue,
+                    isLowStockWarning && { color: Colors.accent },
+                  ]}
+                  numberOfLines={1}>
+                  {lowStockCount}
+                </Text>
+                <Text style={styles.secondaryKpiLabel} numberOfLines={1}>
+                  Low Stock
+                </Text>
+              </Pressable>
+            </View>
+
+            {/* 5. Sales Overview Chart Section */}
+            <View style={styles.chartCard}>
+              <View style={styles.chartHeaderRow}>
+                <View>
+                  <Text style={styles.chartTitle} accessibilityRole="header">
+                    Sales Overview
+                  </Text>
+                  <Text style={styles.chartSubtitle}>Last 7 days performance</Text>
+                </View>
+
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Open full Reports and Analytics"
+                  onPress={() => {
+                    if (isGuestMode) {
+                      handleModuleClick('Reports', 'Batch 9');
+                      return;
+                    }
+                    router.push('/reports' as any);
+                  }}
+                  style={({ pressed }) => [
+                    styles.filterPill,
+                    pressed && styles.filterPillPressed,
+                  ]}>
+                  <CalendarFilterIcon size={IconSizes.xs} color={Colors.primaryDark} />
+                  <Text style={styles.filterPillText}>This Week</Text>
+                  <Text style={styles.filterChevron} importantForAccessibility="no">
+                    ›
+                  </Text>
+                </Pressable>
+              </View>
+
+              {/* Bar Chart Area */}
+              <View style={styles.chartBarsContainer}>
+                {/* Subtle Horizontal Grid Lines */}
+                <View style={styles.gridLinesOverlay} pointerEvents="none">
+                  <View style={styles.gridLine} />
+                  <View style={styles.gridLine} />
+                  <View style={styles.gridLine} />
+                </View>
+
+                <View style={styles.barsRow}>
+                  {weeklyBars.map((bar, idx) => {
+                    const heightPct =
+                      bar.amount > 0
+                        ? Math.max(18, Math.round((bar.amount / maxWeeklyAmount) * 100))
+                        : 10;
+                    return (
+                      <View key={`${bar.label}-${idx}`} style={styles.barColumn}>
+                        {bar.isToday ? (
+                          <View style={styles.barCalloutPill}>
+                            <Text style={styles.barCalloutText} numberOfLines={1}>
+                              {bar.amount >= 1000
+                                ? `₱${(bar.amount / 1000).toFixed(1)}k`
+                                : `₱${Math.round(bar.amount)}`}
+                            </Text>
+                          </View>
+                        ) : (
+                          <View style={styles.barCalloutSpacer} />
+                        )}
+
+                        <View style={styles.barTrack}>
+                          <View
+                            style={[
+                              styles.barFill,
+                              { height: `${heightPct}%` },
+                              bar.isToday && styles.barFillToday,
+                              bar.amount === 0 && styles.barFillZero,
+                            ]}
+                          />
+                        </View>
+
+                        <Text
+                          style={[
+                            styles.barDayLabel,
+                            bar.isToday && styles.barDayLabelToday,
+                          ]}>
+                          {bar.label}
+                        </Text>
+                      </View>
+                    );
+                  })}
+                </View>
               </View>
             </View>
 
-            {/* 4. Utang Overview Section */}
+            {/* 6. Low-Stock Alert Banner */}
+            {isLowStockWarning ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`${alertProductCount} products running low or out of stock. Tap to check inventory.`}
+                onPress={() => router.push('/products')}
+                style={({ pressed }) => [
+                  styles.alertBannerCard,
+                  pressed && styles.cardPressed,
+                ]}>
+                <View style={styles.alertIconBadge}>
+                  <Text style={styles.alertIconBang}>!</Text>
+                </View>
+                <View style={styles.alertTextCol}>
+                  <Text style={styles.alertTitleText}>
+                    {lowStockCount > 0
+                      ? `${lowStockCount} ${
+                          lowStockCount === 1
+                            ? 'Product Running Low'
+                            : 'Products Running Low'
+                        }`
+                      : `${outOfStockCount} ${
+                          outOfStockCount === 1
+                            ? 'Product Out of Stock'
+                            : 'Products Out of Stock'
+                        }`}
+                  </Text>
+                  <Text style={styles.alertActionLink}>
+                    Check inventory →
+                  </Text>
+                </View>
+                {outOfStockCount > 0 && lowStockCount > 0 ? (
+                  <View style={styles.outOfStockMiniPill}>
+                    <Text style={styles.outOfStockMiniText}>
+                      +{outOfStockCount} out
+                    </Text>
+                  </View>
+                ) : null}
+              </Pressable>
+            ) : null}
+
+            {/* 7. Quick Actions Section */}
+            <View style={styles.section}>
+              <SectionHeader
+                title="Quick Actions"
+                subtitle="Manage your store, faster."
+              />
+
+              <View
+                style={[
+                  styles.quickActionsRow,
+                  isNarrowPhone && styles.quickActionsRowNarrow,
+                ]}>
+                <QuickActionTile item={quickActions[0]} />
+                <QuickActionTile item={quickActions[1]} />
+                <QuickActionTile item={quickActions[2]} />
+                <QuickActionTile item={quickActions[3]} />
+              </View>
+            </View>
+
+            {/* 8. Utang & Expense Overview Cards */}
             <View style={styles.section}>
               <UtangOverviewCard
                 summary={utangSummary}
@@ -739,7 +1027,6 @@ export default function AuthenticatedDashboardScreen() {
               />
             </View>
 
-            {/* 5. Expense Overview Section */}
             <View style={styles.section}>
               <ExpenseOverviewCard
                 summary={expenseSummary}
@@ -756,23 +1043,7 @@ export default function AuthenticatedDashboardScreen() {
               />
             </View>
 
-            {/* 6. Quick Actions Section */}
-            <View style={styles.section}>
-              <SectionHeader
-                title="Quick Actions"
-                subtitle="Manage your store, faster."
-              />
-
-              {/* 4-Column Action Tiles Row */}
-              <View style={[styles.quickActionsRow, isNarrowPhone && styles.quickActionsRowNarrow]}>
-                <QuickActionTile item={quickActions[0]} />
-                <QuickActionTile item={quickActions[1]} />
-                <QuickActionTile item={quickActions[2]} />
-                <QuickActionTile item={quickActions[3]} />
-              </View>
-            </View>
-
-            {/* 5. Recent Activity Section */}
+            {/* 9. Recent Activity Section */}
             <RecentActivitySection
               sales={recentSales}
               isLoading={isCardLoading}
@@ -799,7 +1070,7 @@ export default function AuthenticatedDashboardScreen() {
           </View>
         </ScrollView>
 
-        {/* 6. Persistent Bottom Navigation Bar */}
+        {/* 10. Persistent Bottom Navigation Bar */}
         <DashboardBottomNav
           activeTab={activeNavTab}
           onTabPress={handleTabPress}
@@ -900,6 +1171,16 @@ export default function AuthenticatedDashboardScreen() {
             ) : (
               <View style={styles.guestModalActions}>
                 <TindaMateButton
+                  title="Open More & Store Menu"
+                  variant="primary"
+                  showArrow
+                  onPress={() => {
+                    handleCloseProfileModal();
+                    router.push('/more' as any);
+                  }}
+                  accessibilityLabel="Open More and Store Menu"
+                />
+                <TindaMateButton
                   title="Manage Store Expenses"
                   variant="secondary"
                   showArrow
@@ -937,19 +1218,14 @@ export default function AuthenticatedDashboardScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: Colors.backgroundWarm,
+    backgroundColor: Colors.primaryDark,
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: '#FDF7EB',
+    backgroundColor: Colors.background,
     alignItems: 'center',
     justifyContent: 'center',
     gap: Spacing.twoHalf,
-  },
-  loadingText: {
-    fontSize: Typography.sizes.bodySm,
-    color: Colors.textMuted,
-    fontWeight: Typography.weights.medium,
   },
   mainContainer: {
     flex: 1,
@@ -963,15 +1239,36 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: Spacing.five,
   },
-  // Full-bleed integrated top hero zone
+  // Full-bleed integrated top hero zone (Deep Forest Green Design 2.0)
   fullBleedHeroZone: {
-    backgroundColor: Colors.backgroundWarm,
+    backgroundColor: Colors.primaryDark,
     borderBottomLeftRadius: BorderRadius.xxl,
     borderBottomRightRadius: BorderRadius.xxl,
-    paddingTop: Spacing.two,
-    paddingBottom: Spacing.three,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.borderSubtle,
+    paddingTop: Spacing.one,
+    paddingBottom: Spacing.threeHalf,
+    position: 'relative',
+    overflow: 'hidden',
+    ...Shadows.sm,
+  },
+  heroDecorCircle: {
+    position: 'absolute',
+    right: -40,
+    top: -40,
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: Colors.primary,
+    opacity: 0.32,
+  },
+  heroDecorWarm: {
+    position: 'absolute',
+    left: -30,
+    bottom: -30,
+    width: 140,
+    height: 90,
+    borderRadius: 50,
+    backgroundColor: Colors.accentWarm,
+    opacity: 0.14,
   },
   heroInnerContainer: {
     width: '100%',
@@ -985,27 +1282,298 @@ const styles = StyleSheet.create({
     maxWidth: DashboardMaxContentWidth,
     alignSelf: 'center',
     paddingHorizontal: Spacing.three,
-    paddingTop: Spacing.four,
-    gap: Spacing.four,
+    paddingTop: Spacing.three,
+    gap: Spacing.threeHalf,
   },
   section: {
     gap: Spacing.twoHalf,
   },
-  filterPill: {
+  cardPressed: {
+    opacity: 0.92,
+    transform: [{ scale: 0.985 }],
+  },
+  // Main Sales KPI Card (Deep Emerald Green)
+  mainSalesKpiCard: {
+    backgroundColor: Colors.primaryDark,
+    borderRadius: BorderRadius.xl,
+    paddingVertical: Spacing.threeHalf,
+    paddingHorizontal: Spacing.threeHalf,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.surface,
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    gap: Spacing.two,
+    ...Shadows.md,
+  },
+  mainSalesLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+  },
+  mainSalesIconBox: {
+    width: 48,
+    height: 48,
+    borderRadius: BorderRadius.lg,
+    backgroundColor: 'rgba(255, 255, 255, 0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.22)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mainSalesTextCol: {
+    flex: 1,
+    gap: 2,
+  },
+  mainSalesLabel: {
+    fontSize: Typography.sizes.xs,
+    fontWeight: Typography.weights.semiBold,
+    color: '#D1FAE5',
+  },
+  mainSalesAmount: {
+    fontSize: 30,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.textInverse,
+    letterSpacing: -0.5,
+  },
+  mainSalesBadgePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#10B981',
     paddingHorizontal: Spacing.twoHalf,
     paddingVertical: 6,
     borderRadius: BorderRadius.full,
+  },
+  mainSalesBadgeArrow: {
+    color: Colors.textInverse,
+    fontSize: Typography.sizes.xs,
+    fontWeight: Typography.weights.extraBold,
+  },
+  mainSalesBadgeText: {
+    color: Colors.textInverse,
+    fontSize: Typography.sizes.xs,
+    fontWeight: Typography.weights.extraBold,
+  },
+  // Secondary 3-Column KPIs Row
+  secondaryKpiRow: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+  },
+  secondaryKpiRowNarrow: {
+    gap: Spacing.one,
+  },
+  secondaryKpiCard: {
+    flex: 1,
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.lg,
+    paddingVertical: Spacing.twoHalf,
+    paddingHorizontal: Spacing.two,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
-    borderColor: Colors.border,
-    gap: Spacing.xs,
+    borderColor: Colors.borderSubtle,
+    gap: 3,
     ...Shadows.xs,
+  },
+  secondaryKpiCardAlert: {
+    borderColor: Colors.accentBorder,
+    backgroundColor: '#FFFDF9',
+  },
+  secondaryKpiIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 2,
+  },
+  pesoCoinSymbol: {
+    fontSize: 18,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.primaryDark,
+  },
+  secondaryKpiValue: {
+    fontSize: Typography.sizes.base,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.textPrimary,
+    letterSpacing: -0.3,
+  },
+  secondaryKpiLabel: {
+    fontSize: Typography.sizes.caption,
+    fontWeight: Typography.weights.semiBold,
+    color: Colors.textSecondary,
+  },
+  // Sales Overview Chart Card
+  chartCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.threeHalf,
+    borderWidth: 1,
+    borderColor: Colors.borderSubtle,
+    gap: Spacing.three,
+    ...Shadows.xs,
+  },
+  chartHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.two,
+  },
+  chartTitle: {
+    fontSize: Typography.sizes.base,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.textBrand,
+  },
+  chartSubtitle: {
+    fontSize: Typography.sizes.caption,
+    color: Colors.textMuted,
+    fontWeight: Typography.weights.medium,
+  },
+  chartBarsContainer: {
+    height: 150,
+    position: 'relative',
+    justifyContent: 'flex-end',
+    paddingTop: Spacing.two,
+  },
+  gridLinesOverlay: {
+    position: 'absolute',
+    top: 24,
+    bottom: 24,
+    left: 0,
+    right: 0,
+    justifyContent: 'space-between',
+  },
+  gridLine: {
+    width: '100%',
+    height: 1,
+    backgroundColor: Colors.borderSubtle,
+  },
+  barsRow: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    gap: Spacing.one,
+  },
+  barColumn: {
+    flex: 1,
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 5,
+  },
+  barCalloutPill: {
+    backgroundColor: Colors.primaryDark,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.full,
+  },
+  barCalloutText: {
+    color: Colors.textInverse,
+    fontSize: 9,
+    fontWeight: Typography.weights.extraBold,
+  },
+  barCalloutSpacer: {
+    height: 18,
+  },
+  barTrack: {
+    flex: 1,
+    width: 20,
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+  },
+  barFill: {
+    width: 18,
+    borderTopLeftRadius: 6,
+    borderTopRightRadius: 6,
+    borderBottomLeftRadius: 3,
+    borderBottomRightRadius: 3,
+    backgroundColor: '#34D399',
+  },
+  barFillToday: {
+    backgroundColor: Colors.primaryDark,
+    width: 20,
+  },
+  barFillZero: {
+    backgroundColor: Colors.border,
+  },
+  barDayLabel: {
+    fontSize: 11,
+    fontWeight: Typography.weights.semiBold,
+    color: Colors.textMuted,
+  },
+  barDayLabelToday: {
+    color: Colors.primaryDark,
+    fontWeight: Typography.weights.extraBold,
+  },
+  // Low Stock Alert Banner Card
+  alertBannerCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.accentLight,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    borderColor: Colors.accentBorder,
+    paddingVertical: Spacing.twoHalf,
+    paddingHorizontal: Spacing.three,
+    gap: Spacing.twoHalf,
+    ...Shadows.xs,
+  },
+  alertIconBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: BorderRadius.md,
+    backgroundColor: Colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  alertIconBang: {
+    color: Colors.textInverse,
+    fontSize: Typography.sizes.lg,
+    fontWeight: Typography.weights.extraBold,
+  },
+  alertTextCol: {
+    flex: 1,
+    gap: 2,
+  },
+  alertTitleText: {
+    fontSize: Typography.sizes.bodySm,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.pastel.orange.text,
+  },
+  alertActionLink: {
+    fontSize: Typography.sizes.xs,
+    fontWeight: Typography.weights.bold,
+    color: Colors.accent,
+  },
+  outOfStockMiniPill: {
+    backgroundColor: Colors.errorLight,
+    borderColor: Colors.errorBorder,
+    borderWidth: 1,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: 3,
+    borderRadius: BorderRadius.full,
+  },
+  outOfStockMiniText: {
+    fontSize: 10,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.error,
+  },
+  filterPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.primarySoft,
+    paddingHorizontal: Spacing.twoHalf,
+    paddingVertical: 5,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    borderColor: Colors.primaryBorder,
+    gap: Spacing.xs,
   },
   filterPillPressed: {
     backgroundColor: Colors.primaryLight,
-    borderColor: Colors.primaryBorder,
   },
   filterPillText: {
     fontSize: Typography.sizes.xs,
@@ -1013,16 +1581,9 @@ const styles = StyleSheet.create({
     color: Colors.primaryDark,
   },
   filterChevron: {
-    fontSize: Typography.sizes.xs,
+    fontSize: Typography.sizes.sm,
     fontWeight: Typography.weights.extraBold,
-    color: Colors.textMuted,
-  },
-  gridRow: {
-    flexDirection: 'row',
-    gap: Spacing.twoHalf,
-  },
-  gridRowNarrow: {
-    gap: Spacing.two,
+    color: Colors.primary,
   },
   quickActionsRow: {
     flexDirection: 'row',
@@ -1135,7 +1696,7 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     gap: Spacing.two,
     alignSelf: 'center',
-    marginBottom: Spacing.one,
+    marginBottom: Spacing.two,
     ...Shadows.xs,
   },
   guestBannerPressed: {

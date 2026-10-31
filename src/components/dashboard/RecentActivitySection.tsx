@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
+import { CartVectorIcon } from './DashboardNavIcons';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import {
   BorderRadius,
@@ -81,7 +82,25 @@ export function RecentActivitySection({
                   pressed && styles.saleCardPressed,
                 ]}>
                 <View style={styles.saleRow}>
-                  {/* Left Column: Product name, Quantity & Unit Price, Time */}
+                  {/* Left Icon Circle */}
+                  <View
+                    style={[
+                      styles.saleIconCircle,
+                      sale.payment_method === 'credit' && styles.saleIconCircleCredit,
+                    ]}
+                    accessible={false}
+                    importantForAccessibility="no-hide-descendants">
+                    <CartVectorIcon
+                      size={18}
+                      color={
+                        sale.payment_method === 'credit'
+                          ? Colors.accent
+                          : Colors.primaryDark
+                      }
+                    />
+                  </View>
+
+                  {/* Middle Column: Product name, Quantity & Unit Price */}
                   <View style={styles.saleInfoCol}>
                     <View style={styles.nameHeaderRow}>
                       <Text
@@ -96,6 +115,11 @@ export function RecentActivitySection({
                           <Text style={styles.multiBadgeText}>
                             {sale.item_count} items
                           </Text>
+                        </View>
+                      )}
+                      {sale.payment_method === 'credit' && (
+                        <View style={styles.utangBadge}>
+                          <Text style={styles.utangBadgeText}>Utang</Text>
                         </View>
                       )}
                     </View>
@@ -210,6 +234,20 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: Spacing.twoHalf,
   },
+  saleIconCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: Colors.primarySoft,
+    borderWidth: 1,
+    borderColor: Colors.primaryBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  saleIconCircleCredit: {
+    backgroundColor: Colors.accentLight,
+    borderColor: Colors.accentBorder,
+  },
   saleInfoCol: {
     flex: 1,
     gap: 3,
@@ -232,6 +270,21 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: Typography.weights.bold,
     color: Colors.pastel.blue.accent,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  utangBadge: {
+    backgroundColor: Colors.accentLight,
+    borderRadius: BorderRadius.xs,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderWidth: 1,
+    borderColor: Colors.accentBorder,
+  },
+  utangBadgeText: {
+    fontSize: 10,
+    fontWeight: Typography.weights.bold,
+    color: Colors.accent,
     textTransform: 'uppercase',
     letterSpacing: 0.3,
   },
