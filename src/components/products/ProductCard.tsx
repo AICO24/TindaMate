@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -9,7 +9,6 @@ import {
 import { Image } from 'expo-image';
 
 import { DashboardBadgeVectorIcon } from '@/components/dashboard/DashboardNavIcons';
-import { StockStatusBadge } from '@/components/products/StockStatusBadge';
 import {
   BorderRadius,
   Colors,
@@ -26,21 +25,19 @@ interface ProductCardProps {
 }
 
 /**
- * ProductCard
+ * ProductCard — TindaMate Design 2.0
  *
- * Scannable, mobile-first product list card for TindaMate store vendors.
- * Clearly communicates:
- * - Product name (supports multi-line wrapping for long names)
- * - Category pill (if entered)
- * - Selling price formatted in Philippine Pesos (₱)
- * - Current stock quantity + unit
- * - Stock status badge (In Stock / Low Stock / Out of Stock)
+ * Compact, scannable horizontal product row card for TindaMate store inventory:
+ * - Left: 56x56 rounded product image container or semantic store icon
+ * - Middle: Product name, bold Peso selling price, and semantic stock quantity pill
+ *   (Green for healthy stock, warm orange/amber pill for low stock, red pill for out of stock)
+ * - Right: Category tag (if set) & navigation chevron
  */
 export function ProductCard({ product, onPress }: ProductCardProps) {
   const { width: windowWidth } = useWindowDimensions();
   const isCompactPhone = windowWidth < 360;
+  const [imageError, setImageError] = useState(false);
 
-  // Always derive stock status via centralized helper
   const status = getProductStockStatus(
     product.stock_quantity,
     product.low_stock_threshold
@@ -48,6 +45,10 @@ export function ProductCard({ product, onPress }: ProductCardProps) {
 
   const formattedSellingPrice = formatPesoCurrency(product.selling_price);
   const stockLabel = `${product.stock_quantity} ${product.unit}`;
+  const hasValidImage = Boolean(product.image_url?.trim()) && !imageError;
+
+  const isOut = status === 'Out of Stock';
+  const isLow = status === 'Low Stock';
 
   return (
     <Pressable
@@ -62,113 +63,105 @@ export function ProductCard({ product, onPress }: ProductCardProps) {
         isCompactPhone && styles.cardCompact,
         pressed && styles.cardPressed,
       ]}>
-      {/* Top Row: Icon/Image + Name/Category + Status Badge */}
-      <View style={styles.topRow}>
-        {product.image_url ? (
+      {/* Left: Product Image or Semantic Icon Box */}
+      {hasValidImage ? (
+        <View style={styles.imageBox}>
           <Image
-            source={{ uri: product.image_url }}
+            source={{ uri: product.image_url!.trim() }}
             style={styles.productThumbnail}
-            contentFit="cover"
-            transition={200}
+            contentFit="contain"
+            transition={180}
+            onError={() => setImageError(true)}
             accessibilityLabel={`${product.name} photo`}
           />
-        ) : (
-          <View
-            style={[
-              styles.iconBox,
-              status === 'Out of Stock'
-                ? { backgroundColor: Colors.errorLight, borderColor: Colors.errorBorder }
-                : status === 'Low Stock'
-                ? { backgroundColor: Colors.pastel.orange.bg, borderColor: Colors.pastel.orange.border }
-                : { backgroundColor: Colors.pastel.green.bg, borderColor: Colors.pastel.green.border },
-            ]}
-            importantForAccessibility="no-hide-descendants"
-            accessible={false}>
-            <DashboardBadgeVectorIcon
-              type="products"
-              color={
-                status === 'Out of Stock'
-                  ? Colors.error
-                  : status === 'Low Stock'
-                  ? Colors.pastel.orange.iconBg
-                  : Colors.primary
-              }
-            />
-          </View>
-        )}
-
-        <View style={styles.titleColumn}>
-          <Text
-            style={styles.productName}
-            numberOfLines={2}
-            maxFontSizeMultiplier={1.3}>
-            {product.name}
-          </Text>
-
-          <View style={styles.metaRow}>
-            {product.category ? (
-              <View style={styles.categoryPill}>
-                <Text
-                  style={styles.categoryText}
-                  numberOfLines={1}
-                  maxFontSizeMultiplier={1.2}>
-                  {product.category}
-                </Text>
-              </View>
-            ) : (
-              <Text style={styles.uncategorizedText} maxFontSizeMultiplier={1.2}>
-                General Item
-              </Text>
-            )}
-          </View>
         </View>
-
-        <StockStatusBadge status={status} />
-      </View>
-
-      {/* Divider */}
-      <View style={styles.divider} />
-
-      {/* Bottom Row: Selling Price & Current Stock */}
-      <View style={[styles.bottomRow, isCompactPhone && styles.bottomRowCompact]}>
-        <View style={styles.metricBlock}>
-          <Text style={styles.metricLabel} maxFontSizeMultiplier={1.2}>
-            Selling Price
-          </Text>
-          <View style={styles.priceValueRow}>
-            <Text
-              style={styles.priceValue}
-              numberOfLines={1}
-              adjustsFontSizeToFit
-              minimumFontScale={0.85}
-              maxFontSizeMultiplier={1.3}>
-              {formattedSellingPrice}
-            </Text>
-            <Text style={styles.unitSuffix} maxFontSizeMultiplier={1.2}>
-              / {product.unit}
-            </Text>
-          </View>
+      ) : (
+        <View
+          style={[
+            styles.iconBox,
+            isOut
+              ? styles.iconBoxOut
+              : isLow
+              ? styles.iconBoxLow
+              : styles.iconBoxHealthy,
+          ]}
+          importantForAccessibility="no-hide-descendants"
+          accessible={false}>
+          <DashboardBadgeVectorIcon
+            type="products"
+            color={
+              isOut
+                ? Colors.error
+                : isLow
+                ? Colors.accent
+                : Colors.primary
+            }
+          />
         </View>
+      )}
 
-        <View style={[styles.metricBlock, styles.stockBlock]}>
-          <Text style={styles.metricLabel} maxFontSizeMultiplier={1.2}>
-            Current Stock
-          </Text>
+      {/* Middle: Name, Price, Stock Status Pill */}
+      <View style={styles.infoColumn}>
+        <Text
+          style={styles.productName}
+          numberOfLines={1}
+          maxFontSizeMultiplier={1.3}>
+          {product.name}
+        </Text>
+
+        <View style={styles.priceRow}>
           <Text
-            style={[
-              styles.stockValue,
-              status === 'Out of Stock' && { color: Colors.error },
-              status === 'Low Stock' && { color: Colors.warningText },
-            ]}
+            style={styles.priceValue}
             numberOfLines={1}
             maxFontSizeMultiplier={1.3}>
-            {stockLabel}
+            {formattedSellingPrice}
           </Text>
+          {product.unit ? (
+            <Text style={styles.unitSuffix} numberOfLines={1}>
+              / {product.unit}
+            </Text>
+          ) : null}
         </View>
 
-        <View style={styles.chevronWrapper} importantForAccessibility="no">
-          <Text style={styles.chevron}>›</Text>
+        <View style={styles.metaRow}>
+          <View
+            style={[
+              styles.stockPill,
+              isOut
+                ? styles.stockPillOut
+                : isLow
+                ? styles.stockPillLow
+                : styles.stockPillHealthy,
+            ]}>
+            <Text
+              style={[
+                styles.stockPillText,
+                isOut
+                  ? styles.stockPillTextOut
+                  : isLow
+                  ? styles.stockPillTextLow
+                  : styles.stockPillTextHealthy,
+              ]}
+              numberOfLines={1}>
+              {isOut
+                ? 'Out of Stock (0)'
+                : `Stock: ${product.stock_quantity}`}
+            </Text>
+          </View>
+
+          {product.category ? (
+            <View style={styles.categoryTag}>
+              <Text style={styles.categoryTagText} numberOfLines={1}>
+                {product.category}
+              </Text>
+            </View>
+          ) : null}
         </View>
+      </View>
+
+      {/* Right: Chevron */}
+      <View style={styles.chevronWrapper} importantForAccessibility="no">
+        <Text style={styles.chevron}>›</Text>
       </View>
     </Pressable>
   );
@@ -176,135 +169,146 @@ export function ProductCard({ product, onPress }: ProductCardProps) {
 
 const styles = StyleSheet.create({
   card: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.lg,
+    borderRadius: BorderRadius.xl,
     borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.three,
-    gap: Spacing.twoHalf,
-    ...Shadows.xs,
+    borderColor: Colors.borderSubtle,
+    paddingVertical: 12,
+    paddingHorizontal: Spacing.three,
+    gap: 14,
+    ...Shadows.sm,
   },
   cardCompact: {
-    padding: Spacing.twoHalf,
-    gap: Spacing.two,
+    paddingVertical: 10,
+    paddingHorizontal: Spacing.twoHalf,
+    gap: 10,
   },
   cardPressed: {
     backgroundColor: Colors.backgroundAlt,
     borderColor: Colors.primaryBorder,
-    transform: [{ scale: 0.99 }],
+    transform: [{ scale: 0.992 }],
   },
-  topRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: Spacing.twoHalf,
+  imageBox: {
+    width: 58,
+    height: 58,
+    borderRadius: BorderRadius.lg,
+    backgroundColor: Colors.surfaceSubtle,
+    borderWidth: 1,
+    borderColor: Colors.borderSubtle,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  productThumbnail: {
+    width: '86%',
+    height: '86%',
   },
   iconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: BorderRadius.md,
+    width: 58,
+    height: 58,
+    borderRadius: BorderRadius.lg,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  productThumbnail: {
-    width: 44,
-    height: 44,
-    borderRadius: BorderRadius.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.backgroundAlt,
+  iconBoxHealthy: {
+    backgroundColor: Colors.pastel.green.bg,
+    borderColor: Colors.pastel.green.border,
   },
-  titleColumn: {
+  iconBoxLow: {
+    backgroundColor: Colors.pastel.orange.bg,
+    borderColor: Colors.pastel.orange.border,
+  },
+  iconBoxOut: {
+    backgroundColor: Colors.errorLight,
+    borderColor: Colors.errorBorder,
+  },
+  infoColumn: {
     flex: 1,
-    gap: 4,
+    gap: 3,
   },
   productName: {
-    fontSize: Typography.sizes.base,
+    fontSize: Typography.sizes.body,
+    fontWeight: Typography.weights.bold,
+    color: Colors.textPrimary,
+  },
+  priceRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 4,
+  },
+  priceValue: {
+    fontSize: Typography.sizes.body,
     fontWeight: Typography.weights.extraBold,
     color: Colors.textPrimary,
-    lineHeight: Typography.lineHeights.normal,
+  },
+  unitSuffix: {
+    fontSize: Typography.sizes.caption,
+    fontWeight: Typography.weights.medium,
+    color: Colors.textMuted,
   },
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
-    gap: Spacing.one,
+    gap: 6,
+    marginTop: 2,
   },
-  categoryPill: {
-    backgroundColor: Colors.backgroundAlt,
+  stockPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.sm,
+  },
+  stockPillHealthy: {
+    backgroundColor: 'transparent',
+    paddingHorizontal: 0,
+  },
+  stockPillLow: {
+    backgroundColor: '#FEF3C7',
     borderWidth: 1,
-    borderColor: Colors.border,
-    paddingHorizontal: Spacing.two,
+    borderColor: '#FDE68A',
+  },
+  stockPillOut: {
+    backgroundColor: Colors.errorLight,
+    borderWidth: 1,
+    borderColor: Colors.errorBorder,
+  },
+  stockPillText: {
+    fontSize: Typography.sizes.xs,
+    fontWeight: Typography.weights.bold,
+  },
+  stockPillTextHealthy: {
+    color: Colors.primary,
+  },
+  stockPillTextLow: {
+    color: Colors.accent,
+  },
+  stockPillTextOut: {
+    color: Colors.error,
+  },
+  categoryTag: {
+    backgroundColor: Colors.surfaceSubtle,
+    paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: BorderRadius.full,
-    maxWidth: '100%',
+    borderWidth: 1,
+    borderColor: Colors.borderSubtle,
   },
-  categoryText: {
-    fontSize: Typography.sizes.caption,
+  categoryTagText: {
+    fontSize: 11,
     fontWeight: Typography.weights.semiBold,
     color: Colors.textSecondary,
   },
-  uncategorizedText: {
-    fontSize: Typography.sizes.caption,
-    color: Colors.textMuted,
-    fontWeight: Typography.weights.medium,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: Colors.borderSubtle,
-  },
-  bottomRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Spacing.two,
-  },
-  bottomRowCompact: {
-    gap: Spacing.one,
-  },
-  metricBlock: {
-    flex: 1,
-    gap: 2,
-  },
-  stockBlock: {
-    alignItems: 'flex-start',
-  },
-  metricLabel: {
-    fontSize: Typography.sizes.caption,
-    color: Colors.textMuted,
-    fontWeight: Typography.weights.semiBold,
-  },
-  priceValueRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 3,
-    flexWrap: 'wrap',
-  },
-  priceValue: {
-    fontSize: Typography.sizes.base,
-    fontWeight: Typography.weights.extraBold,
-    color: Colors.primaryDark,
-  },
-  unitSuffix: {
-    fontSize: Typography.sizes.xs,
-    color: Colors.textMuted,
-    fontWeight: Typography.weights.medium,
-  },
-  stockValue: {
-    fontSize: Typography.sizes.body,
-    fontWeight: Typography.weights.extraBold,
-    color: Colors.textPrimary,
-  },
   chevronWrapper: {
-    paddingLeft: Spacing.one,
+    paddingLeft: 4,
     alignItems: 'center',
     justifyContent: 'center',
   },
   chevron: {
-    fontSize: Typography.sizes.lg,
+    fontSize: 22,
     fontWeight: Typography.weights.bold,
-    color: Colors.primary,
+    color: Colors.textSecondary,
   },
 });
-

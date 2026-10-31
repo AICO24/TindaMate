@@ -1,13 +1,14 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
+  KeyboardAvoidingView,
   Platform,
   Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -19,7 +20,11 @@ import {
   resolveActiveNavTab,
 } from '@/components/dashboard/DashboardBottomNav';
 import { DashboardErrorBanner } from '@/components/dashboard/DashboardErrorBanner';
-import { DashboardBadgeVectorIcon } from '@/components/dashboard/DashboardNavIcons';
+import {
+  DashboardBadgeVectorIcon,
+  NavProductsIcon,
+  SearchVectorIcon,
+} from '@/components/dashboard/DashboardNavIcons';
 import { ProductCard } from '@/components/products/ProductCard';
 import { ProductScreenHeader } from '@/components/products/ProductScreenHeader';
 import { TindaMateButton } from '@/components/ui/TindaMateButton';
@@ -42,14 +47,14 @@ import { Product, ProductStockStatus } from '@/types/product';
 type FilterTab = 'All' | ProductStockStatus;
 
 /**
- * TindaMate Products List Screen (`/products`)
+ * TindaMate Products List Screen (`/products`) — Design 2.0
  *
  * Displays all products belonging to the authenticated vendor's store:
- * - Screen title, count subtitle, and "+ Add Product" action
- * - Quick status filter pills (All, In Stock, Low Stock, Out of Stock)
- * - Scannable ProductCard list items
+ * - Deep green header with cube icon, "Products" title, and "+ Add Product" pill button
+ * - Search bar ("Search products...") + filter button inside header zone
+ * - Status filter chips: All (X), Low Stock (X), Out of Stock (X), In Stock (X)
+ * - Compact scannable ProductCard list items
  * - Honest loading, empty ("No products yet"), and error/retry states
- * - Route-aware persistent bottom navigation
  */
 export default function ProductsListScreen() {
   const pathname = usePathname();
@@ -57,6 +62,9 @@ export default function ProductsListScreen() {
 
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedFilter, setSelectedFilter] = useState<FilterTab>('All');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const [showCategoryStrip, setShowCategoryStrip] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -94,15 +102,6 @@ export default function ProductsListScreen() {
     }, [loadProducts])
   );
 
-  const handleFutureModuleNotice = (moduleName: string, batchNote: string) => {
-    const message = `${moduleName} will be connected to your Supabase store database in ${batchNote}!`;
-    if (Platform.OS === 'web') {
-      window.alert(message);
-    } else {
-      Alert.alert(moduleName, message, [{ text: 'Got it!' }]);
-    }
-  };
-
   const handleTabPress = (tab: NavTab) => {
     if (tab === 'products') {
       return;
@@ -119,53 +118,120 @@ export default function ProductsListScreen() {
       router.replace('/customers' as any);
       return;
     }
-    const tabNames: Record<NavTab, string> = {
-      home: 'Home',
-      products: 'Products Catalog',
-      sales: 'Daily Sales & Cashier',
-      utang: 'Lista ng Utang',
-      more: 'Settings & Profile',
-    };
-    handleFutureModuleNotice(tabNames[tab], 'an upcoming batch');
+    if (tab === 'more') {
+      router.push('/more' as any);
+      return;
+    }
   };
 
-  const summary = computeStoreProductSummary(products);
+  const summary = useMemo(
+    () => computeStoreProductSummary(products),
+    [products]
+  );
 
-  const filteredProducts =
-    selectedFilter === 'All'
-      ? products
-      : products.filter(
-          (item) =>
-            getProductStockStatus(
-              item.stock_quantity,
-              item.low_stock_threshold
-            ) === selectedFilter
-        );
+  const categories = useMemo(() => {
+    const set = new Set<string>();
+    products.forEach((p) => {
+      const cat = p.category?.trim();
+      if (cat) {
+        set.add(cat);
+      }
+    });
+    return ['All', ...Array.from(set)];
+  }, [products]);
 
-  const headerSubtitle = isInitialLoading
-    ? 'Loading store inventory...'
-    : `${summary.totalProducts} ${
-        summary.totalProducts === 1 ? 'product' : 'products'
-      } in your store`;
+  const filteredProducts = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return products.filter((item) => {
+      const status = getProductStockStatus(
+        item.stock_quantity,
+        item.low_stock_threshold
+      );
+      if (selectedFilter !== 'All' && status !== selectedFilter) {
+        return false;
+      }
+      if (
+        selectedCategory !== 'All' &&
+        (item.category ?? '').trim().toLowerCase() !==
+          selectedCategory.toLowerCase()
+      ) {
+        return false;
+      }
+      if (q) {
+        const matchesName = item.name.toLowerCase().includes(q);
+        const matchesCat = (item.category ?? '').toLowerCase().includes(q);
+        return matchesName || matchesCat;
+      }
+      return true;
+    });
+  }, [products, selectedFilter, selectedCategory, searchQuery]);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-      <View style={styles.mainContainer}>
-        {/* Top Header */}
-        <ProductScreenHeader
-          title="Products"
-          subtitle={headerSubtitle}
-          showBack={true}
-          onBack={() => router.replace('/home')}
-          rightActionLabel="+ Add Product"
-          rightActionAccessibilityLabel="Add a new product"
-          onRightActionPress={() => router.push('/products/add')}
-        />
+      <KeyboardAvoidingView
+        style={styles.mainContainer}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        {/* Deep Green Top Header + Search Bar */}
+        <View style={styles.heroHeaderZone}>
+          <ProductScreenHeader
+            title="Products"
+            showBack={false}
+            leftIcon={<NavProductsIcon color={Colors.textInverse} />}
+            rightActionLabel="+ Add Product"
+            rightActionAccessibilityLabel="Add a new product"
+            onRightActionPress={() => router.push('/products/add')}
+          />
+
+          {/* Search Products Input + Filter Toggle Button */}
+          {!isInitialLoading && products.length > 0 ? (
+            <View style={styles.searchRowWrap}>
+              <View style={styles.searchBar}>
+                <SearchVectorIcon color={Colors.textMuted} size={18} />
+                <TextInput
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  placeholder="Search products..."
+                  placeholderTextColor={Colors.textMuted}
+                  style={styles.searchInput}
+                  returnKeyType="search"
+                  autoCorrect={false}
+                  accessibilityLabel="Search store products"
+                />
+                {searchQuery.trim().length > 0 ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Clear search"
+                    onPress={() => setSearchQuery('')}
+                    style={styles.clearSearchBtn}>
+                    <Text style={styles.clearSearchText}>✕</Text>
+                  </Pressable>
+                ) : null}
+              </View>
+
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Toggle category filters"
+                onPress={() => setShowCategoryStrip((prev) => !prev)}
+                style={({ pressed }) => [
+                  styles.filterIconButton,
+                  showCategoryStrip && styles.filterIconButtonActive,
+                  pressed && styles.filterChipPressed,
+                ]}>
+                <View style={styles.filterLinesWrap}>
+                  <View style={[styles.filterLine, { width: 16 }]} />
+                  <View style={[styles.filterLine, { width: 11 }]} />
+                  <View style={[styles.filterLine, { width: 6 }]} />
+                </View>
+              </Pressable>
+            </View>
+          ) : null}
+        </View>
 
         {/* Scrollable Content */}
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -213,7 +279,7 @@ export default function ProductsListScreen() {
                 </View>
               </View>
             ) : products.length === 0 ? (
-              /* 3. Honest Empty State (Section 10B) */
+              /* 3. Honest Empty State */
               <View style={styles.emptyCard}>
                 <View
                   style={styles.emptyIconCircle}
@@ -248,13 +314,16 @@ export default function ProductsListScreen() {
             ) : (
               /* 4. Populated Product List + Status Filter Strip */
               <>
-                <View style={styles.filterStrip}>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.filterStrip}>
                   {(
                     [
                       { key: 'All', count: summary.totalProducts },
-                      { key: 'In Stock', count: summary.inStockCount },
                       { key: 'Low Stock', count: summary.lowStockCount },
                       { key: 'Out of Stock', count: summary.outOfStockCount },
+                      { key: 'In Stock', count: summary.inStockCount },
                     ] as { key: FilterTab; count: number }[]
                   ).map((tab) => {
                     const isSelected = selectedFilter === tab.key;
@@ -281,21 +350,54 @@ export default function ProductsListScreen() {
                       </Pressable>
                     );
                   })}
-                </View>
+                </ScrollView>
+
+                {/* Optional Collapsible Category Filter Strip */}
+                {showCategoryStrip && categories.length > 1 ? (
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.categoryStrip}>
+                    {categories.map((cat) => {
+                      const isCatActive = selectedCategory === cat;
+                      return (
+                        <Pressable
+                          key={cat}
+                          accessibilityRole="button"
+                          onPress={() => setSelectedCategory(cat)}
+                          style={[
+                            styles.categorySubChip,
+                            isCatActive && styles.categorySubChipActive,
+                          ]}>
+                          <Text
+                            style={[
+                              styles.categorySubChipText,
+                              isCatActive && styles.categorySubChipTextActive,
+                            ]}>
+                            {cat === 'All' ? 'All Categories' : cat}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </ScrollView>
+                ) : null}
 
                 {filteredProducts.length === 0 ? (
                   <View style={styles.filteredEmptyCard}>
                     <Text style={styles.filteredEmptyTitle}>
-                      No {selectedFilter.toLowerCase()} products
+                      No matching products
                     </Text>
                     <Text style={styles.filteredEmptySubtitle}>
-                      None of your store items currently match the &ldquo;
-                      {selectedFilter}&rdquo; filter.
+                      None of your store items match the active search or filter.
                     </Text>
                     <TindaMateButton
                       title="Show All Products"
                       variant="secondary"
-                      onPress={() => setSelectedFilter('All')}
+                      onPress={() => {
+                        setSelectedFilter('All');
+                        setSelectedCategory('All');
+                        setSearchQuery('');
+                      }}
                       style={styles.showAllButton}
                     />
                   </View>
@@ -320,7 +422,7 @@ export default function ProductsListScreen() {
           activeTab={activeTab}
           onTabPress={handleTabPress}
         />
-      </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -328,12 +430,85 @@ export default function ProductsListScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: Colors.backgroundWarm,
+    backgroundColor: Colors.primaryDark,
   },
   mainContainer: {
     flex: 1,
     backgroundColor: Colors.background,
     justifyContent: 'space-between',
+  },
+  heroHeaderZone: {
+    backgroundColor: Colors.primaryDark,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    paddingBottom: Spacing.twoHalf,
+    ...Shadows.sm,
+  },
+  searchRowWrap: {
+    width: '100%',
+    maxWidth: DashboardMaxContentWidth,
+    alignSelf: 'center',
+    paddingHorizontal: Spacing.three,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 2,
+  },
+  searchBar: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.full,
+    paddingLeft: Spacing.threeHalf,
+    paddingRight: 10,
+    minHeight: 46,
+    gap: 10,
+    ...Shadows.xs,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: Typography.sizes.bodySm,
+    fontWeight: Typography.weights.medium,
+    color: Colors.textPrimary,
+    paddingVertical: 8,
+  },
+  clearSearchBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: Colors.surfaceSubtle,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  clearSearchText: {
+    fontSize: 12,
+    fontWeight: Typography.weights.bold,
+    color: Colors.textSecondary,
+  },
+  filterIconButton: {
+    width: 46,
+    height: 46,
+    borderRadius: BorderRadius.lg,
+    backgroundColor: Colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Shadows.xs,
+  },
+  filterIconButtonActive: {
+    backgroundColor: Colors.primaryLight,
+    borderWidth: 1.5,
+    borderColor: Colors.primary,
+  },
+  filterLinesWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 3,
+  },
+  filterLine: {
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: Colors.primaryDark,
   },
   scrollView: {
     flex: 1,
@@ -439,39 +614,66 @@ const styles = StyleSheet.create({
   },
   filterStrip: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.one,
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 2,
   },
   filterChip: {
-    paddingHorizontal: Spacing.twoHalf,
-    paddingVertical: 7,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     borderRadius: BorderRadius.full,
     backgroundColor: Colors.surface,
     borderWidth: 1,
     borderColor: Colors.border,
+    ...Shadows.xs,
   },
   filterChipSelected: {
     backgroundColor: Colors.primaryDark,
     borderColor: Colors.primaryDark,
   },
   filterChipPressed: {
-    opacity: 0.8,
+    opacity: 0.85,
   },
   filterChipText: {
     fontSize: Typography.sizes.xs,
-    fontWeight: Typography.weights.semiBold,
+    fontWeight: Typography.weights.bold,
     color: Colors.textSecondary,
   },
   filterChipTextSelected: {
     color: Colors.textInverse,
     fontWeight: Typography.weights.extraBold,
   },
+  categoryStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  categorySubChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: BorderRadius.full,
+    backgroundColor: Colors.primarySoft,
+    borderWidth: 1,
+    borderColor: Colors.primaryBorder,
+  },
+  categorySubChipActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  categorySubChipText: {
+    fontSize: Typography.sizes.caption,
+    fontWeight: Typography.weights.bold,
+    color: Colors.primaryDark,
+  },
+  categorySubChipTextActive: {
+    color: Colors.textInverse,
+  },
   listContainer: {
-    gap: Spacing.twoHalf,
+    gap: 10,
   },
   filteredEmptyCard: {
     backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.lg,
+    borderRadius: BorderRadius.xl,
     borderWidth: 1,
     borderColor: Colors.border,
     padding: Spacing.four,
@@ -492,4 +694,3 @@ const styles = StyleSheet.create({
     marginTop: Spacing.one,
   },
 });
-
