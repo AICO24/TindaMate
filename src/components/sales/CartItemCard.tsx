@@ -174,30 +174,30 @@ export function CartItemCard({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.md,
+    backgroundColor: '#FAFCFA',
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: Colors.borderSubtle,
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.twoHalf,
-    gap: Spacing.one,
+    borderColor: '#EDF2EE',
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    gap: 4,
   },
   cardCompact: {
-    paddingHorizontal: Spacing.two,
+    paddingHorizontal: 8,
   },
   mainRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: Spacing.two,
+    gap: 10,
   },
   thumbnail: {
-    width: 38,
-    height: 38,
-    borderRadius: BorderRadius.sm,
+    width: 36,
+    height: 36,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.backgroundAlt,
+    borderColor: '#E2E8F0',
+    backgroundColor: Colors.surface,
   },
   iconBox: {
     width: 38,
