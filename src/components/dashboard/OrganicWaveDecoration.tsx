@@ -145,3 +145,4 @@ const styles = StyleSheet.create({
     transform: [{ rotate: '25deg' }],
   },
 });
+

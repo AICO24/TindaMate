@@ -140,18 +140,6 @@ export function DashboardBottomNav({
           maxFontSizeMultiplier={1.2}>
           {tab.label}
         </Text>
-
-        {isActive ? (
-          <View
-            style={styles.activeIndicatorBar}
-            importantForAccessibility="no"
-          />
-        ) : (
-          <View
-            style={styles.inactiveIndicatorBar}
-            importantForAccessibility="no"
-          />
-        )}
       </Pressable>
     );
   };
