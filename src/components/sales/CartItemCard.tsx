@@ -136,7 +136,7 @@ export function CartItemCard({
           </Pressable>
         </View>
 
-        {/* Line Subtotal + Remove */}
+        {/* Line Subtotal */}
         <View style={styles.rightCol}>
           <Text
             style={styles.subtotalValue}
@@ -146,18 +146,6 @@ export function CartItemCard({
             maxFontSizeMultiplier={1.2}>
             {formattedSubtotal}
           </Text>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Remove ${item.productName} from cart`}
-            accessibilityHint="Deletes this item line from the cart"
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            onPress={() => onRemove(item.productId)}
-            style={({ pressed }) => [
-              styles.removeLink,
-              pressed && styles.removeLinkPressed,
-            ]}>
-            <Text style={styles.removeLinkText}>Remove</Text>
-          </Pressable>
         </View>
       </View>
 
