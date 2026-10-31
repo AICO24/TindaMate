@@ -640,7 +640,7 @@ export default function CustomerDetailsScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: Colors.backgroundWarm,
+    backgroundColor: Colors.primaryDark,
   },
   mainContainer: {
     flex: 1,
