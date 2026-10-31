@@ -35,7 +35,12 @@ export function resolveActiveNavTab(pathname: string): NavTab {
   if (normalized.startsWith('/customers') || normalized.startsWith('/utang')) {
     return 'utang';
   }
-  if (normalized.startsWith('/more') || normalized.startsWith('/profile') || normalized.startsWith('/settings')) {
+  if (
+    normalized.startsWith('/expenses') ||
+    normalized.startsWith('/more') ||
+    normalized.startsWith('/profile') ||
+    normalized.startsWith('/settings')
+  ) {
     return 'more';
   }
   return 'home';

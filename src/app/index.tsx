@@ -1,21 +1,19 @@
-import React, { useEffect, useRef, useState } from 'react';
+import * as Linking from 'expo-linking';
+import { router } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
 import {
   Animated,
-  Dimensions,
   Image,
   NativeScrollEvent,
   NativeSyntheticEvent,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   useWindowDimensions,
-  View,
+  View
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
-import * as Linking from 'expo-linking';
 
 import { TindaMateLoadingView } from '@/components/animated-icon';
 import { StorefrontLogo } from '@/components/ui/StorefrontLogo';
@@ -248,7 +246,7 @@ export default function WelcomeScreen() {
         bounces={false}>
         <View style={[styles.innerContainer, { maxWidth: frameWidth }]}>
           {/* ========================================================
-              [STEP 1] Top Brand Header (Storefront Logo & Tagline)
+              [STEP 1] Storefront Brand Header (Logo & Tagline)
              ======================================================== */}
           <Animated.View
             style={[
@@ -263,7 +261,7 @@ export default function WelcomeScreen() {
           </Animated.View>
 
           {/* ========================================================
-              [STEP 2] Slide Headline & Value Propositions
+              [STEP 2] Hero Headline & English Value Propositions
              ======================================================== */}
           <Animated.View
             style={[
@@ -293,7 +291,7 @@ export default function WelcomeScreen() {
           </Animated.View>
 
           {/* ========================================================
-              [STEP 3] Interactive Swipeable Illustration Carousel
+              [STEP 3] 3D Sari-Sari Store Illustration Showcase
              ======================================================== */}
           <Animated.View
             style={[
@@ -339,7 +337,9 @@ export default function WelcomeScreen() {
               ))}
             </ScrollView>
 
-            {/* Interactive Carousel Indicator Dots with tap-to-navigate */}
+            {/* ========================================================
+                [STEP 4] Interactive 4-Dot Carousel Navigation
+               ======================================================== */}
             <View style={styles.indicatorRow} accessibilityLabel="Carousel indicator">
               {ONBOARDING_SLIDES.map((slide, idx) => {
                 const isActive = idx === activeSlideIndex;
@@ -361,7 +361,7 @@ export default function WelcomeScreen() {
           </Animated.View>
 
           {/* ========================================================
-              [STEP 4] Primary CTA & Secondary Action
+              [STEP 5] Primary CTA ("Get Started →") & Secondary Link
              ======================================================== */}
           <Animated.View
             style={[

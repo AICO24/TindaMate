@@ -569,7 +569,13 @@ export default function AuthenticatedDashboardScreen() {
       labelLine1: 'Add',
       labelLine2: 'Expense',
       theme: 'blue',
-      onPress: () => handleModuleClick('Add Expense', 'Batch 4'),
+      onPress: () => {
+        if (isGuestMode) {
+          handleModuleClick('Add Expense', 'Batch 9A');
+          return;
+        }
+        router.push('/expenses' as any);
+      },
     },
   ];
 
@@ -824,7 +830,7 @@ export default function AuthenticatedDashboardScreen() {
               </View>
             </View>
 
-            {/* Actions: Log In & Exit Guest in Guest Mode, or Sign Out in Auth Mode */}
+            {/* Actions: Log In & Exit Guest in Guest Mode, or Business Management + Sign Out in Auth Mode */}
             {isGuestMode ? (
               <View style={styles.guestModalActions}>
                 <TindaMateButton
@@ -848,13 +854,25 @@ export default function AuthenticatedDashboardScreen() {
                 />
               </View>
             ) : (
-              <TindaMateButton
-                title="Log Out of Account"
-                variant="danger"
-                onPress={handleOpenLogoutModal}
-                accessibilityLabel="Log out of TindaMate"
-                style={styles.modalLogoutButton}
-              />
+              <View style={styles.guestModalActions}>
+                <TindaMateButton
+                  title="Manage Store Expenses"
+                  variant="secondary"
+                  showArrow
+                  onPress={() => {
+                    handleCloseProfileModal();
+                    router.push('/expenses' as any);
+                  }}
+                  accessibilityLabel="Open Expense Management"
+                />
+                <TindaMateButton
+                  title="Log Out of Account"
+                  variant="danger"
+                  onPress={handleOpenLogoutModal}
+                  accessibilityLabel="Log out of TindaMate"
+                  style={styles.modalLogoutButton}
+                />
+              </View>
             )}
           </Pressable>
         </Pressable>
