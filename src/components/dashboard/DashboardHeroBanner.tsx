@@ -82,17 +82,17 @@ export function DashboardHeroBanner({
               styles.displayNameText,
               { fontSize: nameFontSize, lineHeight: nameLineHeight },
             ]}
-            numberOfLines={2}
+            numberOfLines={1}
             maxFontSizeMultiplier={1.3}>
-            {displayName}!
+            {displayName}! 👋
           </Text>
 
           {/* 3. Supporting sentence */}
           <Text
             style={styles.greetingSubtext}
-            numberOfLines={2}
+            numberOfLines={1}
             maxFontSizeMultiplier={1.3}>
-            Here&apos;s what&apos;s happening with your store today.
+            Here&apos;s your store today
           </Text>
 
           {/* 4. Store Context Pill: [ StoreIcon TindaMate Store › ] */}
@@ -141,20 +141,14 @@ export function DashboardHeroBanner({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.xl,
-    paddingVertical: Spacing.twoHalf,
-    paddingHorizontal: Spacing.three,
-    borderWidth: 1,
-    borderColor: Colors.borderSubtle,
-    minHeight: 132,
+    backgroundColor: 'transparent',
+    paddingVertical: Spacing.one,
+    paddingHorizontal: 0,
+    minHeight: 105,
     justifyContent: 'center',
-    ...Shadows.sm,
   },
   containerNarrow: {
-    minHeight: 122,
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.twoHalf,
+    minHeight: 95,
   },
   contentRow: {
     flexDirection: 'row',
@@ -171,18 +165,19 @@ const styles = StyleSheet.create({
   greetingTitle: {
     fontSize: Typography.sizes.bodySm,
     fontWeight: Typography.weights.semiBold,
-    color: Colors.textSecondary,
+    color: '#D1FAE5',
   },
   displayNameText: {
     fontWeight: Typography.weights.extraBold,
-    color: Colors.textPrimary,
+    color: Colors.textInverse,
     letterSpacing: -0.4,
     marginBottom: 1,
   },
   greetingSubtext: {
-    fontSize: Typography.sizes.xs,
-    color: Colors.textMuted,
-    lineHeight: Typography.lineHeights.tight,
+    fontSize: Typography.sizes.caption,
+    color: '#A7F3D0',
+    fontWeight: Typography.weights.medium,
+    lineHeight: 16,
     marginBottom: Spacing.two,
   },
   // Store pill button

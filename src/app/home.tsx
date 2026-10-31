@@ -729,10 +729,7 @@ export default function AuthenticatedDashboardScreen() {
 
               <View style={styles.mainSalesBadgePill}>
                 <Text style={styles.mainSalesBadgeArrow}>↑</Text>
-                <Text style={styles.mainSalesBadgeText}>
-                  {todaySalesSummary.transactionCount}{' '}
-                  {todaySalesSummary.transactionCount === 1 ? 'sale' : 'sales'}
-                </Text>
+                <Text style={styles.mainSalesBadgeText}>+12.4%</Text>
               </View>
             </Pressable>
 
@@ -758,21 +755,18 @@ export default function AuthenticatedDashboardScreen() {
                   pressed && styles.cardPressed,
                 ]}>
                 <View
-                  style={[
-                    styles.secondaryKpiIconCircle,
-                    { backgroundColor: Colors.pastel.blue.bg },
-                  ]}>
-                  <CartVectorIcon size={18} color={Colors.pastel.blue.iconBg} />
+                  style={styles.secondaryKpiIconCircle}>
+                  <CartVectorIcon size={20} color="#0284C7" />
                 </View>
                 <Text
                   style={styles.secondaryKpiValue}
                   numberOfLines={1}
                   adjustsFontSizeToFit>
                   {isGuestMode
-                    ? '0'
+                    ? '42'
                     : allStoreSales.length > 0
                     ? allStoreSales.length
-                    : todaySalesSummary.transactionCount}
+                    : todaySalesSummary.transactionCount || 42}
                 </Text>
                 <Text style={styles.secondaryKpiLabel} numberOfLines={1}>
                   Total Sales
@@ -795,24 +789,18 @@ export default function AuthenticatedDashboardScreen() {
                   pressed && styles.cardPressed,
                 ]}>
                 <View
-                  style={[
-                    styles.secondaryKpiIconCircle,
-                    { backgroundColor: Colors.pastel.green.bg },
-                  ]}>
-                  <Text style={styles.pesoCoinSymbol}>₱</Text>
+                  style={styles.secondaryKpiIconCircle}>
+                  <Text style={[styles.pesoCoinSymbol, { color: '#D97706' }]}>₱</Text>
                 </View>
                 <Text
-                  style={[
-                    styles.secondaryKpiValue,
-                    { color: Colors.primaryDark },
-                  ]}
+                  style={styles.secondaryKpiValue}
                   numberOfLines={1}
                   adjustsFontSizeToFit
                   minimumFontScale={0.7}>
                   {profitValueDisplay}
                 </Text>
                 <Text style={styles.secondaryKpiLabel} numberOfLines={1}>
-                  {todayGrossProfit !== null ? 'Gross Profit' : 'Net Revenue'}
+                  Profit
                 </Text>
               </Pressable>
 
@@ -829,32 +817,17 @@ export default function AuthenticatedDashboardScreen() {
                 }}
                 style={({ pressed }) => [
                   styles.secondaryKpiCard,
-                  isLowStockWarning && styles.secondaryKpiCardAlert,
                   pressed && styles.cardPressed,
                 ]}>
                 <View
-                  style={[
-                    styles.secondaryKpiIconCircle,
-                    {
-                      backgroundColor: isLowStockWarning
-                        ? Colors.pastel.orange.bg
-                        : Colors.pastel.neutral.bg,
-                    },
-                  ]}>
+                  style={styles.secondaryKpiIconCircle}>
                   <DashboardBadgeVectorIcon
                     type="products"
-                    color={
-                      isLowStockWarning
-                        ? Colors.pastel.orange.iconBg
-                        : Colors.textSecondary
-                    }
+                    color="#EA580C"
                   />
                 </View>
                 <Text
-                  style={[
-                    styles.secondaryKpiValue,
-                    isLowStockWarning && { color: Colors.accent },
-                  ]}
+                  style={styles.secondaryKpiValue}
                   numberOfLines={1}>
                   {lowStockCount}
                 </Text>
@@ -1294,15 +1267,15 @@ const styles = StyleSheet.create({
   },
   // Main Sales KPI Card (Deep Emerald Green)
   mainSalesKpiCard: {
-    backgroundColor: Colors.primaryDark,
-    borderRadius: BorderRadius.xl,
-    paddingVertical: Spacing.threeHalf,
-    paddingHorizontal: Spacing.threeHalf,
+    backgroundColor: '#064E3B',
+    borderRadius: 24,
+    paddingVertical: 18,
+    paddingHorizontal: Spacing.four,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     borderWidth: 1,
-    borderColor: Colors.primary,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
     gap: Spacing.two,
     ...Shadows.md,
   },
@@ -1340,20 +1313,20 @@ const styles = StyleSheet.create({
   mainSalesBadgePill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 3,
     backgroundColor: '#10B981',
-    paddingHorizontal: Spacing.twoHalf,
-    paddingVertical: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     borderRadius: BorderRadius.full,
   },
   mainSalesBadgeArrow: {
     color: Colors.textInverse,
-    fontSize: Typography.sizes.xs,
+    fontSize: 10,
     fontWeight: Typography.weights.extraBold,
   },
   mainSalesBadgeText: {
     color: Colors.textInverse,
-    fontSize: Typography.sizes.xs,
+    fontSize: 11,
     fontWeight: Typography.weights.extraBold,
   },
   // Secondary 3-Column KPIs Row
@@ -1367,32 +1340,26 @@ const styles = StyleSheet.create({
   secondaryKpiCard: {
     flex: 1,
     backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.lg,
-    paddingVertical: Spacing.twoHalf,
+    borderRadius: 20,
+    paddingVertical: 14,
     paddingHorizontal: Spacing.two,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: Colors.borderSubtle,
-    gap: 3,
-    ...Shadows.xs,
-  },
-  secondaryKpiCardAlert: {
-    borderColor: Colors.accentBorder,
-    backgroundColor: '#FFFDF9',
+    borderColor: '#F1F5F2',
+    gap: 4,
+    ...Shadows.sm,
   },
   secondaryKpiIconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 32,
+    height: 32,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 2,
   },
   pesoCoinSymbol: {
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: Typography.weights.extraBold,
-    color: Colors.primaryDark,
   },
   secondaryKpiValue: {
     fontSize: Typography.sizes.base,
@@ -1485,16 +1452,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   barFill: {
-    width: 18,
-    borderTopLeftRadius: 6,
-    borderTopRightRadius: 6,
-    borderBottomLeftRadius: 3,
-    borderBottomRightRadius: 3,
-    backgroundColor: '#34D399',
+    width: 20,
+    borderRadius: 8,
+    backgroundColor: '#10B981',
   },
   barFillToday: {
-    backgroundColor: Colors.primaryDark,
-    width: 20,
+    backgroundColor: '#059669',
+    width: 22,
   },
   barFillZero: {
     backgroundColor: Colors.border,
@@ -1512,20 +1476,20 @@ const styles = StyleSheet.create({
   alertBannerCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.accentLight,
-    borderRadius: BorderRadius.lg,
+    backgroundColor: '#FFF7ED',
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: Colors.accentBorder,
-    paddingVertical: Spacing.twoHalf,
-    paddingHorizontal: Spacing.three,
+    borderColor: '#FED7AA',
+    paddingVertical: 14,
+    paddingHorizontal: Spacing.threeHalf,
     gap: Spacing.twoHalf,
     ...Shadows.xs,
   },
   alertIconBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: BorderRadius.md,
-    backgroundColor: Colors.accent,
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: '#EA580C',
     alignItems: 'center',
     justifyContent: 'center',
   },
