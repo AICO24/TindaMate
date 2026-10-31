@@ -100,7 +100,7 @@ export function ProductCard({ product, onPress }: ProductCardProps) {
         </View>
       )}
 
-      {/* Middle: Name, Price, Stock Status Pill */}
+      {/* Middle: Name, Price, Stock Status */}
       <View style={styles.infoColumn}>
         <Text
           style={styles.productName}
@@ -109,52 +109,33 @@ export function ProductCard({ product, onPress }: ProductCardProps) {
           {product.name}
         </Text>
 
-        <View style={styles.priceRow}>
-          <Text
-            style={styles.priceValue}
-            numberOfLines={1}
-            maxFontSizeMultiplier={1.3}>
-            {formattedSellingPrice}
-          </Text>
-          {product.unit ? (
-            <Text style={styles.unitSuffix} numberOfLines={1}>
-              / {product.unit}
-            </Text>
-          ) : null}
-        </View>
+        <Text
+          style={styles.priceValue}
+          numberOfLines={1}
+          maxFontSizeMultiplier={1.3}>
+          {formattedSellingPrice}
+        </Text>
 
         <View style={styles.metaRow}>
-          <View
+          <Text
             style={[
-              styles.stockPill,
+              styles.stockText,
               isOut
-                ? styles.stockPillOut
+                ? styles.stockTextOut
                 : isLow
-                ? styles.stockPillLow
-                : styles.stockPillHealthy,
-            ]}>
-            <Text
-              style={[
-                styles.stockPillText,
-                isOut
-                  ? styles.stockPillTextOut
-                  : isLow
-                  ? styles.stockPillTextLow
-                  : styles.stockPillTextHealthy,
-              ]}
-              numberOfLines={1}>
-              {isOut
-                ? 'Out of Stock (0)'
-                : `Stock: ${product.stock_quantity}`}
-            </Text>
-          </View>
+                ? styles.stockTextLow
+                : styles.stockTextHealthy,
+            ]}
+            numberOfLines={1}>
+            {isOut
+              ? 'Out of Stock'
+              : `Stock: ${product.stock_quantity}`}
+          </Text>
 
           {product.category ? (
-            <View style={styles.categoryTag}>
-              <Text style={styles.categoryTagText} numberOfLines={1}>
-                {product.category}
-              </Text>
-            </View>
+            <Text style={styles.categorySubtext} numberOfLines={1}>
+              • {product.category}
+            </Text>
           ) : null}
         </View>
       </View>
@@ -231,75 +212,36 @@ const styles = StyleSheet.create({
   },
   productName: {
     fontSize: Typography.sizes.body,
-    fontWeight: Typography.weights.bold,
-    color: Colors.textPrimary,
-  },
-  priceRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 4,
-  },
-  priceValue: {
-    fontSize: Typography.sizes.body,
     fontWeight: Typography.weights.extraBold,
     color: Colors.textPrimary,
   },
-  unitSuffix: {
-    fontSize: Typography.sizes.caption,
-    fontWeight: Typography.weights.medium,
-    color: Colors.textMuted,
+  priceValue: {
+    fontSize: Typography.sizes.bodySm,
+    fontWeight: Typography.weights.bold,
+    color: Colors.textPrimary,
   },
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    flexWrap: 'wrap',
     gap: 6,
-    marginTop: 2,
+    marginTop: 1,
   },
-  stockPill: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: BorderRadius.sm,
-  },
-  stockPillHealthy: {
-    backgroundColor: 'transparent',
-    paddingHorizontal: 0,
-  },
-  stockPillLow: {
-    backgroundColor: '#FEF3C7',
-    borderWidth: 1,
-    borderColor: '#FDE68A',
-  },
-  stockPillOut: {
-    backgroundColor: Colors.errorLight,
-    borderWidth: 1,
-    borderColor: Colors.errorBorder,
-  },
-  stockPillText: {
+  stockText: {
     fontSize: Typography.sizes.xs,
     fontWeight: Typography.weights.bold,
   },
-  stockPillTextHealthy: {
+  stockTextHealthy: {
     color: Colors.primary,
   },
-  stockPillTextLow: {
+  stockTextLow: {
     color: Colors.accent,
   },
-  stockPillTextOut: {
+  stockTextOut: {
     color: Colors.error,
   },
-  categoryTag: {
-    backgroundColor: Colors.surfaceSubtle,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: BorderRadius.full,
-    borderWidth: 1,
-    borderColor: Colors.borderSubtle,
-  },
-  categoryTagText: {
-    fontSize: 11,
-    fontWeight: Typography.weights.semiBold,
-    color: Colors.textSecondary,
+  categorySubtext: {
+    fontSize: Typography.sizes.xs,
+    color: Colors.textMuted,
   },
   chevronWrapper: {
     paddingLeft: 4,

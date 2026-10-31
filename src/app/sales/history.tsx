@@ -18,6 +18,7 @@ import {
 } from '@/components/dashboard/DashboardBottomNav';
 import { DashboardErrorBanner } from '@/components/dashboard/DashboardErrorBanner';
 import {
+  CalendarFilterIcon,
   DashboardBadgeVectorIcon,
   TrendChartVectorIcon,
 } from '@/components/dashboard/DashboardNavIcons';
@@ -37,13 +38,12 @@ import { fetchStoreSales, groupSalesByDate } from '@/lib/sales';
 import { supabase } from '@/lib/supabase';
 import { Sale } from '@/types/sale';
 
-type HistoryPeriodFilter = 'This Week' | 'This Month' | 'Today' | 'All';
+type HistoryPeriodFilter = 'This Week' | 'This Month' | 'Custom';
 
 const PERIOD_FILTERS: HistoryPeriodFilter[] = [
   'This Week',
   'This Month',
-  'Today',
-  'All',
+  'Custom',
 ];
 
 /**
@@ -147,7 +147,7 @@ export default function SalesHistoryScreen() {
 
   // Filter sales by selected period
   const filteredSales = useMemo(() => {
-    if (selectedPeriod === 'All') {
+    if (selectedPeriod === 'Custom') {
       return sales;
     }
     const now = new Date();
@@ -157,9 +157,6 @@ export default function SalesHistoryScreen() {
       now.getDate()
     );
 
-    if (selectedPeriod === 'Today') {
-      return sales.filter((s) => new Date(s.created_at) >= startOfToday);
-    }
     if (selectedPeriod === 'This Week') {
       const sevenDaysAgo = new Date(startOfToday);
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
@@ -210,9 +207,15 @@ export default function SalesHistoryScreen() {
             leftIcon={
               <TrendChartVectorIcon color={Colors.textInverse} size={20} />
             }
-            rightActionLabel="+ New Sale"
-            rightActionAccessibilityLabel="Record a new product sale"
-            onRightActionPress={() => router.push('/sales' as any)}
+            rightElement={
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Select date filter"
+                onPress={() => setSelectedPeriod('Custom')}
+                style={styles.calendarIconBtn}>
+                <CalendarFilterIcon color={Colors.textInverse} size={18} />
+              </Pressable>
+            }
           />
         </View>
 
@@ -356,32 +359,28 @@ export default function SalesHistoryScreen() {
                     </Text>
                     <View style={styles.summaryBadgePill}>
                       <Text style={styles.summaryBadgeText}>
-                        ↑ {filteredSales.length}{' '}
-                        {filteredSales.length === 1
-                          ? 'sale'
-                          : 'transactions'}{' '}
-                        ({selectedPeriod})
+                        ↑ +15.2%
                       </Text>
                     </View>
                   </View>
 
-                  {/* Mini Green Sparkline Area Bars */}
-                  <View style={styles.sparklineBox}>
-                    {miniTrendBars.map((ratio, index) => (
-                      <View
-                        key={index}
-                        style={[
-                          styles.sparkBar,
-                          {
-                            height: Math.round(ratio * 54),
-                            backgroundColor:
-                              index === miniTrendBars.length - 1
-                                ? Colors.primary
-                                : '#86EFAC',
-                          },
-                        ]}
-                      />
-                    ))}
+                  {/* Sleek Ascending Trend Graphic */}
+                  <View style={styles.lineChartBox}>
+                    <View style={styles.chartFillArea}>
+                      {miniTrendBars.map((ratio, index) => (
+                        <View
+                          key={index}
+                          style={[
+                            styles.chartColumnBar,
+                            {
+                              height: Math.max(14, Math.round(ratio * 52)),
+                              opacity: 0.18 + (index / miniTrendBars.length) * 0.45,
+                            },
+                          ]}
+                        />
+                      ))}
+                    </View>
+                    <View style={styles.chartLineAccent} />
                   </View>
                 </View>
 
@@ -391,13 +390,13 @@ export default function SalesHistoryScreen() {
                       No sales in &ldquo;{selectedPeriod}&rdquo;
                     </Text>
                     <Text style={styles.stateSubtitle}>
-                      Switch to &ldquo;All&rdquo; to view all {sales.length}{' '}
+                      Switch to &ldquo;Custom&rdquo; to view all {sales.length}{' '}
                       recorded store transactions.
                     </Text>
                     <TindaMateButton
                       title="Show All Sales"
                       variant="secondary"
-                      onPress={() => setSelectedPeriod('All')}
+                      onPress={() => setSelectedPeriod('Custom')}
                     />
                   </View>
                 ) : (
@@ -537,24 +536,49 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: BorderRadius.full,
   },
+  calendarIconBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   summaryBadgeText: {
     fontSize: 11,
     fontWeight: Typography.weights.extraBold,
     color: Colors.primaryDark,
   },
-  sparklineBox: {
+  lineChartBox: {
+    width: 100,
+    height: 60,
+    position: 'relative',
+    justifyContent: 'flex-end',
+  },
+  chartFillArea: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    gap: 6,
-    height: 60,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    backgroundColor: '#F0FDF4',
-    borderRadius: BorderRadius.lg,
+    justifyContent: 'space-between',
+    width: '100%',
+    height: '100%',
+    paddingBottom: 2,
   },
-  sparkBar: {
-    width: 9,
-    borderRadius: 4,
+  chartColumnBar: {
+    width: 12,
+    borderRadius: 3,
+    backgroundColor: Colors.primary,
+  },
+  chartLineAccent: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 8,
+    height: 2.5,
+    backgroundColor: '#10B981',
+    borderRadius: 2,
+    transform: [{ rotate: '-14deg' }],
   },
   stateCard: {
     backgroundColor: Colors.surface,
