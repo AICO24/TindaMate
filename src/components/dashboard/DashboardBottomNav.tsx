@@ -10,6 +10,7 @@ import {
   NavPosIcon,
   NavProductsIcon,
 } from './DashboardNavIcons';
+import { OrganicWaveDecoration } from './OrganicWaveDecoration';
 import {
   BorderRadius,
   Colors,
@@ -159,6 +160,9 @@ export function DashboardBottomNav({
 
   return (
     <View style={styles.outerWrapper}>
+      {/* Background Organic Wave Curves rising under the navbar */}
+      <OrganicWaveDecoration style={styles.bottomWaveStyle} />
+
       <View
         style={[styles.navBar, { paddingBottom: bottomInsetPadding }]}
         accessibilityRole="tablist">
@@ -182,7 +186,7 @@ export function DashboardBottomNav({
                 pressed && styles.floatingButtonPressed,
               ]}>
               <View style={styles.floatingInnerRing}>
-                <NavFloatingCenterIcon color={Colors.textInverse} size={26} />
+                <NavFloatingCenterIcon color={Colors.textInverse} size={28} />
               </View>
             </Pressable>
           </View>
@@ -200,20 +204,27 @@ export function DashboardBottomNav({
 const styles = StyleSheet.create({
   outerWrapper: {
     backgroundColor: 'transparent',
+    position: 'relative',
+  },
+  bottomWaveStyle: {
+    bottom: 20,
+    height: 72,
+    opacity: 0.9,
   },
   navBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: Colors.surface,
-    borderTopLeftRadius: BorderRadius.xl,
-    borderTopRightRadius: BorderRadius.xl,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     borderTopWidth: 1,
     borderLeftWidth: 1,
     borderRightWidth: 1,
-    borderColor: Colors.borderSubtle,
+    borderColor: '#EDF4EE',
     paddingTop: Spacing.two,
     paddingHorizontal: Spacing.two,
+    zIndex: 10,
     ...Shadows.bottomNav,
   },
   sideGroup: {

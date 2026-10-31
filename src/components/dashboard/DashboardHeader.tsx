@@ -47,7 +47,7 @@ export function DashboardHeader({
 
         <View style={styles.titleCol}>
           <Text style={styles.brandTitle} maxFontSizeMultiplier={1.2}>
-            Tinda<Text style={styles.brandTitleAccent}>Mate</Text>
+            Tinda<Text style={styles.brandTitleWhite}>Mate</Text>
           </Text>
           <Text style={styles.brandTagline} maxFontSizeMultiplier={1.15}>
             Your Digital Tindahan Assistant
@@ -156,8 +156,8 @@ const styles = StyleSheet.create({
     color: Colors.textInverse,
     letterSpacing: -0.4,
   },
-  brandTitleAccent: {
-    color: '#A7F3D0',
+  brandTitleWhite: {
+    color: Colors.textInverse,
   },
   brandTagline: {
     fontSize: 11,
