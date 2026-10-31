@@ -338,6 +338,11 @@ export function ProductForm({
               accessibilityLabel="Cost Price in Pesos, optional"
               style={styles.zeroBottomMargin}
             />
+            {!errors.costPrice && (
+              <Text style={styles.costHelperText} maxFontSizeMultiplier={1.2}>
+                Purchase cost per unit. Add this to track COGS and profit accurately.
+              </Text>
+            )}
           </View>
         </View>
       </View>
@@ -578,6 +583,12 @@ const styles = StyleSheet.create({
     borderColor: Colors.primaryBorder,
     paddingHorizontal: Spacing.twoHalf,
     paddingVertical: Spacing.two,
+  },
+  costHelperText: {
+    fontSize: Typography.sizes.xs,
+    color: Colors.textMuted,
+    lineHeight: Typography.lineHeights.tight,
+    marginTop: Spacing.one,
   },
   thresholdHintText: {
     fontSize: Typography.sizes.xs,
