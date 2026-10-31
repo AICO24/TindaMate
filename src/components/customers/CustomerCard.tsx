@@ -32,16 +32,22 @@ function getCustomerInitials(name: string): string {
   return (parts[0][0] + parts[1][0]).toUpperCase();
 }
 
+function formatShortActivityDate(isoDate?: string | null): string | null {
+  if (!isoDate) return null;
+  const d = new Date(isoDate);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleDateString('en-PH', { month: 'short', day: 'numeric' });
+}
+
 /**
- * CustomerCard
+ * CustomerCard — TindaMate Design 2.0
  *
- * Scannable, mobile-first customer row card for sari-sari store owners:
- * - Customer Avatar with 2-letter monogram
- * - Full customer name with wrap support
- * - Phone number snippet
- * - Outstanding Utang balance pill badge
- * - Inactive badge if customer has been deactivated
- * - Right chevron for details tap-through
+ * Financially professional customer ledger row:
+ * - Circular monogram avatar (deep forest green for active accounts, warm amber for settled/paid)
+ * - Customer name
+ * - Prominent outstanding balance (₱1,250.00) OR green "PAID" status pill
+ * - Last activity / payment date & phone metadata
+ * - Right chevron
  */
 export function CustomerCard({ customer, onPress }: CustomerCardProps) {
   const { width: windowWidth } = useWindowDimensions();
@@ -51,20 +57,23 @@ export function CustomerCard({ customer, onPress }: CustomerCardProps) {
   const balance = customer.credit_summary?.current_balance ?? 0;
   const hasUtang = balance > 0;
   const formattedBalance = formatPesoCurrency(balance);
+  const lastActivityDate = formatShortActivityDate(
+    customer.credit_summary?.last_transaction_at ?? customer.updated_at
+  );
 
   const accessibilityLabel = `${customer.name}, ${
     customer.phone ? `Phone: ${customer.phone}, ` : ''
   }${
     hasUtang
       ? `Outstanding credit: ${formattedBalance}`
-      : 'No outstanding balance'
+      : 'Paid, no outstanding balance'
   }${!customer.is_active ? ', Inactive' : ''}`;
 
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
-      accessibilityHint="Opens complete details for this customer"
+      accessibilityHint="Opens complete credit ledger for this customer"
       onPress={() => onPress(customer)}
       style={({ pressed }) => [
         styles.card,
@@ -73,24 +82,24 @@ export function CustomerCard({ customer, onPress }: CustomerCardProps) {
         pressed && styles.cardPressed,
       ]}>
       <View style={styles.contentRow}>
-        {/* Left: Avatar Monogram */}
+        {/* Left: Circular Avatar Monogram */}
         <View
           style={[
             styles.avatarCircle,
+            !hasUtang && styles.avatarCircleSettled,
             !customer.is_active && styles.avatarCircleInactive,
-            hasUtang && styles.avatarCircleUtang,
           ]}>
           <Text
             style={[
               styles.avatarText,
+              !hasUtang && styles.avatarTextSettled,
               !customer.is_active && styles.avatarTextInactive,
-              hasUtang && styles.avatarTextUtang,
             ]}>
             {initials}
           </Text>
         </View>
 
-        {/* Center: Info Block */}
+        {/* Center: Name, Balance / PAID Pill, and Last Activity */}
         <View style={styles.infoCol}>
           <View style={styles.nameHeaderRow}>
             <Text
@@ -104,45 +113,42 @@ export function CustomerCard({ customer, onPress }: CustomerCardProps) {
               {customer.name}
             </Text>
 
-            {!customer.is_active && (
+            {!customer.is_active ? (
               <View style={styles.inactiveBadge}>
                 <Text style={styles.inactiveBadgeText}>Inactive</Text>
               </View>
-            )}
+            ) : null}
           </View>
 
-          <View style={styles.metaRow}>
-            {customer.phone ? (
-              <Text
-                style={styles.phoneText}
-                numberOfLines={1}
-                maxFontSizeMultiplier={1.2}>
-                📞 {customer.phone}
-              </Text>
-            ) : (
-              <Text
-                style={styles.noPhoneText}
-                numberOfLines={1}
-                maxFontSizeMultiplier={1.2}>
-                No phone saved
-              </Text>
-            )}
-          </View>
-        </View>
-
-        {/* Right: Credit Balance Badge & Chevron */}
-        <View style={styles.rightCol}>
           {hasUtang ? (
-            <View style={styles.utangBadge}>
-              <Text style={styles.utangBadgeAmount}>{formattedBalance}</Text>
-              <Text style={styles.utangBadgeLabel}>Utang</Text>
-            </View>
+            <Text
+              style={styles.balanceAmountText}
+              numberOfLines={1}
+              maxFontSizeMultiplier={1.3}>
+              {formattedBalance}
+            </Text>
           ) : (
-            <View style={styles.clearBadge}>
-              <Text style={styles.clearBadgeText}>No Utang</Text>
+            <View style={styles.paidPill}>
+              <Text style={styles.paidPillText}>PAID</Text>
             </View>
           )}
 
+          <Text
+            style={styles.activityMetaText}
+            numberOfLines={1}
+            maxFontSizeMultiplier={1.2}>
+            {lastActivityDate
+              ? `Last activity: ${lastActivityDate}${
+                  customer.phone ? ` · ${customer.phone}` : ''
+                }`
+              : customer.phone
+              ? `Phone: ${customer.phone}`
+              : 'No recent credit activity'}
+          </Text>
+        </View>
+
+        {/* Right: Chevron */}
+        <View style={styles.rightCol}>
           <Text style={styles.chevron} importantForAccessibility="no">
             ›
           </Text>
@@ -155,15 +161,15 @@ export function CustomerCard({ customer, onPress }: CustomerCardProps) {
 const styles = StyleSheet.create({
   card: {
     backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.lg,
-    paddingVertical: Spacing.three,
+    borderRadius: BorderRadius.xl,
+    paddingVertical: 14,
     paddingHorizontal: Spacing.threeHalf,
     borderWidth: 1,
-    borderColor: Colors.border,
-    ...Shadows.xs,
+    borderColor: Colors.borderSubtle,
+    ...Shadows.sm,
   },
   cardCompact: {
-    paddingVertical: Spacing.twoHalf,
+    paddingVertical: 12,
     paddingHorizontal: Spacing.three,
   },
   cardInactive: {
@@ -174,38 +180,40 @@ const styles = StyleSheet.create({
   cardPressed: {
     backgroundColor: Colors.backgroundAlt,
     borderColor: Colors.primaryBorder,
-    opacity: 0.95,
+    transform: [{ scale: 0.992 }],
   },
   contentRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.three,
+    gap: 14,
   },
   avatarCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: Colors.pastel.green.bg,
-    borderWidth: 1.5,
-    borderColor: Colors.pastel.green.border,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: Colors.primaryDark,
     alignItems: 'center',
     justifyContent: 'center',
+    ...Shadows.xs,
   },
-  avatarCircleUtang: {
-    backgroundColor: Colors.pastel.orange.bg,
-    borderColor: Colors.pastel.orange.border,
+  avatarCircleSettled: {
+    backgroundColor: '#FDE68A',
+    borderWidth: 1,
+    borderColor: '#FCD34D',
   },
   avatarCircleInactive: {
-    backgroundColor: Colors.backgroundAlt,
+    backgroundColor: Colors.surfaceSubtle,
+    borderWidth: 1,
     borderColor: Colors.border,
   },
   avatarText: {
     fontSize: Typography.sizes.base,
     fontWeight: Typography.weights.extraBold,
-    color: Colors.pastel.green.accent,
+    color: Colors.textInverse,
+    letterSpacing: 0.3,
   },
-  avatarTextUtang: {
-    color: Colors.pastel.orange.accent,
+  avatarTextSettled: {
+    color: '#92400E',
   },
   avatarTextInactive: {
     color: Colors.textMuted,
@@ -221,7 +229,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   customerName: {
-    fontSize: Typography.sizes.base,
+    fontSize: Typography.sizes.body,
     fontWeight: Typography.weights.bold,
     color: Colors.textPrimary,
   },
@@ -229,10 +237,10 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
   inactiveBadge: {
-    backgroundColor: Colors.backgroundAlt,
+    backgroundColor: Colors.surfaceSubtle,
     borderRadius: BorderRadius.xs,
-    paddingHorizontal: 5,
-    paddingVertical: 1,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
     borderWidth: 1,
     borderColor: Colors.border,
   },
@@ -242,63 +250,38 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     textTransform: 'uppercase',
   },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
+  balanceAmountText: {
+    fontSize: Typography.sizes.base,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.textPrimary,
   },
-  phoneText: {
+  paidPill: {
+    alignSelf: 'flex-start',
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 10,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.full,
+    marginVertical: 1,
+  },
+  paidPillText: {
+    fontSize: 11,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.textInverse,
+    letterSpacing: 0.5,
+  },
+  activityMetaText: {
     fontSize: Typography.sizes.caption,
     color: Colors.textSecondary,
     fontWeight: Typography.weights.medium,
   },
-  noPhoneText: {
-    fontSize: Typography.sizes.caption,
-    color: Colors.textMuted,
-    fontStyle: 'italic',
-  },
   rightCol: {
-    alignItems: 'flex-end',
-    gap: 4,
-  },
-  utangBadge: {
-    backgroundColor: Colors.pastel.orange.bg,
-    borderRadius: BorderRadius.sm,
-    paddingHorizontal: Spacing.two,
-    paddingVertical: 3,
-    borderWidth: 1,
-    borderColor: Colors.pastel.orange.border,
-    alignItems: 'flex-end',
-  },
-  utangBadgeAmount: {
-    fontSize: Typography.sizes.caption,
-    fontWeight: Typography.weights.extraBold,
-    color: Colors.pastel.orange.accent,
-  },
-  utangBadgeLabel: {
-    fontSize: 9,
-    fontWeight: Typography.weights.bold,
-    color: Colors.pastel.orange.accent,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  clearBadge: {
-    backgroundColor: Colors.pastel.green.bg,
-    borderRadius: BorderRadius.sm,
-    paddingHorizontal: Spacing.two,
-    paddingVertical: 3,
-    borderWidth: 1,
-    borderColor: Colors.pastel.green.border,
-  },
-  clearBadgeText: {
-    fontSize: Typography.sizes.caption,
-    fontWeight: Typography.weights.bold,
-    color: Colors.pastel.green.accent,
+    paddingLeft: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   chevron: {
-    fontSize: Typography.sizes.lg,
+    fontSize: 22,
     fontWeight: Typography.weights.bold,
-    color: Colors.textMuted,
+    color: Colors.textSecondary,
   },
 });
-
