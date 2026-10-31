@@ -6,6 +6,7 @@ import { Colors, Typography } from '@/constants/theme';
 interface DashboardMarketIllustrationProps {
   width?: number;
   height?: number;
+  compact?: boolean;
 }
 
 /**
@@ -22,7 +23,66 @@ interface DashboardMarketIllustrationProps {
 export function DashboardMarketIllustration({
   width = 154,
   height = 140,
+  compact = false,
 }: DashboardMarketIllustrationProps) {
+  if (compact) {
+    return (
+      <View
+        style={{ width: 64, height: 60, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}
+        accessible={false}
+        accessibilityElementsHidden={true}
+        importantForAccessibility="no-hide-descendants">
+        <View style={{ transform: [{ scale: 0.45 }], width: 154, height: 140, alignItems: 'flex-end', justifyContent: 'center' }}>
+          <View style={styles.stallWrapper}>
+            <View style={styles.awningCanopy}>
+              <View style={[styles.awningStripe, styles.stripeGreen]} />
+              <View style={[styles.awningStripe, styles.stripeWhite]} />
+              <View style={[styles.awningStripe, styles.stripeGreen]} />
+              <View style={[styles.awningStripe, styles.stripeWhite]} />
+              <View style={[styles.awningStripe, styles.stripeGreen]} />
+              <View style={[styles.awningStripe, styles.stripeWhite]} />
+              <View style={[styles.awningStripe, styles.stripeGreen]} />
+            </View>
+            <View style={styles.awningScallopRow}>
+              <View style={[styles.scallop, styles.stripeGreen]} />
+              <View style={[styles.scallop, styles.stripeWhite]} />
+              <View style={[styles.scallop, styles.stripeGreen]} />
+              <View style={[styles.scallop, styles.stripeWhite]} />
+              <View style={[styles.scallop, styles.stripeGreen]} />
+              <View style={[styles.scallop, styles.stripeWhite]} />
+              <View style={[styles.scallop, styles.stripeGreen]} />
+            </View>
+            <View style={styles.stallBody}>
+              <View style={styles.woodenPostLeft} />
+              <View style={styles.shelvesCenter}>
+                <View style={styles.woodenShelfTop}>
+                  <View style={styles.produceCrate}>
+                    <View style={[styles.produceDot, { backgroundColor: Colors.pastel.orange.iconBg }]} />
+                    <View style={[styles.produceDot, { backgroundColor: '#FBBF24' }]} />
+                  </View>
+                  <View style={styles.produceCrate}>
+                    <View style={[styles.produceDot, { backgroundColor: Colors.pastel.green.iconBg }]} />
+                    <View style={[styles.produceDot, { backgroundColor: '#34D399' }]} />
+                  </View>
+                </View>
+                <View style={styles.woodenShelfBottom}>
+                  <View style={styles.produceCrateWide}>
+                    <View style={[styles.produceDot, { backgroundColor: '#EF4444' }]} />
+                    <View style={[styles.produceDot, { backgroundColor: Colors.accentWarm }]} />
+                    <View style={[styles.produceDot, { backgroundColor: Colors.pastel.green.iconBg }]} />
+                  </View>
+                </View>
+                <View style={styles.counterBasePlank}>
+                  <View style={styles.plankGrain} />
+                </View>
+              </View>
+              <View style={styles.woodenPostRight} />
+            </View>
+          </View>
+        </View>
+      </View>
+    );
+  }
   return (
     <View
       style={[styles.container, { width, height }]}

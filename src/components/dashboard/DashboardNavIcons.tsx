@@ -153,15 +153,359 @@ export function NavUtangIcon({ color = Colors.textMuted, size = IconSizes.nav }:
 }
 
 /**
- * More / Hamburger Menu Vector Icon
+ * More / Bento 2x2 Grid Vector Icon (Design 2.0)
  */
 export function NavMoreIcon({ color = Colors.textMuted, size = IconSizes.nav }: IconProps) {
   return (
     <View style={[styles.center, { width: size, height: size }]}>
-      <View style={{ width: 18, height: 13, justifyContent: 'space-between' }}>
-        <View style={{ width: '100%', height: 2.2, backgroundColor: color, borderRadius: 1.5 }} />
-        <View style={{ width: '100%', height: 2.2, backgroundColor: color, borderRadius: 1.5 }} />
-        <View style={{ width: '100%', height: 2.2, backgroundColor: color, borderRadius: 1.5 }} />
+      <View style={{ width: 17, height: 17, justifyContent: 'space-between' }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+          <View
+            style={{
+              width: 7,
+              height: 7,
+              borderRadius: 2.2,
+              borderWidth: 1.8,
+              borderColor: color,
+            }}
+          />
+          <View
+            style={{
+              width: 7,
+              height: 7,
+              borderRadius: 2.2,
+              borderWidth: 1.8,
+              borderColor: color,
+            }}
+          />
+        </View>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+          <View
+            style={{
+              width: 7,
+              height: 7,
+              borderRadius: 2.2,
+              borderWidth: 1.8,
+              borderColor: color,
+            }}
+          />
+          <View
+            style={{
+              width: 7,
+              height: 7,
+              borderRadius: 2.2,
+              borderWidth: 1.8,
+              borderColor: color,
+            }}
+          />
+        </View>
+      </View>
+    </View>
+  );
+}
+
+/**
+ * POS Register / Cashier Terminal Vector Icon
+ */
+export function NavPosIcon({ color = Colors.textMuted, size = IconSizes.nav }: IconProps) {
+  return (
+    <View style={[styles.center, { width: size, height: size }]}>
+      {/* Cashier Bag / POS Terminal Frame */}
+      <View
+        style={{
+          width: 17,
+          height: 15,
+          borderWidth: 1.8,
+          borderColor: color,
+          borderRadius: 3.5,
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginTop: 3,
+        }}>
+        {/* Handle Arch */}
+        <View
+          style={{
+            position: 'absolute',
+            top: -5.5,
+            width: 8,
+            height: 5.5,
+            borderTopLeftRadius: 4,
+            borderTopRightRadius: 4,
+            borderWidth: 1.8,
+            borderBottomWidth: 0,
+            borderColor: color,
+          }}
+        />
+        {/* Plus / Scan Cross inside POS icon */}
+        <View style={{ width: 7, height: 1.8, backgroundColor: color, borderRadius: 1 }} />
+        <View
+          style={{
+            position: 'absolute',
+            width: 1.8,
+            height: 7,
+            backgroundColor: color,
+            borderRadius: 1,
+          }}
+        />
+      </View>
+    </View>
+  );
+}
+
+/**
+ * Floating Center POS / Scan Action Vector Icon (Viewfinder brackets + center scan line)
+ */
+export function NavFloatingCenterIcon({
+  color = Colors.textInverse,
+  size = 26,
+}: IconProps) {
+  const corner = 7;
+  const stroke = 2.2;
+  return (
+    <View style={[styles.center, { width: size, height: size }]}>
+      <View style={{ width: 22, height: 22, position: 'relative', alignItems: 'center', justifyContent: 'center' }}>
+        {/* Top-Left Corner */}
+        <View
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: corner,
+            height: corner,
+            borderTopWidth: stroke,
+            borderLeftWidth: stroke,
+            borderColor: color,
+            borderTopLeftRadius: 3,
+          }}
+        />
+        {/* Top-Right Corner */}
+        <View
+          style={{
+            position: 'absolute',
+            top: 0,
+            right: 0,
+            width: corner,
+            height: corner,
+            borderTopWidth: stroke,
+            borderRightWidth: stroke,
+            borderColor: color,
+            borderTopRightRadius: 3,
+          }}
+        />
+        {/* Bottom-Left Corner */}
+        <View
+          style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            width: corner,
+            height: corner,
+            borderBottomWidth: stroke,
+            borderLeftWidth: stroke,
+            borderColor: color,
+            borderBottomLeftRadius: 3,
+          }}
+        />
+        {/* Bottom-Right Corner */}
+        <View
+          style={{
+            position: 'absolute',
+            bottom: 0,
+            right: 0,
+            width: corner,
+            height: corner,
+            borderBottomWidth: stroke,
+            borderRightWidth: stroke,
+            borderColor: color,
+            borderBottomRightRadius: 3,
+          }}
+        />
+        {/* Center Scan Bar / Plus */}
+        <View
+          style={{
+            width: 10,
+            height: 2.2,
+            backgroundColor: color,
+            borderRadius: 1.1,
+          }}
+        />
+        <View
+          style={{
+            position: 'absolute',
+            width: 2.2,
+            height: 10,
+            backgroundColor: color,
+            borderRadius: 1.1,
+          }}
+        />
+      </View>
+    </View>
+  );
+}
+
+/**
+ * Search Magnifying Glass Vector Icon
+ */
+export function SearchVectorIcon({ color = Colors.textMuted, size = 18 }: IconProps) {
+  const circleSize = size * 0.72;
+  return (
+    <View style={[styles.center, { width: size, height: size }]}>
+      <View
+        style={{
+          width: circleSize,
+          height: circleSize,
+          borderRadius: circleSize / 2,
+          borderWidth: 1.8,
+          borderColor: color,
+          marginTop: -2,
+          marginLeft: -2,
+        }}
+      />
+      <View
+        style={{
+          position: 'absolute',
+          bottom: 2,
+          right: 2,
+          width: size * 0.34,
+          height: 2,
+          backgroundColor: color,
+          borderRadius: 1,
+          transform: [{ rotate: '45deg' }],
+        }}
+      />
+    </View>
+  );
+}
+
+/**
+ * Notification Bell Vector Icon
+ */
+export function BellNotificationIcon({ color = Colors.textInverse, size = 20 }: IconProps) {
+  return (
+    <View style={[styles.center, { width: size, height: size }]}>
+      {/* Bell Dome */}
+      <View
+        style={{
+          width: size * 0.68,
+          height: size * 0.62,
+          borderTopLeftRadius: size * 0.34,
+          borderTopRightRadius: size * 0.34,
+          backgroundColor: color,
+        }}
+      />
+      {/* Bell Rim */}
+      <View
+        style={{
+          width: size * 0.84,
+          height: 2.5,
+          borderRadius: 1.5,
+          backgroundColor: color,
+          marginTop: -1,
+        }}
+      />
+      {/* Bell Clapper */}
+      <View
+        style={{
+          width: 4.5,
+          height: 3,
+          borderBottomLeftRadius: 2.5,
+          borderBottomRightRadius: 2.5,
+          backgroundColor: color,
+          marginTop: 1.5,
+        }}
+      />
+    </View>
+  );
+}
+
+/**
+ * Trend / Analytics Bar Chart Vector Icon
+ */
+export function TrendChartVectorIcon({ color = Colors.textInverse, size = 22 }: IconProps) {
+  return (
+    <View style={[styles.center, { width: size, height: size }]}>
+      <View
+        style={{
+          width: size * 0.85,
+          height: size * 0.78,
+          flexDirection: 'row',
+          alignItems: 'flex-end',
+          justifyContent: 'space-between',
+          borderBottomWidth: 1.8,
+          borderBottomColor: color,
+          paddingBottom: 2,
+          paddingHorizontal: 1,
+        }}>
+        <View style={{ width: 3.5, height: '42%', backgroundColor: color, borderRadius: 1.5 }} />
+        <View style={{ width: 3.5, height: '68%', backgroundColor: color, borderRadius: 1.5 }} />
+        <View style={{ width: 3.5, height: '55%', backgroundColor: color, borderRadius: 1.5 }} />
+        <View style={{ width: 3.5, height: '95%', backgroundColor: color, borderRadius: 1.5 }} />
+      </View>
+    </View>
+  );
+}
+
+/**
+ * Simple Shopping Cart Vector Icon
+ */
+export function CartVectorIcon({ color = Colors.textInverse, size = 20 }: IconProps) {
+  return (
+    <View style={[styles.center, { width: size, height: size }]}>
+      <View
+        style={{
+          width: size * 0.72,
+          height: size * 0.48,
+          borderWidth: 1.8,
+          borderColor: color,
+          borderRadius: 2.5,
+          marginTop: 1,
+        }}
+      />
+      <View
+        style={{
+          flexDirection: 'row',
+          width: size * 0.56,
+          justifyContent: 'space-between',
+          marginTop: 2,
+        }}>
+        <View style={{ width: 3.5, height: 3.5, borderRadius: 2, backgroundColor: color }} />
+        <View style={{ width: 3.5, height: 3.5, borderRadius: 2, backgroundColor: color }} />
+      </View>
+    </View>
+  );
+}
+
+/**
+ * Trash / Clear Vector Icon
+ */
+export function TrashVectorIcon({ color = Colors.textInverse, size = 18 }: IconProps) {
+  return (
+    <View style={[styles.center, { width: size, height: size }]}>
+      {/* Lid */}
+      <View
+        style={{
+          width: size * 0.74,
+          height: 2,
+          backgroundColor: color,
+          borderRadius: 1,
+          marginBottom: 1.5,
+        }}
+      />
+      {/* Bin Body */}
+      <View
+        style={{
+          width: size * 0.6,
+          height: size * 0.64,
+          borderWidth: 1.6,
+          borderColor: color,
+          borderBottomLeftRadius: 2.5,
+          borderBottomRightRadius: 2.5,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-evenly',
+        }}>
+        <View style={{ width: 1.2, height: '58%', backgroundColor: color }} />
+        <View style={{ width: 1.2, height: '58%', backgroundColor: color }} />
       </View>
     </View>
   );
@@ -283,6 +627,8 @@ export function DashboardBadgeVectorIcon({
     | 'products'
     | 'low_stock'
     | 'utang'
+    | 'utang_summary'
+    | 'sales_history'
     | 'expenses'
     | 'add_product'
     | 'record_sale'
@@ -292,6 +638,7 @@ export function DashboardBadgeVectorIcon({
 }) {
   switch (type) {
     case 'sales':
+    case 'sales_history':
       return (
         <Text
           style={{
