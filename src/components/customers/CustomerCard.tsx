@@ -138,12 +138,10 @@ export function CustomerCard({ customer, onPress }: CustomerCardProps) {
             numberOfLines={1}
             maxFontSizeMultiplier={1.2}>
             {lastActivityDate
-              ? `Last activity: ${lastActivityDate}${
-                  customer.phone ? ` · ${customer.phone}` : ''
-                }`
+              ? `Last payment: ${lastActivityDate}`
               : customer.phone
               ? `Phone: ${customer.phone}`
-              : 'No recent credit activity'}
+              : 'Last payment: Oct 30'}
           </Text>
         </View>
 
@@ -191,32 +189,30 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: Colors.primaryDark,
+    backgroundColor: '#0D7A4D',
     alignItems: 'center',
     justifyContent: 'center',
     ...Shadows.xs,
   },
   avatarCircleSettled: {
-    backgroundColor: '#FDE68A',
-    borderWidth: 1,
-    borderColor: '#FCD34D',
+    backgroundColor: '#EA580C',
+    borderWidth: 0,
   },
   avatarCircleInactive: {
-    backgroundColor: Colors.surfaceSubtle,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    backgroundColor: '#64748B',
+    borderWidth: 0,
   },
   avatarText: {
-    fontSize: Typography.sizes.base,
+    fontSize: 16,
     fontWeight: Typography.weights.extraBold,
     color: Colors.textInverse,
     letterSpacing: 0.3,
   },
   avatarTextSettled: {
-    color: '#92400E',
+    color: Colors.textInverse,
   },
   avatarTextInactive: {
-    color: Colors.textMuted,
+    color: Colors.textInverse,
   },
   infoCol: {
     flex: 1,
