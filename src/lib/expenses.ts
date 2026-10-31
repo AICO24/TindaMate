@@ -2,6 +2,7 @@ import { getAuthenticatedStoreId } from '@/lib/products';
 import { supabase } from '@/lib/supabase';
 import {
   CreateExpenseInput,
+  DashboardExpenseSummary,
   EXPENSE_CATEGORIES,
   Expense,
   ExpenseCategory,
@@ -499,4 +500,75 @@ export async function deleteStoreExpense(expenseId: string): Promise<void> {
     );
   }
 }
+
+/**
+ * Computes the store's today's expenses summary from an array of expenses,
+ * using safe integer centavos to avoid floating-point accumulation errors.
+ */
+export function computeTodayExpenseSummary(
+  expenses: Pick<Expense, 'amount' | 'expense_date'>[],
+  targetDateISO: string = getTodayDateISO()
+): DashboardExpenseSummary {
+  let totalCentavos = 0;
+  let count = 0;
+
+  for (const item of expenses) {
+    if (item.expense_date === targetDateISO) {
+      const rawAmount = Number(item.amount);
+      if (Number.isFinite(rawAmount) && rawAmount > 0) {
+        totalCentavos += Math.round(rawAmount * 100);
+        count += 1;
+      }
+    }
+  }
+
+  return {
+    totalExpenses: Number((totalCentavos / 100).toFixed(2)),
+    expenseCount: count,
+  };
+}
+
+/**
+ * Fetches the current-day expense summary for the authenticated store:
+ * 1. Resolves store_id from the authenticated user session.
+ * 2. Queries `public.expenses` for records matching `expense_date = today` in local time.
+ * 3. Calculates total amount and transaction count with integer-centavo monetary safety.
+ *
+ * Strictly scoped to `store_id = authenticated user ID` and protected by Supabase RLS.
+ */
+export async function fetchDashboardExpenseSummary(): Promise<DashboardExpenseSummary> {
+  const storeId = await getAuthenticatedStoreId();
+  const todayISO = getTodayDateISO();
+
+  const { data, error } = await supabase
+    .from('expenses')
+    .select('amount, expense_date')
+    .eq('store_id', storeId)
+    .eq('expense_date', todayISO);
+
+  if (error) {
+    throw new Error(
+      mapExpenseDatabaseError(
+        error,
+        "Could not load today's expense summary."
+      )
+    );
+  }
+
+  const normalizedRows = (data ?? []).map((row) => {
+    const record = row as Record<string, unknown>;
+    const rawAmount = Number(record.amount ?? 0);
+    const dateStr =
+      typeof record.expense_date === 'string'
+        ? record.expense_date.trim().slice(0, 10)
+        : todayISO;
+    return {
+      amount: Number.isFinite(rawAmount) ? rawAmount : 0,
+      expense_date: dateStr,
+    };
+  });
+
+  return computeTodayExpenseSummary(normalizedRows, todayISO);
+}
+
 

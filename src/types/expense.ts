@@ -81,3 +81,12 @@ export interface ExpenseFormErrors {
   notes?: string;
 }
 
+/**
+ * Summary metrics of store expenses for the Dashboard (Batch 9B).
+ */
+export interface DashboardExpenseSummary {
+  totalExpenses: number;
+  expenseCount: number;
+}
+
+
