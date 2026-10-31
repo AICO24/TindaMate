@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -9,9 +9,11 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   useWindowDimensions,
   View,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   router,
@@ -26,13 +28,18 @@ import {
   resolveActiveNavTab,
 } from '@/components/dashboard/DashboardBottomNav';
 import { DashboardErrorBanner } from '@/components/dashboard/DashboardErrorBanner';
-import { DashboardBadgeVectorIcon } from '@/components/dashboard/DashboardNavIcons';
-import { ProductCard } from '@/components/products/ProductCard';
+import {
+  CartVectorIcon,
+  DashboardBadgeVectorIcon,
+  NavPosIcon,
+  NavProductsIcon,
+  SearchVectorIcon,
+  TrashVectorIcon,
+} from '@/components/dashboard/DashboardNavIcons';
 import { ProductScreenHeader } from '@/components/products/ProductScreenHeader';
 import { CartItemCard } from '@/components/sales/CartItemCard';
 import { CheckoutModal } from '@/components/sales/CheckoutModal';
 import { SaleSuccessModal } from '@/components/sales/SaleSuccessModal';
-import { SectionHeader } from '@/components/ui/SectionHeader';
 import { TindaMateButton } from '@/components/ui/TindaMateButton';
 import {
   BorderRadius,
@@ -55,19 +62,21 @@ import {
 } from '@/lib/sales';
 import { supabase } from '@/lib/supabase';
 import { Product } from '@/types/product';
-import { CartItem, CompletedCartSaleResult, SalePaymentMethod } from '@/types/sale';
+import {
+  CartItem,
+  CompletedCartSaleResult,
+  SalePaymentMethod,
+} from '@/types/sale';
 
 /**
- * TindaMate Sales Screen (`/sales`)
+ * TindaMate POS / Sales Screen (`/sales`) — Design 2.0
  *
- * Implements Batch 7B-1: Cart State + Product Selection
- * - In-memory local cart state (`cartItems`) inside React component
- * - Product selection: tap product to add with qty 1 or merge into existing line
- * - Quantity steppers (− / +) capped at currently known available stock
- * - Explicit item removal and "Clear Cart" action
- * - Derived cart counts (total units + unique products) and estimated total (₱)
- * - Clean empty-cart and empty-inventory states
- * - Route-aware persistent bottom navigation
+ * Modern mobile retail POS experience:
+ * - Deep Green header ("New Sale") with integrated search bar & quick history/clear actions
+ * - Category filter chips ("All" + store categories)
+ * - 2-column visual POS product grid with product image, name, price, stock indicator & green "+" add button
+ * - Integrated Cart panel with compact item rows, quantity steppers, bold total, and dominant Orange Checkout CTA
+ * - Preserves 100% of existing cart state, idempotency key, and atomic `record_cart_sale` RPC logic
  */
 export default function SalesScreen() {
   const pathname = usePathname();
@@ -83,6 +92,13 @@ export default function SalesScreen() {
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+
+  // POS Search & Category Filter State
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const [failedImageIds, setFailedImageIds] = useState<Record<string, boolean>>(
+    {}
+  );
 
   // Local Cart State (Batch 7B-1)
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -110,12 +126,100 @@ export default function SalesScreen() {
   const [isSuccessModalVisible, setIsSuccessModalVisible] = useState(false);
 
   // Derived metrics
-  const sellableProducts = filterSellableProducts(allProducts);
+  const sellableProducts = useMemo(
+    () => filterSellableProducts(allProducts),
+    [allProducts]
+  );
   const outOfStockCount = Math.max(
     0,
     allProducts.length - sellableProducts.length
   );
-  const cartSummary = calculateCartSummary(cartItems);
+  const cartSummary = useMemo(
+    () => calculateCartSummary(cartItems),
+    [cartItems]
+  );
+
+  // Extract distinct categories from sellable products (plus standard sari-sari fallbacks if uncategorized)
+  const categoryOptions = useMemo(() => {
+    const distinct = new Set<string>();
+    sellableProducts.forEach((p) => {
+      const cat = p.category?.trim();
+      if (cat) {
+        distinct.add(cat);
+      }
+    });
+    const list = Array.from(distinct);
+    if (list.length === 0) {
+      return ['All', 'Drinks', 'Snacks', 'Canned', 'Others'];
+    }
+    return ['All', ...list];
+  }, [sellableProducts]);
+
+  // Filtered sellable products based on search query & selected category chip
+  const filteredProducts = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return sellableProducts.filter((product) => {
+      const matchesSearch =
+        !q ||
+        product.name.toLowerCase().includes(q) ||
+        (product.category ?? '').toLowerCase().includes(q);
+
+      if (!matchesSearch) {
+        return false;
+      }
+
+      if (selectedCategory === 'All') {
+        return true;
+      }
+
+      const prodCat = (product.category ?? '').trim().toLowerCase();
+      const targetCat = selectedCategory.toLowerCase();
+      if (prodCat === targetCat) {
+        return true;
+      }
+      // Smart keyword matching if store products don't have explicit category set
+      if (!prodCat) {
+        const nameLower = product.name.toLowerCase();
+        if (
+          targetCat === 'drinks' &&
+          (nameLower.includes('cola') ||
+            nameLower.includes('juice') ||
+            nameLower.includes('milo') ||
+            nameLower.includes('coffee') ||
+            nameLower.includes('water') ||
+            nameLower.includes('milk'))
+        ) {
+          return true;
+        }
+        if (
+          targetCat === 'snacks' &&
+          (nameLower.includes('piattos') ||
+            nameLower.includes('chip') ||
+            nameLower.includes('biscuit') ||
+            nameLower.includes('cracker') ||
+            nameLower.includes('bread'))
+        ) {
+          return true;
+        }
+        if (
+          targetCat === 'canned' &&
+          (nameLower.includes('can') ||
+            nameLower.includes('sardine') ||
+            nameLower.includes('tuna') ||
+            nameLower.includes('corned') ||
+            nameLower.includes('lucky me') ||
+            nameLower.includes('noodle') ||
+            nameLower.includes('pancit'))
+        ) {
+          return true;
+        }
+        if (targetCat === 'others') {
+          return true;
+        }
+      }
+      return false;
+    });
+  }, [sellableProducts, searchQuery, selectedCategory]);
 
   /**
    * Loads store inventory from Supabase and synchronizes the active cart items
@@ -196,7 +300,6 @@ export default function SalesScreen() {
     setCartItems((prev) => {
       const existing = prev.find((item) => item.productId === product.id);
       if (existing && existing.quantity >= existing.availableStock) {
-        // Already at maximum stock
         return prev;
       }
       return addProductToCart(prev, product);
@@ -245,13 +348,6 @@ export default function SalesScreen() {
 
   /**
    * Executes atomic multi-item checkout via `public.record_cart_sale` RPC.
-   *
-   * Enforces:
-   * 1. Double-tap prevention (isSubmitting guard)
-   * 2. Idempotency UUID generation and preservation across network retries
-   * 3. Server-authoritative totals, stock deductions, and customer credit ledger update
-   * 4. Cart clearing ONLY on confirmed database success
-   * 5. Inventory catalog reload to reflect actual deducted stock
    */
   const handleConfirmSale = async (
     paymentMethod: SalePaymentMethod,
@@ -264,7 +360,6 @@ export default function SalesScreen() {
       return;
     }
 
-    // 1. Generate or reuse the idempotency key for this checkout attempt
     if (!activeIdempotencyKeyRef.current) {
       activeIdempotencyKeyRef.current = generateIdempotencyKey();
     }
@@ -274,7 +369,6 @@ export default function SalesScreen() {
     setCheckoutError(null);
 
     try {
-      // 2. Execute atomic database RPC transaction
       const result = await recordCartSale(
         cartItems,
         idempotencyKey,
@@ -282,7 +376,6 @@ export default function SalesScreen() {
         customerId
       );
 
-      // 3. Server-authoritative calculations
       const serverTotal = result.sale.total_amount;
       const clientEstimatedTotal = cartSummary.totalAmount;
 
@@ -304,17 +397,11 @@ export default function SalesScreen() {
         )} (estimated was ${formatPesoCurrency(clientEstimatedTotal)}).`;
       }
 
-      // 4. Reset submission state & idempotency key
       activeIdempotencyKeyRef.current = null;
       setIsSubmitting(false);
-
-      // 5. Clear cart ONLY after confirmed success
       setCartItems([]);
-
-      // 6. Close checkout modal
       setIsCheckoutVisible(false);
 
-      // 7. Store completed sale information and display success modal
       setCompletedSaleResult(result);
       setCompletedPaymentInfo({
         paymentMethod,
@@ -326,12 +413,9 @@ export default function SalesScreen() {
       });
       setIsSuccessModalVisible(true);
 
-      // 8. Refresh store inventory from Supabase so stock reflects completed sale
       loadAvailableProducts(false);
     } catch (err) {
       setIsSubmitting(false);
-      // Cart remains intact!
-      // activeIdempotencyKeyRef.current is intentionally preserved so retry uses the same key
       const errorMsg =
         err instanceof Error
           ? err.message
@@ -340,18 +424,12 @@ export default function SalesScreen() {
     }
   };
 
-  /**
-   * Dismisses the sale success modal to record another sale.
-   */
   const handleDismissSuccess = () => {
     setIsSuccessModalVisible(false);
     setCompletedSaleResult(null);
     setCompletedPaymentInfo(null);
   };
 
-  /**
-   * Navigates to the transaction details screen.
-   */
   const handleViewSaleDetails = (saleId: string) => {
     setIsSuccessModalVisible(false);
     setCompletedSaleResult(null);
@@ -364,15 +442,6 @@ export default function SalesScreen() {
       router.back();
     } else {
       router.replace('/home');
-    }
-  };
-
-  const handleFutureModuleNotice = (moduleName: string, batchNote: string) => {
-    const message = `${moduleName} will be connected to your Supabase store database in ${batchNote}!`;
-    if (Platform.OS === 'web') {
-      window.alert(message);
-    } else {
-      Alert.alert(moduleName, message, [{ text: 'Got it!' }]);
     }
   };
 
@@ -392,45 +461,85 @@ export default function SalesScreen() {
       router.replace('/customers' as any);
       return;
     }
-
-    const tabNames: Record<NavTab, string> = {
-      home: 'Home',
-      products: 'Products Catalog',
-      sales: 'Daily Sales & Cashier',
-      utang: 'Lista ng Utang',
-      more: 'Settings & Profile',
-    };
-    handleFutureModuleNotice(tabNames[tab], 'an upcoming batch');
+    if (tab === 'more') {
+      router.push('/more' as any);
+      return;
+    }
   };
-
-  const headerTitle = 'Record Sale';
-  const headerSubtitle = isInitialLoading
-    ? 'Loading store inventory...'
-    : cartSummary.totalItems > 0
-    ? `${cartSummary.totalItems} ${
-        cartSummary.totalItems === 1 ? 'item' : 'items'
-      } in cart · Est. ${formatPesoCurrency(cartSummary.totalAmount)}`
-    : `${sellableProducts.length} ${
-        sellableProducts.length === 1 ? 'product' : 'products'
-      } available to sell`;
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <KeyboardAvoidingView
         style={styles.mainContainer}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        {/* Top Screen Header */}
-        <ProductScreenHeader
-          title={headerTitle}
-          subtitle={headerSubtitle}
-          showBack={true}
-          onBack={handleBackNavigation}
-          rightActionLabel="History"
-          rightActionAccessibilityLabel="View store sales history log"
-          onRightActionPress={() => router.push('/sales/history')}
-        />
+        {/* Top Deep Green POS Header + Search Bar */}
+        <View style={styles.posHeroHeader}>
+          <ProductScreenHeader
+            title="New Sale"
+            showBack={true}
+            onBack={handleBackNavigation}
+            rightElement={
+              <View style={styles.headerRightActions}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="View sales history"
+                  onPress={() => router.push('/sales/history')}
+                  style={({ pressed }) => [
+                    styles.headerHistoryPill,
+                    pressed && styles.buttonPressed,
+                  ]}>
+                  <Text style={styles.headerHistoryText}>History</Text>
+                </Pressable>
+                {cartItems.length > 0 ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Clear cart"
+                    onPress={handleClearCart}
+                    style={({ pressed }) => [
+                      styles.headerIconBtn,
+                      pressed && styles.buttonPressed,
+                    ]}>
+                    <TrashVectorIcon color={Colors.textInverse} size={18} />
+                  </Pressable>
+                ) : null}
+              </View>
+            }
+          />
 
-        {/* Scrollable Body */}
+          {/* Search Products Input Bar inside Green Header Zone */}
+          {!isInitialLoading && sellableProducts.length > 0 ? (
+            <View style={styles.searchOuterWrap}>
+              <View style={styles.searchBar}>
+                <SearchVectorIcon color={Colors.textMuted} size={18} />
+                <TextInput
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  placeholder="Search products..."
+                  placeholderTextColor={Colors.textMuted}
+                  style={styles.searchInput}
+                  returnKeyType="search"
+                  autoCorrect={false}
+                  accessibilityLabel="Search products to add to sale"
+                />
+                {searchQuery.trim().length > 0 ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Clear search"
+                    onPress={() => setSearchQuery('')}
+                    style={styles.clearSearchBtn}>
+                    <Text style={styles.clearSearchText}>✕</Text>
+                  </Pressable>
+                ) : (
+                  <View style={styles.scanIconBadge}>
+                    <NavPosIcon color={Colors.primaryDark} />
+                  </View>
+                )}
+              </View>
+            </View>
+          ) : null}
+        </View>
+
+        {/* Scrollable POS Workspace */}
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
@@ -459,7 +568,7 @@ export default function SalesScreen() {
             {isInitialLoading ? (
               <View style={styles.stateCard}>
                 <ActivityIndicator size="large" color={Colors.primaryDark} />
-                <Text style={styles.stateTitle}>Loading Products...</Text>
+                <Text style={styles.stateTitle}>Loading POS Catalog...</Text>
                 <Text style={styles.stateSubtitle}>
                   Checking your store inventory for available products.
                 </Text>
@@ -546,159 +655,260 @@ export default function SalesScreen() {
                 </View>
               </View>
             ) : (
-              /* 4. Active POS Cart & Product Catalog Layout */
+              /* 4. Active POS Layout: Category Chips + 2-Column Product Grid + Integrated Cart */
               <>
-                {/* A. Estimated Cart Summary Card (shown when cart has items) */}
-                {cartItems.length > 0 ? (
-                  <View style={styles.cartSummaryCard}>
-                    <View style={styles.summaryTopRow}>
-                      <View style={styles.summaryBadgePill}>
-                        <View style={styles.summaryBadgeDot} />
-                        <Text style={styles.summaryBadgeText}>Estimated Cart Total</Text>
-                      </View>
-                      <Text style={styles.summaryCountText}>
-                        {cartSummary.totalItems}{' '}
-                        {cartSummary.totalItems === 1 ? 'item' : 'items'} (
-                        {cartSummary.distinctCount}{' '}
-                        {cartSummary.distinctCount === 1 ? 'product' : 'products'})
-                      </Text>
-                    </View>
+                {/* Category Filter Chips Strip */}
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.categoryChipsScroll}>
+                  {categoryOptions.map((category) => {
+                    const isSelected = selectedCategory === category;
+                    return (
+                      <Pressable
+                        key={category}
+                        accessibilityRole="tab"
+                        accessibilityState={{ selected: isSelected }}
+                        accessibilityLabel={`Filter by ${category}`}
+                        onPress={() => setSelectedCategory(category)}
+                        style={({ pressed }) => [
+                          styles.categoryChip,
+                          isSelected && styles.categoryChipActive,
+                          pressed && styles.buttonPressed,
+                        ]}>
+                        <Text
+                          style={[
+                            styles.categoryChipText,
+                            isSelected && styles.categoryChipTextActive,
+                          ]}>
+                          {category}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
 
-                    <Text
-                      style={styles.summaryTotalAmount}
-                      adjustsFontSizeToFit
-                      minimumFontScale={0.85}
-                      numberOfLines={1}>
-                      {formatPesoCurrency(cartSummary.totalAmount)}
+                {outOfStockCount > 0 ? (
+                  <View style={styles.hiddenStockNote}>
+                    <Text style={styles.hiddenStockNoteText}>
+                      {outOfStockCount} out-of-stock{' '}
+                      {outOfStockCount === 1 ? 'item is' : 'items are'} hidden
+                      from POS selection.
                     </Text>
-
-                    <View style={styles.summaryFooterRow}>
-                      <Text style={styles.summaryHintText}>
-                        Pre-checkout estimate · Tap Proceed to Checkout to enter payment
-                      </Text>
-                    </View>
                   </View>
                 ) : null}
 
-                {/* B. Cart Items List OR Empty Cart Card */}
-                {cartItems.length > 0 ? (
-                  <View style={styles.cartSection}>
-                    <SectionHeader
-                      title={`Cart Items (${cartSummary.distinctCount})`}
-                      actionLabel="Clear All"
-                      onActionPress={handleClearCart}
-                    />
-
-                    <View style={styles.cartItemsList}>
-                      {cartItems.map((item) => (
-                        <CartItemCard
-                          key={item.productId}
-                          item={item}
-                          onIncrement={handleIncrement}
-                          onDecrement={handleDecrement}
-                          onRemove={handleRemove}
-                        />
-                      ))}
-                    </View>
-
-                    {/* Prominent Checkout Action Button */}
-                    <View style={styles.checkoutActionWrap}>
-                      <TindaMateButton
-                        title={`Proceed to Checkout · ${formatPesoCurrency(cartSummary.totalAmount)}`}
-                        variant="primary"
-                        showArrow
-                        onPress={() => setIsCheckoutVisible(true)}
-                        accessibilityLabel={`Proceed to checkout with ${cartSummary.totalItems} items for ${formatPesoCurrency(cartSummary.totalAmount)}`}
-                      />
-                    </View>
+                {/* 2-Column POS Product Selection Grid */}
+                {filteredProducts.length === 0 ? (
+                  <View style={styles.noMatchCard}>
+                    <Text style={styles.noMatchTitle}>
+                      No matching products found
+                    </Text>
+                    <Text style={styles.noMatchSubtitle}>
+                      Try clearing your search or switching category filter.
+                    </Text>
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() => {
+                        setSearchQuery('');
+                        setSelectedCategory('All');
+                      }}
+                      style={styles.resetFilterPill}>
+                      <Text style={styles.resetFilterText}>Reset Filters</Text>
+                    </Pressable>
                   </View>
                 ) : (
-                  /* Empty Cart Container */
-                  <View style={styles.emptyCartCard}>
-                    <View
-                      style={styles.emptyCartIconCircle}
-                      accessible={false}
-                      importantForAccessibility="no-hide-descendants">
-                      <DashboardBadgeVectorIcon
-                        type="record_sale"
-                        color={Colors.primary}
-                      />
-                    </View>
-                    <Text
-                      style={styles.emptyCartTitle}
-                      accessibilityRole="header">
-                      No items in cart yet
-                    </Text>
-                    <Text style={styles.emptyCartSubtitle}>
-                      Tap any in-stock product below to add it to your sale.
-                    </Text>
-                    <View style={styles.emptyCartActionWrap}>
-                      <TindaMateButton
-                        title="Proceed to Checkout"
-                        variant="primary"
-                        disabled={true}
-                        onPress={() => {}}
-                        accessibilityLabel="Proceed to checkout disabled because cart is empty"
-                      />
-                    </View>
-                  </View>
-                )}
-
-                {/* C. Available Products Catalog */}
-                <View style={styles.productsSection}>
-                  <SectionHeader
-                    title={`Available Products (${sellableProducts.length})`}
-                  />
-
-                  {outOfStockCount > 0 ? (
-                    <View style={styles.hiddenStockNote}>
-                      <Text style={styles.hiddenStockNoteText}>
-                        Note: {outOfStockCount} out-of-stock{' '}
-                        {outOfStockCount === 1 ? 'product is' : 'products are'}{' '}
-                        hidden and cannot be added to the cart.
-                      </Text>
-                    </View>
-                  ) : null}
-
-                  <View style={styles.productsGrid}>
-                    {sellableProducts.map((product) => {
+                  <View style={styles.posGridContainer}>
+                    {filteredProducts.map((product) => {
                       const inCartItem = cartItems.find(
                         (c) => c.productId === product.id
                       );
                       const inCartQty = inCartItem?.quantity ?? 0;
                       const isMaxStock = inCartQty >= product.stock_quantity;
+                      const hasValidImage =
+                        Boolean(product.image_url?.trim()) &&
+                        !failedImageIds[product.id];
 
                       return (
-                        <View
+                        <Pressable
                           key={product.id}
-                          style={styles.productCardWrapper}>
-                          <ProductCard
-                            product={product}
-                            onPress={handleAddToCart}
-                          />
+                          accessibilityRole="button"
+                          accessibilityLabel={`Add ${product.name}, ${formatPesoCurrency(product.selling_price)}, ${product.stock_quantity} ${product.unit} available`}
+                          onPress={() => handleAddToCart(product)}
+                          style={({ pressed }) => [
+                            styles.posProductTile,
+                            isCompactPhone && styles.posProductTileCompact,
+                            inCartQty > 0 && styles.posProductTileInCart,
+                            pressed && styles.posProductTilePressed,
+                          ]}>
+                          {/* Top Image / Icon Box */}
+                          <View style={styles.posImageStage}>
+                            {hasValidImage ? (
+                              <Image
+                                source={{ uri: product.image_url!.trim() }}
+                                style={styles.posProductImage}
+                                contentFit="contain"
+                                transition={150}
+                                onError={() =>
+                                  setFailedImageIds((prev) => ({
+                                    ...prev,
+                                    [product.id]: true,
+                                  }))
+                                }
+                              />
+                            ) : (
+                              <View style={styles.posFallbackIconWrap}>
+                                <NavProductsIcon color={Colors.primary} />
+                              </View>
+                            )}
 
-                          {/* In-Cart Status Pill Indicator */}
-                          {inCartQty > 0 ? (
-                            <View
-                              style={[
-                                styles.inCartBadge,
-                                isMaxStock && styles.inCartBadgeMax,
-                              ]}>
-                              <Text
+                            {/* In-Cart Quantity Badge overlay */}
+                            {inCartQty > 0 ? (
+                              <View
                                 style={[
-                                  styles.inCartBadgeText,
-                                  isMaxStock && styles.inCartBadgeTextMax,
+                                  styles.tileQtyBadge,
+                                  isMaxStock && styles.tileQtyBadgeMax,
                                 ]}>
-                                {isMaxStock
-                                  ? `✓ Max (${inCartQty} ${product.unit}) in cart`
-                                  : `✓ ${inCartQty} ${product.unit} in cart (tap to +1)`}
+                                <Text style={styles.tileQtyBadgeText}>
+                                  {inCartQty} in cart
+                                </Text>
+                              </View>
+                            ) : null}
+                          </View>
+
+                          {/* Bottom Info + Circular Green "+" Add Button */}
+                          <View style={styles.posTileFooter}>
+                            <View style={styles.posTileTextCol}>
+                              <Text
+                                style={styles.posProductName}
+                                numberOfLines={1}
+                                maxFontSizeMultiplier={1.2}>
+                                {product.name}
+                              </Text>
+                              <Text
+                                style={styles.posProductPrice}
+                                numberOfLines={1}>
+                                {formatPesoCurrency(product.selling_price)}
+                              </Text>
+                              <Text
+                                style={styles.posProductStock}
+                                numberOfLines={1}>
+                                {product.stock_quantity} {product.unit} left
                               </Text>
                             </View>
-                          ) : null}
-                        </View>
+
+                            <View
+                              style={[
+                                styles.posAddCircleBtn,
+                                isMaxStock && styles.posAddCircleBtnDisabled,
+                              ]}>
+                              <Text style={styles.posAddCirclePlus}>
+                                {isMaxStock ? '✓' : '+'}
+                              </Text>
+                            </View>
+                          </View>
+                        </Pressable>
                       );
                     })}
                   </View>
+                )}
+
+                {/* Integrated POS Cart Panel */}
+                <View style={styles.integratedCartCard}>
+                  <View style={styles.cartHeaderRow}>
+                    <View style={styles.cartHeaderLeft}>
+                      <Text style={styles.cartHeaderTitle}>
+                        Cart ({cartSummary.totalItems})
+                      </Text>
+                      {cartSummary.distinctCount > 0 ? (
+                        <View style={styles.cartDistinctBadge}>
+                          <Text style={styles.cartDistinctBadgeText}>
+                            {cartSummary.distinctCount}{' '}
+                            {cartSummary.distinctCount === 1 ? 'item' : 'items'}
+                          </Text>
+                        </View>
+                      ) : null}
+                    </View>
+
+                    {cartItems.length > 0 ? (
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel="Clear all items from cart"
+                        onPress={handleClearCart}
+                        style={({ pressed }) => [
+                          styles.clearCartActionBtn,
+                          pressed && styles.buttonPressed,
+                        ]}>
+                        <TrashVectorIcon color={Colors.error} size={14} />
+                        <Text style={styles.clearCartActionText}>Clear</Text>
+                      </Pressable>
+                    ) : null}
+                  </View>
+
+                  {cartItems.length > 0 ? (
+                    <>
+                      <View style={styles.cartItemsList}>
+                        {cartItems.map((item) => (
+                          <CartItemCard
+                            key={item.productId}
+                            item={item}
+                            onIncrement={handleIncrement}
+                            onDecrement={handleDecrement}
+                            onRemove={handleRemove}
+                          />
+                        ))}
+                      </View>
+
+                      <View style={styles.cartDivider} />
+
+                      {/* Total Row */}
+                      <View style={styles.cartTotalRow}>
+                        <Text style={styles.cartTotalLabel}>Total:</Text>
+                        <Text
+                          style={styles.cartTotalValue}
+                          adjustsFontSizeToFit
+                          minimumFontScale={0.85}
+                          numberOfLines={1}>
+                          {formatPesoCurrency(cartSummary.totalAmount)}
+                        </Text>
+                      </View>
+
+                      {/* Dominant Orange Checkout CTA */}
+                      <TindaMateButton
+                        title="Checkout"
+                        variant="accent"
+                        showArrow
+                        leftIcon={
+                          <CartVectorIcon color={Colors.textInverse} size={19} />
+                        }
+                        onPress={() => setIsCheckoutVisible(true)}
+                        accessibilityLabel={`Checkout with ${cartSummary.totalItems} items for ${formatPesoCurrency(cartSummary.totalAmount)}`}
+                      />
+                    </>
+                  ) : (
+                    /* Empty Cart State inside Integrated Panel */
+                    <View style={styles.emptyCartInner}>
+                      <View style={styles.emptyCartIconCircle}>
+                        <CartVectorIcon color={Colors.primary} size={22} />
+                      </View>
+                      <Text style={styles.emptyCartTitle}>
+                        Your cart is empty
+                      </Text>
+                      <Text style={styles.emptyCartSubtitle}>
+                        Tap any product card above to add items to this sale.
+                      </Text>
+                      <View style={styles.emptyCartActionWrap}>
+                        <TindaMateButton
+                          title="Checkout"
+                          variant="accent"
+                          disabled={true}
+                          showArrow
+                          onPress={() => {}}
+                          accessibilityLabel="Checkout disabled because cart is empty"
+                        />
+                      </View>
+                    </View>
+                  )}
                 </View>
               </>
             )}
@@ -743,12 +953,93 @@ export default function SalesScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: Colors.backgroundWarm,
+    backgroundColor: Colors.primaryDark,
   },
   mainContainer: {
     flex: 1,
     backgroundColor: Colors.background,
     justifyContent: 'space-between',
+  },
+  posHeroHeader: {
+    backgroundColor: Colors.primaryDark,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    paddingBottom: Spacing.twoHalf,
+    ...Shadows.sm,
+  },
+  headerRightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerHistoryPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: BorderRadius.full,
+    backgroundColor: 'rgba(255, 255, 255, 0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.22)',
+  },
+  headerHistoryText: {
+    fontSize: Typography.sizes.caption,
+    fontWeight: Typography.weights.bold,
+    color: Colors.textInverse,
+  },
+  headerIconBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.22)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  searchOuterWrap: {
+    width: '100%',
+    maxWidth: DashboardMaxContentWidth,
+    alignSelf: 'center',
+    paddingHorizontal: Spacing.three,
+    marginTop: 2,
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.full,
+    paddingLeft: Spacing.threeHalf,
+    paddingRight: 8,
+    minHeight: 46,
+    gap: 10,
+    ...Shadows.xs,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: Typography.sizes.bodySm,
+    fontWeight: Typography.weights.medium,
+    color: Colors.textPrimary,
+    paddingVertical: 8,
+  },
+  clearSearchBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: Colors.surfaceSubtle,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  clearSearchText: {
+    fontSize: 12,
+    fontWeight: Typography.weights.bold,
+    color: Colors.textSecondary,
+  },
+  scanIconBadge: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: Colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   scrollView: {
     flex: 1,
@@ -763,7 +1054,302 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     paddingHorizontal: Spacing.three,
     paddingTop: Spacing.three,
-    gap: Spacing.four,
+    gap: Spacing.three,
+  },
+  // Category Filter Chips
+  categoryChipsScroll: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 2,
+  },
+  categoryChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: BorderRadius.full,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    ...Shadows.xs,
+  },
+  categoryChipActive: {
+    backgroundColor: Colors.primaryDark,
+    borderColor: Colors.primaryDark,
+  },
+  categoryChipText: {
+    fontSize: Typography.sizes.xs,
+    fontWeight: Typography.weights.bold,
+    color: Colors.textSecondary,
+  },
+  categoryChipTextActive: {
+    color: Colors.textInverse,
+  },
+  hiddenStockNote: {
+    backgroundColor: Colors.warningLight,
+    borderColor: Colors.accentBorder,
+    borderWidth: 1,
+    borderRadius: BorderRadius.md,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: 6,
+  },
+  hiddenStockNoteText: {
+    fontSize: Typography.sizes.caption,
+    color: Colors.warningText,
+    fontWeight: Typography.weights.semiBold,
+  },
+  // 2-Column POS Product Grid
+  posGridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    rowGap: 12,
+  },
+  posProductTile: {
+    width: '48.2%',
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.xl,
+    borderWidth: 1,
+    borderColor: Colors.borderSubtle,
+    padding: 12,
+    gap: 10,
+    ...Shadows.sm,
+  },
+  posProductTileCompact: {
+    width: '100%',
+  },
+  posProductTileInCart: {
+    borderColor: Colors.primary,
+    borderWidth: 1.5,
+    backgroundColor: '#FCFDFC',
+  },
+  posProductTilePressed: {
+    opacity: 0.92,
+    transform: [{ scale: 0.985 }],
+  },
+  posImageStage: {
+    width: '100%',
+    height: 92,
+    borderRadius: BorderRadius.lg,
+    backgroundColor: Colors.surfaceSubtle,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  posProductImage: {
+    width: '84%',
+    height: '84%',
+  },
+  posFallbackIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: Colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tileQtyBadge: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    backgroundColor: Colors.primaryDark,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: BorderRadius.full,
+  },
+  tileQtyBadgeMax: {
+    backgroundColor: Colors.accent,
+  },
+  tileQtyBadgeText: {
+    fontSize: 10,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.textInverse,
+  },
+  posTileFooter: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    gap: 6,
+  },
+  posTileTextCol: {
+    flex: 1,
+    gap: 1,
+  },
+  posProductName: {
+    fontSize: Typography.sizes.bodySm,
+    fontWeight: Typography.weights.bold,
+    color: Colors.textPrimary,
+  },
+  posProductPrice: {
+    fontSize: Typography.sizes.base,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.textPrimary,
+  },
+  posProductStock: {
+    fontSize: 11,
+    fontWeight: Typography.weights.medium,
+    color: Colors.textMuted,
+  },
+  posAddCircleBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Shadows.xs,
+  },
+  posAddCircleBtnDisabled: {
+    backgroundColor: Colors.primaryLight,
+    borderWidth: 1,
+    borderColor: Colors.primaryBorder,
+  },
+  posAddCirclePlus: {
+    fontSize: 20,
+    fontWeight: Typography.weights.bold,
+    color: Colors.textInverse,
+    lineHeight: 22,
+  },
+  // No Match Filter State
+  noMatchCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.xl,
+    borderWidth: 1,
+    borderColor: Colors.borderSubtle,
+    padding: Spacing.four,
+    alignItems: 'center',
+    gap: 6,
+    ...Shadows.xs,
+  },
+  noMatchTitle: {
+    fontSize: Typography.sizes.base,
+    fontWeight: Typography.weights.bold,
+    color: Colors.textPrimary,
+  },
+  noMatchSubtitle: {
+    fontSize: Typography.sizes.xs,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+  },
+  resetFilterPill: {
+    marginTop: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: BorderRadius.full,
+    backgroundColor: Colors.primarySoft,
+    borderWidth: 1,
+    borderColor: Colors.primaryBorder,
+  },
+  resetFilterText: {
+    fontSize: Typography.sizes.caption,
+    fontWeight: Typography.weights.bold,
+    color: Colors.primaryDark,
+  },
+  // Integrated Cart Container
+  integratedCartCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.xxl,
+    borderWidth: 1,
+    borderColor: Colors.borderSubtle,
+    padding: Spacing.threeHalf,
+    gap: Spacing.twoHalf,
+    ...Shadows.md,
+  },
+  cartHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  cartHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  cartHeaderTitle: {
+    fontSize: Typography.sizes.lg,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.textPrimary,
+    letterSpacing: -0.2,
+  },
+  cartDistinctBadge: {
+    backgroundColor: Colors.primarySoft,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: BorderRadius.full,
+  },
+  cartDistinctBadgeText: {
+    fontSize: 11,
+    fontWeight: Typography.weights.bold,
+    color: Colors.primaryDark,
+  },
+  clearCartActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: BorderRadius.full,
+    backgroundColor: Colors.errorLight,
+  },
+  clearCartActionText: {
+    fontSize: Typography.sizes.caption,
+    fontWeight: Typography.weights.bold,
+    color: Colors.error,
+  },
+  cartItemsList: {
+    gap: 8,
+  },
+  cartDivider: {
+    height: 1,
+    backgroundColor: Colors.borderSubtle,
+    marginVertical: 2,
+  },
+  cartTotalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 2,
+  },
+  cartTotalLabel: {
+    fontSize: Typography.sizes.lg,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.textPrimary,
+  },
+  cartTotalValue: {
+    fontSize: Typography.sizes.xxl,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.primaryDark,
+    letterSpacing: -0.4,
+  },
+  emptyCartInner: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing.three,
+    gap: 6,
+  },
+  emptyCartIconCircle: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: Colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  emptyCartTitle: {
+    fontSize: Typography.sizes.bodySm,
+    fontWeight: Typography.weights.bold,
+    color: Colors.textPrimary,
+  },
+  emptyCartSubtitle: {
+    fontSize: Typography.sizes.xs,
+    color: Colors.textMuted,
+    textAlign: 'center',
+    maxWidth: 260,
+  },
+  emptyCartActionWrap: {
+    width: '100%',
+    marginTop: Spacing.two,
   },
   // State Cards (Loading & Error)
   stateCard: {
@@ -855,164 +1441,7 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
     marginTop: Spacing.two,
   },
-  // Cart Summary Card
-  cartSummaryCard: {
-    backgroundColor: Colors.pastel.green.bg,
-    borderRadius: BorderRadius.lg,
-    borderWidth: 1.5,
-    borderColor: Colors.pastel.green.border,
-    padding: Spacing.threeHalf,
-    gap: Spacing.one,
-    ...Shadows.xs,
-  },
-  summaryTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    flexWrap: 'wrap',
-    gap: Spacing.one,
-  },
-  summaryBadgePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: Colors.surface,
-    paddingHorizontal: Spacing.twoHalf,
-    paddingVertical: 4,
-    borderRadius: BorderRadius.full,
-    borderWidth: 1,
-    borderColor: Colors.primaryBorder,
-  },
-  summaryBadgeDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: Colors.primary,
-  },
-  summaryBadgeText: {
-    fontSize: Typography.sizes.caption,
-    fontWeight: Typography.weights.extraBold,
-    color: Colors.primaryDark,
-    textTransform: 'uppercase',
-    letterSpacing: 0.3,
-  },
-  summaryCountText: {
-    fontSize: Typography.sizes.caption,
-    fontWeight: Typography.weights.bold,
-    color: Colors.textSecondary,
-  },
-  summaryTotalAmount: {
-    fontSize: Typography.sizes.display,
-    fontWeight: Typography.weights.extraBold,
-    color: Colors.primaryDark,
-    marginVertical: 2,
-  },
-  summaryFooterRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 2,
-  },
-  summaryHintText: {
-    fontSize: Typography.sizes.xs,
-    color: Colors.textSecondary,
-    lineHeight: Typography.lineHeights.tight,
-  },
-  // Empty Cart Card
-  emptyCartCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderStyle: 'dashed',
-    paddingVertical: Spacing.four,
-    paddingHorizontal: Spacing.three,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.one,
-    ...Shadows.xs,
-  },
-  emptyCartIconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: Colors.primarySoft,
-    borderWidth: 1,
-    borderColor: Colors.primaryBorder,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: Spacing.one,
-  },
-  emptyCartTitle: {
-    fontSize: Typography.sizes.base,
-    fontWeight: Typography.weights.bold,
-    color: Colors.textPrimary,
-    textAlign: 'center',
-  },
-  emptyCartSubtitle: {
-    fontSize: Typography.sizes.xs,
-    color: Colors.textMuted,
-    textAlign: 'center',
-    maxWidth: 280,
-  },
-  emptyCartActionWrap: {
-    width: '100%',
-    maxWidth: 280,
-    marginTop: Spacing.sm,
-  },
-  // Cart Section
-  cartSection: {
-    gap: Spacing.twoHalf,
-  },
-  cartItemsList: {
-    gap: Spacing.twoHalf,
-  },
-  checkoutActionWrap: {
-    marginTop: Spacing.xs,
-  },
-  // Products Catalog Section
-  productsSection: {
-    gap: Spacing.twoHalf,
-  },
-  hiddenStockNote: {
-    backgroundColor: Colors.warningLight,
-    borderColor: Colors.accentBorder,
-    borderWidth: 1,
-    borderRadius: BorderRadius.sm,
-    paddingHorizontal: Spacing.twoHalf,
-    paddingVertical: Spacing.one,
-  },
-  hiddenStockNoteText: {
-    fontSize: Typography.sizes.caption,
-    color: Colors.warningText,
-    fontWeight: Typography.weights.semiBold,
-  },
-  productsGrid: {
-    gap: Spacing.twoHalf,
-  },
-  productCardWrapper: {
-    gap: 4,
-  },
-  inCartBadge: {
-    backgroundColor: Colors.primaryLight,
-    borderWidth: 1,
-    borderColor: Colors.primaryBorder,
-    borderRadius: BorderRadius.sm,
-    paddingVertical: 4,
-    paddingHorizontal: Spacing.twoHalf,
-    alignSelf: 'flex-start',
-    marginLeft: Spacing.one,
-  },
-  inCartBadgeMax: {
-    backgroundColor: Colors.warningLight,
-    borderColor: Colors.accentBorder,
-  },
-  inCartBadgeText: {
-    fontSize: Typography.sizes.caption,
-    fontWeight: Typography.weights.bold,
-    color: Colors.primaryDark,
-  },
-  inCartBadgeTextMax: {
-    color: Colors.warningText,
+  buttonPressed: {
+    opacity: 0.85,
   },
 });

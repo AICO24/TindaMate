@@ -27,14 +27,12 @@ interface CartItemCardProps {
 }
 
 /**
- * CartItemCard
+ * CartItemCard (TindaMate Design 2.0)
  *
- * Mobile-first list item card representing an active product line item in the POS cart:
- * - Product Name, category/unit, and unit price
- * - Interactive − / + quantity stepper controls
- * - Line item subtotal (quantity × unit price)
- * - Explicit "Remove" action button
- * - Stock limit indicator when cart quantity reaches available store stock
+ * Compact, high-density retail POS cart line item row:
+ * - Left: Product thumbnail or icon badge
+ * - Middle: Product name, unit price, and max-stock warning pill
+ * - Right: Compact (− qty +) stepper, bold line subtotal (₱), and quick remove button
  */
 export function CartItemCard({
   item,
@@ -51,8 +49,8 @@ export function CartItemCard({
 
   return (
     <View style={[styles.card, isCompactPhone && styles.cardCompact]}>
-      {/* Top Row: Thumbnail/Icon + Name/Meta + Remove Action */}
-      <View style={styles.topRow}>
+      <View style={styles.mainRow}>
+        {/* Left Thumbnail / Icon */}
         {item.imageUrl ? (
           <Image
             source={{ uri: item.imageUrl }}
@@ -62,63 +60,29 @@ export function CartItemCard({
             accessibilityLabel={`${item.productName} photo`}
           />
         ) : (
-          <View style={styles.iconBox} importantForAccessibility="no-hide-descendants" accessible={false}>
+          <View
+            style={styles.iconBox}
+            importantForAccessibility="no-hide-descendants"
+            accessible={false}>
             <DashboardBadgeVectorIcon type="products" color={Colors.primary} />
           </View>
         )}
 
+        {/* Product Name & Unit Price */}
         <View style={styles.infoCol}>
           <Text
             style={styles.productName}
-            numberOfLines={2}
-            maxFontSizeMultiplier={1.3}>
+            numberOfLines={1}
+            maxFontSizeMultiplier={1.25}>
             {item.productName}
           </Text>
-
-          <View style={styles.priceRow}>
-            <Text style={styles.unitPriceText} maxFontSizeMultiplier={1.2}>
-              {formattedUnitPrice} <Text style={styles.unitSuffix}>/ {item.unit}</Text>
-            </Text>
-            {item.category ? (
-              <>
-                <Text style={styles.dotSeparator}>•</Text>
-                <Text style={styles.categoryText} numberOfLines={1}>
-                  {item.category}
-                </Text>
-              </>
-            ) : null}
-          </View>
-        </View>
-
-        {/* Remove Button */}
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`Remove ${item.productName} from cart`}
-          accessibilityHint="Deletes this item line from the cart"
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          onPress={() => onRemove(item.productId)}
-          style={({ pressed }) => [
-            styles.removeButton,
-            pressed && styles.removeButtonPressed,
-          ]}>
-          <Text style={styles.removeButtonText}>Remove</Text>
-        </Pressable>
-      </View>
-
-      {/* Stock warning pill if quantity reaches or exceeds available store stock */}
-      {isAtMaxStock ? (
-        <View style={styles.maxStockBanner}>
-          <Text style={styles.maxStockText}>
-            Max stock reached ({item.availableStock} {item.unit} available)
+          <Text style={styles.unitPriceText} maxFontSizeMultiplier={1.2}>
+            {formattedUnitPrice}{' '}
+            <Text style={styles.unitSuffix}>/ {item.unit}</Text>
           </Text>
         </View>
-      ) : null}
 
-      <View style={styles.divider} />
-
-      {/* Bottom Row: Stepper Controls + Line Subtotal */}
-      <View style={styles.bottomRow}>
-        {/* Quantity Stepper */}
+        {/* Compact Stepper (−  qty  +) */}
         <View style={styles.stepperContainer}>
           <Pressable
             accessibilityRole="button"
@@ -129,6 +93,7 @@ export function CartItemCard({
                 : 'Decreases quantity by 1'
             }
             onPress={() => onDecrement(item.productId)}
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
             style={({ pressed }) => [
               styles.stepperButton,
               pressed && styles.stepperButtonPressed,
@@ -136,17 +101,12 @@ export function CartItemCard({
             <Text style={styles.stepperButtonText}>−</Text>
           </Pressable>
 
-          <View style={styles.quantityDisplayBox}>
-            <Text
-              style={styles.quantityText}
-              numberOfLines={1}
-              maxFontSizeMultiplier={1.25}>
-              {item.quantity}
-            </Text>
-            <Text style={styles.quantityUnitText} numberOfLines={1}>
-              {item.unit}
-            </Text>
-          </View>
+          <Text
+            style={styles.quantityText}
+            numberOfLines={1}
+            maxFontSizeMultiplier={1.2}>
+            {item.quantity}
+          </Text>
 
           <Pressable
             accessibilityRole="button"
@@ -158,14 +118,17 @@ export function CartItemCard({
             }
             disabled={isAtMaxStock}
             onPress={() => onIncrement(item.productId)}
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
             style={({ pressed }) => [
               styles.stepperButton,
+              styles.stepperButtonPlus,
               isAtMaxStock && styles.stepperButtonDisabled,
               pressed && !isAtMaxStock && styles.stepperButtonPressed,
             ]}>
             <Text
               style={[
                 styles.stepperButtonText,
+                styles.stepperButtonPlusText,
                 isAtMaxStock && styles.stepperButtonTextDisabled,
               ]}>
               +
@@ -173,19 +136,38 @@ export function CartItemCard({
           </Pressable>
         </View>
 
-        {/* Subtotal Display */}
-        <View style={styles.subtotalCol}>
-          <Text style={styles.subtotalLabel}>Subtotal</Text>
+        {/* Line Subtotal + Remove */}
+        <View style={styles.rightCol}>
           <Text
             style={styles.subtotalValue}
             numberOfLines={1}
             adjustsFontSizeToFit
             minimumFontScale={0.85}
-            maxFontSizeMultiplier={1.3}>
+            maxFontSizeMultiplier={1.2}>
             {formattedSubtotal}
           </Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Remove ${item.productName} from cart`}
+            accessibilityHint="Deletes this item line from the cart"
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            onPress={() => onRemove(item.productId)}
+            style={({ pressed }) => [
+              styles.removeLink,
+              pressed && styles.removeLinkPressed,
+            ]}>
+            <Text style={styles.removeLinkText}>Remove</Text>
+          </Pressable>
         </View>
       </View>
+
+      {isAtMaxStock ? (
+        <View style={styles.maxStockBanner}>
+          <Text style={styles.maxStockText}>
+            Max stock reached ({item.availableStock} {item.unit} available)
+          </Text>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -193,35 +175,34 @@ export function CartItemCard({
 const styles = StyleSheet.create({
   card: {
     backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.lg,
+    borderRadius: BorderRadius.md,
     borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.three,
-    gap: Spacing.twoHalf,
-    ...Shadows.xs,
+    borderColor: Colors.borderSubtle,
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.twoHalf,
+    gap: Spacing.one,
   },
   cardCompact: {
-    padding: Spacing.twoHalf,
+    paddingHorizontal: Spacing.two,
+  },
+  mainRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     gap: Spacing.two,
   },
-  topRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: Spacing.twoHalf,
-  },
   thumbnail: {
-    width: 44,
-    height: 44,
-    borderRadius: BorderRadius.md,
+    width: 38,
+    height: 38,
+    borderRadius: BorderRadius.sm,
     borderWidth: 1,
     borderColor: Colors.border,
     backgroundColor: Colors.backgroundAlt,
   },
   iconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: BorderRadius.md,
+    width: 38,
+    height: 38,
+    borderRadius: BorderRadius.sm,
     borderWidth: 1,
     borderColor: Colors.pastel.green.border,
     backgroundColor: Colors.pastel.green.bg,
@@ -230,101 +211,51 @@ const styles = StyleSheet.create({
   },
   infoCol: {
     flex: 1,
-    gap: 3,
+    gap: 1,
   },
   productName: {
-    fontSize: Typography.sizes.base,
+    fontSize: Typography.sizes.bodySm,
     fontWeight: Typography.weights.extraBold,
     color: Colors.textPrimary,
-    lineHeight: Typography.lineHeights.normal,
-  },
-  priceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 4,
   },
   unitPriceText: {
     fontSize: Typography.sizes.caption,
     fontWeight: Typography.weights.semiBold,
-    color: Colors.primaryDark,
+    color: Colors.textSecondary,
   },
   unitSuffix: {
     fontSize: Typography.sizes.caption,
     fontWeight: Typography.weights.regular,
     color: Colors.textMuted,
   },
-  dotSeparator: {
-    fontSize: Typography.sizes.caption,
-    color: Colors.textMuted,
-  },
-  categoryText: {
-    fontSize: Typography.sizes.caption,
-    color: Colors.textSecondary,
-    fontWeight: Typography.weights.medium,
-  },
-  removeButton: {
-    paddingHorizontal: Spacing.two,
-    paddingVertical: 5,
-    borderRadius: BorderRadius.sm,
-    backgroundColor: Colors.errorLight,
-    borderWidth: 1,
-    borderColor: Colors.errorBorder,
-  },
-  removeButtonPressed: {
-    opacity: 0.7,
-  },
-  removeButtonText: {
-    fontSize: Typography.sizes.xs,
-    fontWeight: Typography.weights.bold,
-    color: Colors.error,
-  },
-  maxStockBanner: {
-    backgroundColor: Colors.warningLight,
-    borderColor: Colors.accentBorder,
-    borderWidth: 1,
-    borderRadius: BorderRadius.sm,
-    paddingHorizontal: Spacing.two,
-    paddingVertical: 4,
-  },
-  maxStockText: {
-    fontSize: Typography.sizes.caption,
-    color: Colors.warningText,
-    fontWeight: Typography.weights.semiBold,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: Colors.borderSubtle,
-  },
-  bottomRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Spacing.two,
-  },
   stepperContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     backgroundColor: Colors.backgroundAlt,
-    borderRadius: BorderRadius.md,
+    borderRadius: BorderRadius.full,
     borderWidth: 1,
     borderColor: Colors.border,
-    padding: 3,
+    paddingHorizontal: 4,
+    paddingVertical: 3,
   },
   stepperButton: {
-    width: 38,
-    height: 38,
-    borderRadius: BorderRadius.sm,
-    backgroundColor: Colors.primarySoft,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: Colors.surface,
     borderWidth: 1,
-    borderColor: Colors.primaryBorder,
+    borderColor: Colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  stepperButtonPlus: {
+    backgroundColor: Colors.primarySoft,
+    borderColor: Colors.primaryBorder,
+  },
   stepperButtonPressed: {
-    backgroundColor: Colors.primaryLight,
-    transform: [{ scale: 0.95 }],
+    transform: [{ scale: 0.92 }],
+    opacity: 0.8,
   },
   stepperButtonDisabled: {
     backgroundColor: Colors.backgroundAlt,
@@ -332,46 +263,60 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   stepperButtonText: {
-    fontSize: Typography.sizes.lg,
+    fontSize: Typography.sizes.base,
     fontWeight: Typography.weights.extraBold,
+    color: Colors.textPrimary,
+    lineHeight: 18,
+  },
+  stepperButtonPlusText: {
     color: Colors.primaryDark,
-    lineHeight: 22,
   },
   stepperButtonTextDisabled: {
     color: Colors.textMuted,
   },
-  quantityDisplayBox: {
-    minWidth: 44,
-    paddingHorizontal: Spacing.one,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   quantityText: {
-    fontSize: Typography.sizes.base,
+    minWidth: 20,
+    textAlign: 'center',
+    fontSize: Typography.sizes.bodySm,
     fontWeight: Typography.weights.extraBold,
     color: Colors.textPrimary,
   },
-  quantityUnitText: {
-    fontSize: 10,
-    fontWeight: Typography.weights.medium,
-    color: Colors.textMuted,
-    marginTop: -2,
-  },
-  subtotalCol: {
+  rightCol: {
     alignItems: 'flex-end',
+    justifyContent: 'center',
+    minWidth: 64,
     gap: 2,
   },
-  subtotalLabel: {
-    fontSize: Typography.sizes.caption,
-    color: Colors.textMuted,
-    fontWeight: Typography.weights.semiBold,
-    textTransform: 'uppercase',
-    letterSpacing: 0.2,
-  },
   subtotalValue: {
-    fontSize: Typography.sizes.lg,
+    fontSize: Typography.sizes.body,
     fontWeight: Typography.weights.extraBold,
-    color: Colors.primaryDark,
+    color: Colors.textPrimary,
+  },
+  removeLink: {
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+  },
+  removeLinkPressed: {
+    opacity: 0.65,
+  },
+  removeLinkText: {
+    fontSize: 10,
+    fontWeight: Typography.weights.bold,
+    color: Colors.error,
+  },
+  maxStockBanner: {
+    backgroundColor: Colors.warningLight,
+    borderColor: Colors.accentBorder,
+    borderWidth: 1,
+    borderRadius: BorderRadius.xs,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: 3,
+    marginTop: 2,
+  },
+  maxStockText: {
+    fontSize: 10,
+    color: Colors.warningText,
+    fontWeight: Typography.weights.semiBold,
   },
 });
 
