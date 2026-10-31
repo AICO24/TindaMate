@@ -132,35 +132,24 @@ export default function MoreScreen() {
     }
   };
 
-  const storeMenuItems: MenuRowItem[] = [
+  const menuItems: MenuRowItem[] = [
     {
       id: 'store_profile',
       label: 'Store Profile',
-      subtitle: 'Store details & owner account',
-      iconBg: '#DCFCE7',
-      iconElement: <NavHomeIcon color={Colors.primaryDark} />,
+      iconBg: '#E0F2FE',
+      iconElement: <NavHomeIcon color="#0284C7" />,
       onPress: () => setActiveInfoSheet('profile'),
     },
     {
       id: 'inventory',
       label: 'Inventory',
-      subtitle: 'Products, stock levels & pricing',
-      iconBg: '#FFEDD5',
-      iconElement: <NavProductsIcon color={Colors.accent} />,
+      iconBg: '#DCFCE7',
+      iconElement: <NavProductsIcon color={Colors.primary} />,
       onPress: () => router.push('/products'),
-    },
-    {
-      id: 'customers',
-      label: 'Customers & Utang',
-      subtitle: 'Credit ledger & customer payments',
-      iconBg: '#E0F2FE',
-      iconElement: <NavUtangIcon color="#0284C7" />,
-      onPress: () => router.push('/customers' as any),
     },
     {
       id: 'expenses',
       label: 'Expenses',
-      subtitle: 'Track daily store operating costs',
       iconBg: '#FEF3C7',
       iconElement: (
         <DashboardBadgeVectorIcon type="utang_summary" color="#D97706" />
@@ -170,27 +159,10 @@ export default function MoreScreen() {
     {
       id: 'reports',
       label: 'Reports',
-      subtitle: 'Sales trends, profit & top products',
       iconBg: '#DCFCE7',
       iconElement: <TrendChartVectorIcon color={Colors.primary} size={18} />,
       onPress: () => router.push('/reports' as any),
     },
-    {
-      id: 'sales_history',
-      label: 'Sales History',
-      subtitle: 'Past receipts & transactions',
-      iconBg: '#F1F5F9',
-      iconElement: (
-        <DashboardBadgeVectorIcon
-          type="sales_history"
-          color={Colors.primaryDark}
-        />
-      ),
-      onPress: () => router.push('/sales/history'),
-    },
-  ];
-
-  const accountMenuItems: MenuRowItem[] = [
     {
       id: 'settings',
       label: 'Settings',
@@ -263,10 +235,9 @@ export default function MoreScreen() {
               </View>
             </Pressable>
 
-            {/* Unified Menu Card (Store + Account Rows) */}
+            {/* Unified Menu Card */}
             <View style={styles.menuGroupCard}>
-              <Text style={styles.menuSectionLabel}>STORE MANAGEMENT</Text>
-              {storeMenuItems.map((item, idx) => (
+              {menuItems.map((item, idx) => (
                 <React.Fragment key={item.id}>
                   <Pressable
                     accessibilityRole="button"
@@ -293,38 +264,7 @@ export default function MoreScreen() {
                     </View>
                     <Text style={styles.menuChevron}>›</Text>
                   </Pressable>
-                  {idx < storeMenuItems.length - 1 ? (
-                    <View style={styles.menuDivider} />
-                  ) : null}
-                </React.Fragment>
-              ))}
-
-              <View style={styles.sectionGapDivider} />
-              <Text style={styles.menuSectionLabel}>ACCOUNT & SUPPORT</Text>
-
-              {accountMenuItems.map((item, idx) => (
-                <React.Fragment key={item.id}>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={item.label}
-                    onPress={item.onPress}
-                    style={({ pressed }) => [
-                      styles.menuRow,
-                      pressed && styles.rowPressed,
-                    ]}>
-                    <View
-                      style={[
-                        styles.menuIconBox,
-                        { backgroundColor: item.iconBg },
-                      ]}>
-                      {item.iconElement}
-                    </View>
-                    <View style={styles.menuTextCol}>
-                      <Text style={styles.menuRowLabel}>{item.label}</Text>
-                    </View>
-                    <Text style={styles.menuChevron}>›</Text>
-                  </Pressable>
-                  {idx < accountMenuItems.length - 1 ? (
+                  {idx < menuItems.length - 1 ? (
                     <View style={styles.menuDivider} />
                   ) : null}
                 </React.Fragment>
