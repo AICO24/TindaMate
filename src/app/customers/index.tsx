@@ -23,6 +23,7 @@ import {
 import { DashboardErrorBanner } from '@/components/dashboard/DashboardErrorBanner';
 import { DashboardMarketIllustration } from '@/components/dashboard/DashboardMarketIllustration';
 import {
+  DashboardBadgeVectorIcon,
   NavUtangIcon,
   SearchVectorIcon,
 } from '@/components/dashboard/DashboardNavIcons';
@@ -255,7 +256,7 @@ export default function CustomersListScreen() {
                 ]}>
                 <View style={styles.outstandingHeroGlow} />
                 <View style={styles.outstandingIconCircle}>
-                  <NavUtangIcon color={Colors.textInverse} />
+                  <DashboardBadgeVectorIcon type="record_utang" color={Colors.textInverse} />
                 </View>
 
                 <View style={styles.outstandingTextCol}>
