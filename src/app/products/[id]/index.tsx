@@ -19,6 +19,7 @@ import {
   DashboardBadgeVectorIcon,
   NavProductsIcon,
 } from '@/components/dashboard/DashboardNavIcons';
+import { OrganicWaveDecoration } from '@/components/dashboard/OrganicWaveDecoration';
 import { ProductScreenHeader } from '@/components/products/ProductScreenHeader';
 import { TindaMateButton } from '@/components/ui/TindaMateButton';
 import {
@@ -139,6 +140,7 @@ export default function ProductDetailsScreen() {
     } as any);
   };
 
+  const [isFavorite, setIsFavorite] = useState(false);
   const status = product
     ? getProductStockStatus(
         product.stock_quantity,
@@ -156,11 +158,28 @@ export default function ProductDetailsScreen() {
         {/* Deep Green Top Header */}
         <View style={styles.heroHeaderZone}>
           <ProductScreenHeader
-            title="Product Details"
+            title=""
             onBack={handleBack}
-            rightActionLabel={product ? 'Edit' : undefined}
-            rightActionAccessibilityLabel="Edit this product"
-            onRightActionPress={product ? handleEdit : undefined}
+            rightElement={
+              <View style={styles.headerRightActions}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                  onPress={() => setIsFavorite((prev) => !prev)}
+                  style={styles.headerIconBtn}>
+                  <Text style={[styles.headerGlyph, isFavorite && { color: '#EF4444' }]}>
+                    {isFavorite ? '♥' : '♡'}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Product menu options"
+                  onPress={handleEdit}
+                  style={styles.headerIconBtn}>
+                  <Text style={styles.headerGlyph}>⋮</Text>
+                </Pressable>
+              </View>
+            }
           />
         </View>
 
@@ -217,8 +236,10 @@ export default function ProductDetailsScreen() {
               <>
                 {/* Main Product Showcase Card */}
                 <View style={styles.showcaseCard}>
-                  {/* Centered Product Image Stage */}
+                  {/* Centered Product Image Stage with Organic Waves */}
                   <View style={styles.imageStage}>
+                    <View style={styles.stageWaveTop} pointerEvents="none" />
+                    <View style={styles.stageWaveWarm} pointerEvents="none" />
                     {hasValidImage ? (
                       <Image
                         source={{ uri: product.image_url!.trim() }}
@@ -295,39 +316,6 @@ export default function ProductDetailsScreen() {
                           ? `Low stock alert active (threshold: ${product.low_stock_threshold} ${product.unit}).`
                           : `Ready for POS checkout (${product.stock_quantity} ${product.unit} available in store).`}
                       </Text>
-                    </View>
-
-                    {/* Cost Price & Profit Margin Row */}
-                    <View
-                      style={[
-                        styles.metricsGrid,
-                        isCompactPhone && styles.metricsGridStacked,
-                      ]}>
-                      <View style={styles.metricMiniCard}>
-                        <Text style={styles.metricLabel}>Cost Price (COGS)</Text>
-                        <Text style={styles.metricValue}>
-                          {product.cost_price !== null
-                            ? formatPesoCurrency(product.cost_price)
-                            : 'Not set'}
-                        </Text>
-                        <Text style={styles.metricCaption}>
-                          {product.cost_price !== null
-                            ? `Margin: ${formatPesoCurrency(
-                                product.selling_price - product.cost_price
-                              )} / ${product.unit}`
-                            : 'Optional unit cost'}
-                        </Text>
-                      </View>
-
-                      <View style={styles.metricMiniCard}>
-                        <Text style={styles.metricLabel}>Alert Threshold</Text>
-                        <Text style={styles.metricValue}>
-                          {product.low_stock_threshold} {product.unit}
-                        </Text>
-                        <Text style={styles.metricCaption}>
-                          Updated {formatTimestamp(product.updated_at)}
-                        </Text>
-                      </View>
                     </View>
                   </View>
 
@@ -439,6 +427,7 @@ export default function ProductDetailsScreen() {
             )}
           </View>
         </ScrollView>
+        <OrganicWaveDecoration />
       </View>
     </SafeAreaView>
   );
@@ -459,6 +448,26 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 24,
     paddingBottom: Spacing.one,
     ...Shadows.sm,
+  },
+  headerRightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerIconBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerGlyph: {
+    fontSize: 18,
+    color: Colors.textInverse,
+    fontWeight: 'bold',
   },
   scrollView: {
     flex: 1,
@@ -486,14 +495,35 @@ const styles = StyleSheet.create({
   },
   imageStage: {
     width: '100%',
-    height: 190,
+    height: 200,
     borderRadius: BorderRadius.xl,
-    backgroundColor: Colors.surfaceSubtle,
+    backgroundColor: '#FAFAF9',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: Colors.borderSubtle,
+    position: 'relative',
+  },
+  stageWaveTop: {
+    position: 'absolute',
+    top: -50,
+    right: -40,
+    width: 190,
+    height: 190,
+    borderRadius: 95,
+    backgroundColor: '#10B981',
+    opacity: 0.18,
+  },
+  stageWaveWarm: {
+    position: 'absolute',
+    bottom: -60,
+    left: -30,
+    width: 170,
+    height: 170,
+    borderRadius: 85,
+    backgroundColor: '#F59E0B',
+    opacity: 0.2,
   },
   heroImage: {
     width: '82%',
