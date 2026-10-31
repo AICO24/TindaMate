@@ -257,13 +257,13 @@ export function NavPosIcon({ color = Colors.textMuted, size = IconSizes.nav }: I
  */
 export function NavFloatingCenterIcon({
   color = Colors.textInverse,
-  size = 26,
+  size = 28,
 }: IconProps) {
-  const corner = 7;
+  const corner = 7.5;
   const stroke = 2.2;
   return (
     <View style={[styles.center, { width: size, height: size }]}>
-      <View style={{ width: 22, height: 22, position: 'relative', alignItems: 'center', justifyContent: 'center' }}>
+      <View style={{ width: 26, height: 26, position: 'relative', alignItems: 'center', justifyContent: 'center' }}>
         {/* Top-Left Corner */}
         <View
           style={{
@@ -320,24 +320,24 @@ export function NavFloatingCenterIcon({
             borderBottomRightRadius: 3,
           }}
         />
-        {/* Center Scan Bar / Plus */}
-        <View
-          style={{
-            width: 10,
-            height: 2.2,
-            backgroundColor: color,
-            borderRadius: 1.1,
-          }}
-        />
-        <View
-          style={{
-            position: 'absolute',
-            width: 2.2,
-            height: 10,
-            backgroundColor: color,
-            borderRadius: 1.1,
-          }}
-        />
+        {/* Center Dotted Pattern matching reference floating button */}
+        <View style={{ width: 12, height: 12, alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+          <View style={{ flexDirection: 'row', gap: 2 }}>
+            <View style={{ width: 2.2, height: 2.2, borderRadius: 1.1, backgroundColor: color }} />
+            <View style={{ width: 2.2, height: 2.2, borderRadius: 1.1, backgroundColor: color }} />
+            <View style={{ width: 2.2, height: 2.2, borderRadius: 1.1, backgroundColor: color }} />
+          </View>
+          <View style={{ flexDirection: 'row', gap: 2 }}>
+            <View style={{ width: 2.2, height: 2.2, borderRadius: 1.1, backgroundColor: color }} />
+            <View style={{ width: 2.8, height: 2.8, borderRadius: 1.4, backgroundColor: color }} />
+            <View style={{ width: 2.2, height: 2.2, borderRadius: 1.1, backgroundColor: color }} />
+          </View>
+          <View style={{ flexDirection: 'row', gap: 2 }}>
+            <View style={{ width: 2.2, height: 2.2, borderRadius: 1.1, backgroundColor: color }} />
+            <View style={{ width: 2.2, height: 2.2, borderRadius: 1.1, backgroundColor: color }} />
+            <View style={{ width: 2.2, height: 2.2, borderRadius: 1.1, backgroundColor: color }} />
+          </View>
+        </View>
       </View>
     </View>
   );
