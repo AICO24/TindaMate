@@ -28,6 +28,7 @@ export const Colors = {
   // Primary Brand Colors (TindaMate Green / Teal)
   primary: '#0D7A4D',         // Primary interactive green (Buttons, active states, links)
   primaryDark: '#064E3B',     // Deep forest green (Brand wordmark, hero headings, active nav)
+  primaryDeep: '#065F46',     // Supporting deep emerald green
   primaryBrand: '#105B48',    // Emblem & display headline green
   primaryPressed: '#0A5C3A',  // Pressed/active primary button state
   primaryLight: '#E8F5E9',    // Soft green tint (Badges, subtle highlights, pressed outline)
@@ -36,22 +37,24 @@ export const Colors = {
 
   // Accent Colors (Warm Market Orange)
   accent: '#EA580C',          // "Mate" brand orange & key highlights
+  accentMedium: '#F97316',    // Supporting vibrant orange accent
   accentWarm: '#F59E0B',      // Warm amber accent (Stars, awnings, secondary highlights)
   accentPressed: '#D97706',   // Pressed amber/orange state
   accentLight: '#FFF4E8',     // Soft orange surface tint
   accentBorder: '#FFE4CB',    // Soft orange border
 
   // Background & Surface Colors
-  background: '#FFFFFF',      // Primary clean screen background
+  background: '#F8FAF7',      // Primary clean soft sage-tinted background (Design 2.0)
   backgroundWarm: '#FCFAF2',  // Warm cream/mint-tinted hero & header backdrop
-  backgroundAlt: '#F8FAFC',   // Subtle secondary slate surface
+  backgroundAlt: '#F1F5F2',   // Subtle secondary sage-slate surface
+  surfaceSubtle: '#F3F6F4',   // Subtle container / image stage background
   surface: '#FFFFFF',         // Elevated card & input surface
   card: '#FFFFFF',            // Alias for card container surface
 
   // Border & Divider Colors
   border: '#E2E8F0',          // Default card & input border (Slate 200)
   borderFocused: '#0D7A4D',   // Focused input border (Primary green)
-  borderSubtle: '#F1F5F9',    // Subtle section/row divider (Slate 100)
+  borderSubtle: '#EDF2EE',    // Subtle section/row divider
 
   // Typography Colors
   textPrimary: '#0F172A',     // High-contrast primary body & dark titles (Slate 900)
@@ -184,10 +187,12 @@ export const Typography = {
     bodySm: 14,         // Supporting text, form prompts, card titles
     body: 15,           // Standard body text, input text
     base: 16,           // Primary button text, prominent labels
+    md: 17,             // Medium-prominent card headings
     sectionHeading: 19, // Dashboard section headers ("Store Overview", "Quick Actions")
     lg: 20,             // Modal titles, sub-headers
     xl: 24,             // Auth screen titles ("Welcome Back!", "Create Your Account")
     displaySm: 26,      // Hero user greeting name
+    xxl: 28,            // Prominent KPI and cart total display
     display: 32,        // Welcome hero headline ("Shop Local, Support Small")
     hero: 38,           // Extra-large display title
   },
@@ -224,7 +229,7 @@ export const IconSizes = {
  * Elevation & Shadow Presets
  * Subtle, cohesive shadows for mobile cards, buttons, and bars.
  */
-export const Shadows: Record<'none' | 'xs' | 'sm' | 'md' | 'primaryButton' | 'bottomNav', ViewStyle> = {
+export const Shadows: Record<'none' | 'xs' | 'sm' | 'md' | 'primaryButton' | 'accentButton' | 'bottomNav' | 'floatingCenter', ViewStyle> = {
   none: {
     shadowColor: 'transparent',
     shadowOffset: { width: 0, height: 0 },
@@ -233,38 +238,52 @@ export const Shadows: Record<'none' | 'xs' | 'sm' | 'md' | 'primaryButton' | 'bo
     elevation: 0,
   },
   xs: {
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 1 },
+    shadowColor: '#064E3B',
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
-    shadowRadius: 3,
+    shadowRadius: 6,
     elevation: 1,
   },
   sm: {
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 2 },
+    shadowColor: '#064E3B',
+    shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.06,
-    shadowRadius: 5,
+    shadowRadius: 8,
     elevation: 2,
   },
   md: {
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowColor: '#064E3B',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.09,
+    shadowRadius: 12,
+    elevation: 4,
   },
   primaryButton: {
     shadowColor: '#0D7A4D',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.22,
+    shadowOpacity: 0.24,
     shadowRadius: 8,
     elevation: 4,
   },
+  accentButton: {
+    shadowColor: '#EA580C',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.28,
+    shadowRadius: 10,
+    elevation: 5,
+  },
   bottomNav: {
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
+    shadowColor: '#064E3B',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.07,
+    shadowRadius: 12,
+    elevation: 12,
+  },
+  floatingCenter: {
+    shadowColor: '#064E3B',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.28,
+    shadowRadius: 10,
     elevation: 8,
   },
 };

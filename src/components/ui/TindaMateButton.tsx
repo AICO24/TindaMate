@@ -18,7 +18,7 @@ import {
   Typography,
 } from '@/constants/theme';
 
-export type TindaMateButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
+export type TindaMateButtonVariant = 'primary' | 'accent' | 'secondary' | 'ghost' | 'danger';
 
 export type TindaMateButtonProps = {
   /** Text displayed inside the button */
@@ -31,6 +31,8 @@ export type TindaMateButtonProps = {
   loading?: boolean;
   /** Whether to append a right arrow indicator (→) */
   showArrow?: boolean;
+  /** Optional left icon element */
+  leftIcon?: React.ReactNode;
   /** Optional custom accessibility label for screen readers */
   accessibilityLabel?: string;
   /** Optional flag to disable interactions */
@@ -57,6 +59,7 @@ export function TindaMateButton({
   variant = 'primary',
   loading = false,
   showArrow = false,
+  leftIcon,
   accessibilityLabel,
   disabled = false,
   style,
@@ -65,7 +68,7 @@ export function TindaMateButton({
   const isDisabled = disabled || loading;
 
   const spinnerColor =
-    variant === 'primary'
+    variant === 'primary' || variant === 'accent'
       ? Colors.textInverse
       : variant === 'danger'
       ? Colors.error
@@ -81,36 +84,40 @@ export function TindaMateButton({
       style={({ pressed }) => [
         styles.base,
         variant === 'primary' && styles.primary,
+        variant === 'accent' && styles.accent,
         variant === 'secondary' && styles.secondary,
         variant === 'ghost' && styles.ghost,
         variant === 'danger' && styles.danger,
         pressed && !isDisabled && variant === 'primary' && styles.primaryPressed,
+        pressed && !isDisabled && variant === 'accent' && styles.accentPressed,
         pressed && !isDisabled && variant === 'secondary' && styles.secondaryPressed,
         pressed && !isDisabled && variant === 'ghost' && styles.ghostPressed,
         pressed && !isDisabled && variant === 'danger' && styles.dangerPressed,
-        isDisabled && variant === 'primary' && styles.primaryDisabled,
-        isDisabled && variant !== 'primary' && styles.nonPrimaryDisabled,
+        isDisabled && (variant === 'primary' || variant === 'accent') && styles.primaryDisabled,
+        isDisabled && variant !== 'primary' && variant !== 'accent' && styles.nonPrimaryDisabled,
         style,
       ]}>
       <View style={styles.contentRow}>
-        {loading && (
+        {loading ? (
           <ActivityIndicator
             size="small"
             color={spinnerColor}
             style={styles.spinner}
           />
-        )}
+        ) : leftIcon ? (
+          <View style={styles.leftIconWrap}>{leftIcon}</View>
+        ) : null}
         <Text
           numberOfLines={1}
           adjustsFontSizeToFit
           minimumFontScale={0.85}
           style={[
             styles.baseText,
-            variant === 'primary' && styles.primaryText,
+            (variant === 'primary' || variant === 'accent') && styles.primaryText,
             variant === 'secondary' && styles.secondaryText,
             variant === 'ghost' && styles.ghostText,
             variant === 'danger' && styles.dangerText,
-            isDisabled && variant === 'primary' && styles.primaryTextDisabled,
+            isDisabled && (variant === 'primary' || variant === 'accent') && styles.primaryTextDisabled,
             textStyle,
           ]}>
           {title}
@@ -119,7 +126,7 @@ export function TindaMateButton({
           <Text
             style={[
               styles.arrowText,
-              variant === 'primary' ? styles.primaryText : styles.secondaryText,
+              variant === 'primary' || variant === 'accent' ? styles.primaryText : styles.secondaryText,
             ]}>
             →
           </Text>
@@ -148,6 +155,10 @@ const styles = StyleSheet.create({
   spinner: {
     marginRight: 2,
   },
+  leftIconWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   // Primary Variant
   primary: {
     backgroundColor: Colors.primary,
@@ -155,6 +166,15 @@ const styles = StyleSheet.create({
   },
   primaryPressed: {
     backgroundColor: Colors.primaryPressed,
+    transform: [{ scale: 0.985 }],
+  },
+  // Accent (Orange) Variant
+  accent: {
+    backgroundColor: Colors.accent,
+    ...Shadows.accentButton,
+  },
+  accentPressed: {
+    backgroundColor: Colors.accentPressed,
     transform: [{ scale: 0.985 }],
   },
   primaryDisabled: {
