@@ -8,6 +8,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import { router, useFocusEffect, usePathname } from 'expo-router';
 import { User } from '@supabase/supabase-js';
 
@@ -19,9 +20,11 @@ import {
 import { DashboardMarketIllustration } from '@/components/dashboard/DashboardMarketIllustration';
 import {
   DashboardBadgeVectorIcon,
+  NavCustomersIcon,
   NavHomeIcon,
   NavMoreIcon,
   NavProductsIcon,
+  NavSalesIcon,
   NavUtangIcon,
   TrendChartVectorIcon,
 } from '@/components/dashboard/DashboardNavIcons';
@@ -126,7 +129,7 @@ export default function MoreScreen() {
       router.replace('/products');
       return;
     }
-    if (tab === 'utang') {
+    if (tab === 'customers' || tab === 'utang') {
       router.replace('/customers' as any);
       return;
     }
@@ -136,36 +139,57 @@ export default function MoreScreen() {
     {
       id: 'store_profile',
       label: 'Store Profile',
+      subtitle: 'Manage store name & credentials',
       iconBg: '#E0F2FE',
       iconElement: <NavHomeIcon color="#0284C7" />,
       onPress: () => setActiveInfoSheet('profile'),
     },
     {
       id: 'inventory',
-      label: 'Inventory',
+      label: 'Products & Inventory',
+      subtitle: 'Stock counts & catalog management',
       iconBg: '#DCFCE7',
       iconElement: <NavProductsIcon color={Colors.primary} />,
       onPress: () => router.push('/products'),
     },
     {
-      id: 'expenses',
-      label: 'Expenses',
+      id: 'customers',
+      label: 'Customers & Utang',
+      subtitle: 'Customer ledger & debt tracking',
       iconBg: '#FEF3C7',
+      iconElement: <NavCustomersIcon color="#D97706" />,
+      onPress: () => router.push('/customers' as any),
+    },
+    {
+      id: 'sales_history',
+      label: 'Sales History',
+      subtitle: 'Past transactions & receipts',
+      iconBg: '#E0F2FE',
+      iconElement: <NavSalesIcon color="#0284C7" />,
+      onPress: () => router.push('/sales/history' as any),
+    },
+    {
+      id: 'expenses',
+      label: 'Expense Tracker',
+      subtitle: 'Store operating costs & bills',
+      iconBg: '#FEE2E2',
       iconElement: (
-        <DashboardBadgeVectorIcon type="utang_summary" color="#D97706" />
+        <DashboardBadgeVectorIcon type="utang_summary" color={Colors.danger} />
       ),
       onPress: () => router.push('/expenses' as any),
     },
     {
       id: 'reports',
-      label: 'Reports',
+      label: 'Reports & Analytics',
+      subtitle: 'Sales, profit & margin insights',
       iconBg: '#DCFCE7',
       iconElement: <TrendChartVectorIcon color={Colors.primary} size={18} />,
       onPress: () => router.push('/reports' as any),
     },
     {
       id: 'settings',
-      label: 'Settings',
+      label: 'Store Settings',
+      subtitle: 'POS preferences & receipt details',
       iconBg: '#F1F5F9',
       iconElement: <NavMoreIcon color="#475569" />,
       onPress: () => setActiveInfoSheet('settings'),
@@ -173,6 +197,7 @@ export default function MoreScreen() {
     {
       id: 'help',
       label: 'Help & Support',
+      subtitle: 'FAQs & contact assistance',
       iconBg: '#F1F5F9',
       iconElement: <Text style={styles.circleBadgeText}>?</Text>,
       onPress: () => setActiveInfoSheet('help'),
@@ -180,6 +205,7 @@ export default function MoreScreen() {
     {
       id: 'about',
       label: 'About TindaMate',
+      subtitle: 'App version & store details',
       iconBg: '#FFEDD5',
       iconElement: (
         <Text style={[styles.circleBadgeText, { color: Colors.accent }]}>i</Text>
@@ -190,15 +216,14 @@ export default function MoreScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      <StatusBar style="light" />
       <View style={styles.mainContainer}>
         {/* Top Deep Green Header */}
-        <View style={styles.heroHeaderZone}>
-          <ProductScreenHeader
-            title="More"
-            showBack={false}
-            leftIcon={<NavMoreIcon color={Colors.textInverse} />}
-          />
-        </View>
+        <ProductScreenHeader
+          title="More"
+          showBack={false}
+          leftIcon={<NavMoreIcon color={Colors.textInverse} />}
+        />
 
         <ScrollView
           style={styles.scrollView}

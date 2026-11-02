@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import { router, useFocusEffect, usePathname } from 'expo-router';
 
 import {
@@ -145,7 +146,7 @@ export default function ReportsScreen() {
       router.replace('/products');
       return;
     }
-    if (tab === 'utang') {
+    if (tab === 'customers' || tab === 'utang') {
       router.replace('/customers' as any);
       return;
     }
@@ -307,6 +308,7 @@ export default function ReportsScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      <StatusBar style="light" />
       <View style={styles.mainContainer}>
         {/* Deep Green Header */}
         <View style={styles.heroHeaderZone}>
