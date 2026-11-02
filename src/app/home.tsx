@@ -545,6 +545,11 @@ export default function AuthenticatedDashboardScreen() {
     1
   );
 
+  const totalSalesRevenue =
+    allStoreSales.length > 0
+      ? allStoreSales.reduce((sum, s) => sum + (s.total_amount || 0), 0)
+      : todaySalesSummary.totalAmount;
+
   const profitValueDisplay = isGuestMode
     ? '₱0.00'
     : formatPesoCurrency(todayGrossProfit ?? todaySalesSummary.totalAmount);
@@ -729,7 +734,7 @@ export default function AuthenticatedDashboardScreen() {
 
               <View style={styles.mainSalesBadgePill}>
                 <Text style={styles.mainSalesBadgeArrow}>↑</Text>
-                <Text style={styles.mainSalesBadgeText}>+12.4%</Text>
+                <Text style={styles.mainSalesBadgeText}>+12.4% vs kahapon</Text>
               </View>
             </Pressable>
 
@@ -755,7 +760,7 @@ export default function AuthenticatedDashboardScreen() {
                   pressed && styles.cardPressed,
                 ]}>
                 <View
-                  style={styles.secondaryKpiIconCircle}>
+                  style={[styles.secondaryKpiIconCircle, styles.kpiIconCart]}>
                   <CartVectorIcon size={20} color="#0284C7" />
                 </View>
                 <Text
@@ -789,7 +794,7 @@ export default function AuthenticatedDashboardScreen() {
                   pressed && styles.cardPressed,
                 ]}>
                 <View
-                  style={styles.secondaryKpiIconCircle}>
+                  style={[styles.secondaryKpiIconCircle, styles.kpiIconProfit]}>
                   <Text style={[styles.pesoCoinSymbol, { color: '#D97706' }]}>₱</Text>
                 </View>
                 <Text
@@ -807,7 +812,7 @@ export default function AuthenticatedDashboardScreen() {
               {/* Card 3: Low Stock */}
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={`Low Stock: ${lowStockCount} items`}
+                accessibilityLabel={`Low Stock: ${isGuestMode ? '5 Items' : `${lowStockCount} ${lowStockCount === 1 ? 'Item' : 'Items'}`} items`}
                 onPress={() => {
                   if (isGuestMode) {
                     handleModuleClick('Inventory', 'Batch 3');
@@ -820,7 +825,7 @@ export default function AuthenticatedDashboardScreen() {
                   pressed && styles.cardPressed,
                 ]}>
                 <View
-                  style={styles.secondaryKpiIconCircle}>
+                  style={[styles.secondaryKpiIconCircle, styles.kpiIconStock]}>
                   <DashboardBadgeVectorIcon
                     type="products"
                     color="#EA580C"
@@ -964,6 +969,31 @@ export default function AuthenticatedDashboardScreen() {
               </Pressable>
             ) : null}
 
+            {/* 9. Recent Activity Section */}
+            <RecentActivitySection
+              sales={recentSales}
+              isLoading={isCardLoading}
+              hasActivity={recentSales.length > 0}
+              activityCount={recentSales.length}
+              onViewAll={() => {
+                if (isGuestMode) {
+                  handleModuleClick('Recent Activity', 'Batch 5');
+                  return;
+                }
+                router.push('/sales/history');
+              }}
+              onSalePress={(sale) => {
+                if (isGuestMode) {
+                  handleModuleClick('Sale Details', 'Batch 5');
+                  return;
+                }
+                router.push({
+                  pathname: '/sales/[id]',
+                  params: { id: sale.id },
+                });
+              }}
+            />
+
             {/* 7. Quick Actions Section */}
             <View style={styles.section}>
               <SectionHeader
@@ -1015,31 +1045,6 @@ export default function AuthenticatedDashboardScreen() {
                 }}
               />
             </View>
-
-            {/* 9. Recent Activity Section */}
-            <RecentActivitySection
-              sales={recentSales}
-              isLoading={isCardLoading}
-              hasActivity={recentSales.length > 0}
-              activityCount={recentSales.length}
-              onViewAll={() => {
-                if (isGuestMode) {
-                  handleModuleClick('Recent Activity', 'Batch 5');
-                  return;
-                }
-                router.push('/sales/history');
-              }}
-              onSalePress={(sale) => {
-                if (isGuestMode) {
-                  handleModuleClick('Sale Details', 'Batch 5');
-                  return;
-                }
-                router.push({
-                  pathname: '/sales/[id]',
-                  params: { id: sale.id },
-                });
-              }}
-            />
           </View>
         </ScrollView>
 
@@ -1350,9 +1355,19 @@ const styles = StyleSheet.create({
     gap: 4,
     ...Shadows.sm,
   },
+  kpiIconCart: {
+    backgroundColor: '#EFF6FF',
+  },
+  kpiIconProfit: {
+    backgroundColor: '#FFF7ED',
+  },
+  kpiIconStock: {
+    backgroundColor: '#FEF3C7',
+  },
   secondaryKpiIconCircle: {
-    width: 32,
-    height: 32,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 2,
@@ -1375,10 +1390,10 @@ const styles = StyleSheet.create({
   // Sales Overview Chart Card
   chartCard: {
     backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.xl,
-    padding: Spacing.threeHalf,
+    borderRadius: 20,
+    padding: Spacing.four,
     borderWidth: 1,
-    borderColor: Colors.borderSubtle,
+    borderColor: '#E5E7EB',
     gap: Spacing.three,
     ...Shadows.xs,
   },
@@ -1477,8 +1492,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFF7ED',
-    borderRadius: 20,
-    borderWidth: 1,
+    borderRadius: 18,
+    borderWidth: 1.2,
     borderColor: '#FED7AA',
     paddingVertical: 14,
     paddingHorizontal: Spacing.threeHalf,
