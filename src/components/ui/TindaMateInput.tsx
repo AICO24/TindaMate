@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  type TextInputInstance,
   View,
   ViewStyle,
 } from 'react-native';
@@ -81,7 +82,7 @@ export function TindaMateInput({
 }: TindaMateInputProps) {
   const [isFocused, setIsFocused] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<TextInputInstance>(null);
 
   const hasError = Boolean(errorMessage);
 

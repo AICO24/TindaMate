@@ -1,79 +1,92 @@
 /**
- * TindaMate Centralized Theme & Design System Foundation
+ * TindaMate Centralized Theme & Design System Foundation (Design 2.0)
  *
  * Single source of truth for all visual tokens across Welcome, Auth, Dashboard,
- * and future business modules (Products, Inventory, Sales, Utang, Expenses, Reports):
- * - Colors (Brand palette, warm surfaces, typography, semantic states, pastel accents)
- * - Typography (Hierarchy presets, font sizes, weights, and line heights)
- * - Spacing (Consistent 4pt/8pt spatial scale)
- * - BorderRadius (Unified curvature language)
+ * and business modules (Products, Inventory, Sales, Customers/Utang, Expenses, Reports):
+ * - Colors (Design 2.0 Forest Green, Slate Canvas, Crisp White Surfaces, Warm Orange CTAs)
+ * - Typography (Hierarchy presets, font sizes, weights, and line heights with tabular numerals)
+ * - Spacing (Standardized 4pt/8pt spatial scale with 16pt screen padding)
+ * - BorderRadius (Unified curvature hierarchy: 24px hero, 20px primary card, 16px card, 14px button/input, 9999px pill)
  * - Shadows (Subtle mobile-first elevation rules)
  * - IconSizes (Consistent sizing for navigation, buttons, cards, inputs, headers)
  */
 
 import '@/global.css';
 
-import { Platform, ViewStyle } from 'react-native';
+import { Platform, TextStyle, ViewStyle } from 'react-native';
 
 /**
- * TindaMate Color Palette
+ * TindaMate Color Palette (Design 2.0 Foundation)
  *
- * Tailored for local/sari-sari store vendors:
+ * Retail-focused, friendly, and trustworthy:
  * - Recognizable TindaMate deep forest & emerald green primary identity
- * - Warm market orange accent ("Mate") used strategically for highlights & secondary emphasis
- * - Soft pastel supporting tones for store metrics, categories, and quick actions
- * - Warm, bright, breathable backgrounds and high-contrast typography
+ * - Vibrant sari-sari store orange accent ("Mate") for transactional CTAs (POS checkout, floating action)
+ * - Clean cool slate canvas (#F4F6F8) with crisp elevated white cards (#FFFFFF)
+ * - High-contrast typography (#0F172A) and semantic status colors
  */
 export const Colors = {
-  // Primary Brand Colors (TindaMate Green / Teal)
-  primary: '#0D7A4D',         // Primary interactive green (Buttons, active states, links)
-  primaryDark: '#064E3B',     // Deep forest green (Brand wordmark, hero headings, active nav)
+  // Primary Brand Colors (TindaMate Design 2.0 Forest & Emerald Green)
+  primary: '#0D7A4D',         // Rich TindaMate Emerald (Buttons, active states, price text)
+  primaryDark: '#064E3B',     // Deep Forest Green (Hero headers, brand titles, active nav)
+  primaryMedium: '#047857',   // Supporting deep emerald (Hero card surfaces & wave accents)
   primaryDeep: '#065F46',     // Supporting deep emerald green
   primaryBrand: '#105B48',    // Emblem & display headline green
   primaryPressed: '#0A5C3A',  // Pressed/active primary button state
-  primaryLight: '#E8F5E9',    // Soft green tint (Badges, subtle highlights, pressed outline)
-  primarySoft: '#EDF7F2',     // Breathable mint card surface (Empty states, banners)
+  primaryLight: '#DCFCE7',    // Soft green badge & icon container tint
+  primarySoft: '#ECFDF5',     // Breathable mint card surface (Active pills, banners)
   primaryBorder: '#D1FAE5',   // Soft green border for pills and highlights
 
-  // Accent Colors (Warm Market Orange)
-  accent: '#EA580C',          // "Mate" brand orange & key highlights
+  // Secondary Color (Positive Growth / In-Stock Green)
+  secondary: '#16A34A',
+
+  // Accent Colors (Warm Market Orange / Transactional CTAs)
+  accent: '#F97316',          // Primary Orange CTA (Checkout, Floating POS button, "Mate" wordmark)
+  accentDark: '#EA580C',      // Pressed orange / High-contrast warning text
   accentMedium: '#F97316',    // Supporting vibrant orange accent
   accentWarm: '#F59E0B',      // Warm amber accent (Stars, awnings, secondary highlights)
   accentPressed: '#D97706',   // Pressed amber/orange state
-  accentLight: '#FFF4E8',     // Soft orange surface tint
+  accentLight: '#FFEDD5',     // Soft orange surface & icon badge tint
   accentBorder: '#FFE4CB',    // Soft orange border
 
-  // Background & Surface Colors
-  background: '#F8FAF7',      // Primary clean soft sage-tinted background (Design 2.0)
-  backgroundWarm: '#FCFAF2',  // Warm cream/mint-tinted hero & header backdrop
-  backgroundAlt: '#F1F5F2',   // Subtle secondary sage-slate surface
-  surfaceSubtle: '#F3F6F4',   // Subtle container / image stage background
-  surface: '#FFFFFF',         // Elevated card & input surface
+  // Background & Surface Colors (Design 2.0 Cool Slate & Crisp White)
+  background: '#F4F6F8',      // Primary clean slate background
+  backgroundWarm: '#F8FAFC',  // Clean secondary slate backdrop (Replaces legacy cream #FCFAF2)
+  backgroundAlt: '#F1F5F9',   // Subtle secondary slate surface
+  surfaceSubtle: '#F8FAFC',   // Subtle container / image stage background
+  surface: '#FFFFFF',         // Elevated crisp white card & input surface
+  surfaceMuted: '#F8FAFC',    // Secondary container / input background
   card: '#FFFFFF',            // Alias for card container surface
 
   // Border & Divider Colors
   border: '#E2E8F0',          // Default card & input border (Slate 200)
+  borderStrong: '#CBD5E1',    // Focused/active outline border (Slate 300)
   borderFocused: '#0D7A4D',   // Focused input border (Primary green)
-  borderSubtle: '#EDF2EE',    // Subtle section/row divider
+  borderSubtle: '#F1F5F9',    // Subtle section/row divider
+  divider: '#F1F5F9',         // Standard card row divider
 
   // Typography Colors
   textPrimary: '#0F172A',     // High-contrast primary body & dark titles (Slate 900)
   textBrand: '#064E3B',       // Brand-tinted section & hero headings
   textSecondary: '#475569',   // Supporting descriptions & labels (Slate 600)
-  textMuted: '#64748B',       // Captions, helper text & inactive nav (Slate 500)
+  textMuted: '#94A3B8',       // Captions, helper text & inactive nav (Slate 400)
   textPlaceholder: '#94A3B8', // Input placeholder text (Slate 400)
   textInverse: '#FFFFFF',     // Text on primary/dark surfaces
+  textOnPrimary: '#FFFFFF',   // White text on dark green / orange surfaces
 
   // Semantic Feedback & Status Colors
   success: '#16A34A',         // Positive status / strong password / connected
   successLight: '#DCFCE7',    // Soft success badge background
   successText: '#166534',     // Dark green text on success badge
-  warning: '#F59E0B',         // Warning / medium strength / low stock alert
+  warning: '#D97706',         // Warning / low stock alert (Amber 600)
   warningLight: '#FEF3C7',    // Soft warning background
   warningText: '#92400E',     // Dark amber text on warning badge
   error: '#DC2626',           // Accessible error & destructive action red
   errorLight: '#FEF2F2',      // Soft error banner & input background
   errorBorder: '#FCA5A5',     // Error border
+  danger: '#DC2626',          // Alias for error/danger states
+  dangerLight: '#FEE2E2',     // Soft red surface tint
+  info: '#2563EB',            // Informational state blue
+  infoLight: '#DBEAFE',       // Soft info surface tint
   disabled: '#CBD5E1',        // Disabled interactive surface
   disabledText: '#94A3B8',    // Disabled text label
 
@@ -156,45 +169,57 @@ export const Spacing = {
   xs: 4,
   sm: 8,
   md: 16,
-  lg: 24,
-  xl: 32,
-  xxl: 64,
+  lg: 20,
+  xl: 24,
+  xxl: 32,
+  xxxl: 40,
+
+  // Standardized layout geometry
+  screenPadding: 16,
+  sectionGap: 16,
 } as const;
 
 /**
- * Border Radius Scale
+ * Border Radius Scale (Design 2.0 Hierarchy)
  * Unified corner radius language across inputs, buttons, cards, and modals.
  */
 export const BorderRadius = {
-  xs: 6,      // Checkboxes, small tags
-  sm: 10,     // Inner icon boxes, compact badges
-  md: 14,     // Form inputs, banners, standard cards
-  lg: 18,     // Dashboard overview cards, quick action tiles
-  xl: 24,     // Modals, large empty-state containers
-  xxl: 32,    // Hero zone bottom curvature
-  full: 999,  // Pill buttons, circular avatars, filter chips
+  xs: 6,         // Small tags, micro indicators
+  sm: 10,        // Inner icon boxes, compact badges
+  md: 14,        // Form inputs, buttons, compact banners
+  button: 14,    // Standard interactive button radius
+  input: 14,     // Standard text input radius
+  card: 16,      // Standard list cards (ProductCard, CustomerCard, SaleHistoryItemCard)
+  lg: 16,        // Standard card alias
+  primaryCard: 20, // Hero KPI card, major summaries, modals
+  heroCard: 20,  // Alias for primary hero card
+  xl: 24,        // Top hero header bottom curvature, bottom sheets
+  heroHeader: 24, // Hero header curve alias
+  xxl: 32,       // Floating action cradle & oversized elements
+  pill: 9999,    // Search bars, filter chips, status badges
+  full: 9999,    // Pill buttons, circular avatars
 } as const;
 
 /**
  * Typography Hierarchy & Presets
- * Consistent sizes, weights, and line heights across all TindaMate screens.
+ * Consistent sizes, weights, line heights, and semantic presets.
  */
 export const Typography = {
   sizes: {
-    caption: 11,        // Input labels, bottom nav labels, status badges
-    xs: 12,             // Helper hints, inline errors, filter pills
+    caption: 12,        // Helper hints, inline metadata, status badges
+    xs: 12,             // Smallest accessible body/meta size
     sm: 13,             // Secondary card labels, compact links
     bodySm: 14,         // Supporting text, form prompts, card titles
-    body: 15,           // Standard body text, input text
+    body: 14,           // Standard body text, input text
     base: 16,           // Primary button text, prominent labels
     md: 17,             // Medium-prominent card headings
-    sectionHeading: 19, // Dashboard section headers ("Store Overview", "Quick Actions")
+    sectionHeading: 17, // Dashboard section headers ("Store Overview", "Quick Actions")
     lg: 20,             // Modal titles, sub-headers
-    xl: 24,             // Auth screen titles ("Welcome Back!", "Create Your Account")
-    displaySm: 26,      // Hero user greeting name
-    xxl: 28,            // Prominent KPI and cart total display
-    display: 32,        // Welcome hero headline ("Shop Local, Support Small")
-    hero: 38,           // Extra-large display title
+    xl: 22,             // Screen titles
+    displaySm: 24,      // Secondary KPI amounts
+    xxl: 28,            // Large modal totals & prominent KPI values
+    display: 34,        // Hero KPI value ("Today's Sales")
+    hero: 38,           // Welcome display title
   },
   weights: {
     regular: '400' as const,
@@ -207,9 +232,112 @@ export const Typography = {
     tight: 18,
     normal: 20,
     relaxed: 22,
-    heading: 30,
-    display: 38,
+    heading: 28,
+    display: 40,
   },
+
+  // Semantic Typography Presets (Design 2.0 Foundation)
+  presets: {
+    heroValue: {
+      fontSize: 34,
+      fontWeight: '800' as const,
+      letterSpacing: -0.8,
+      fontVariant: ['tabular-nums'] as ('tabular-nums')[],
+      color: Colors.textInverse,
+    } as TextStyle,
+    kpiValue: {
+      fontSize: 24,
+      fontWeight: '800' as const,
+      letterSpacing: -0.5,
+      fontVariant: ['tabular-nums'] as ('tabular-nums')[],
+      color: Colors.textPrimary,
+    } as TextStyle,
+    screenTitle: {
+      fontSize: 22,
+      fontWeight: '800' as const,
+      letterSpacing: -0.4,
+      color: Colors.textInverse,
+    } as TextStyle,
+    sectionTitle: {
+      fontSize: 17,
+      fontWeight: '800' as const,
+      letterSpacing: -0.3,
+      color: Colors.textPrimary,
+    } as TextStyle,
+    cardTitle: {
+      fontSize: 15,
+      fontWeight: '700' as const,
+      color: Colors.textPrimary,
+    } as TextStyle,
+    body: {
+      fontSize: 14,
+      fontWeight: '400' as const,
+      color: Colors.textPrimary,
+      lineHeight: 20,
+    } as TextStyle,
+    bodyMedium: {
+      fontSize: 14,
+      fontWeight: '600' as const,
+      color: Colors.textPrimary,
+      lineHeight: 20,
+    } as TextStyle,
+    caption: {
+      fontSize: 12,
+      fontWeight: '500' as const,
+      color: Colors.textMuted,
+      lineHeight: 16,
+    } as TextStyle,
+    badge: {
+      fontSize: 12,
+      fontWeight: '700' as const,
+      letterSpacing: 0.2,
+    } as TextStyle,
+  },
+
+  // Direct helper aliases
+  heroValue: {
+    fontSize: 34,
+    fontWeight: '800' as const,
+    letterSpacing: -0.8,
+    fontVariant: ['tabular-nums'] as ('tabular-nums')[],
+  } as TextStyle,
+  kpiValue: {
+    fontSize: 24,
+    fontWeight: '800' as const,
+    letterSpacing: -0.5,
+    fontVariant: ['tabular-nums'] as ('tabular-nums')[],
+  } as TextStyle,
+  screenTitle: {
+    fontSize: 22,
+    fontWeight: '800' as const,
+    letterSpacing: -0.4,
+  } as TextStyle,
+  sectionTitle: {
+    fontSize: 17,
+    fontWeight: '800' as const,
+    letterSpacing: -0.3,
+  } as TextStyle,
+  cardTitle: {
+    fontSize: 15,
+    fontWeight: '700' as const,
+  } as TextStyle,
+  body: {
+    fontSize: 14,
+    fontWeight: '400' as const,
+  } as TextStyle,
+  bodyMedium: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+  } as TextStyle,
+  caption: {
+    fontSize: 12,
+    fontWeight: '500' as const,
+  } as TextStyle,
+  badge: {
+    fontSize: 12,
+    fontWeight: '700' as const,
+    letterSpacing: 0.2,
+  } as TextStyle,
 } as const;
 
 /**
@@ -229,7 +357,18 @@ export const IconSizes = {
  * Elevation & Shadow Presets
  * Subtle, cohesive shadows for mobile cards, buttons, and bars.
  */
-export const Shadows: Record<'none' | 'xs' | 'sm' | 'md' | 'primaryButton' | 'accentButton' | 'bottomNav' | 'floatingCenter', ViewStyle> = {
+export const Shadows: Record<
+  | 'none'
+  | 'xs'
+  | 'sm'
+  | 'md'
+  | 'card'
+  | 'primaryButton'
+  | 'accentButton'
+  | 'bottomNav'
+  | 'floatingCenter',
+  ViewStyle
+> = {
   none: {
     shadowColor: 'transparent',
     shadowOffset: { width: 0, height: 0 },
@@ -257,6 +396,13 @@ export const Shadows: Record<'none' | 'xs' | 'sm' | 'md' | 'primaryButton' | 'ac
     shadowOpacity: 0.09,
     shadowRadius: 12,
     elevation: 4,
+  },
+  card: {
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   primaryButton: {
     shadowColor: '#0D7A4D',
@@ -313,4 +459,3 @@ export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
 export const MaxContentWidth = 800;
 export const AuthMaxContentWidth = 440;
 export const DashboardMaxContentWidth = 520;
-
