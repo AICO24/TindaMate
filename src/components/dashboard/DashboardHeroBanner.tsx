@@ -25,21 +25,21 @@ interface DashboardHeroBannerProps {
 }
 
 /**
- * DashboardHeroBanner
+ * DashboardHeroBanner (Design 2.0 Showcase Alignment)
  *
- * Visually polished mobile Hero section using the TindaMate Design System:
+ * Visually matches Screen 1 of TindaMate POS App Showcase.png:
+ * - Elevated white card container with rounded corners and subtle shadow
  * - Dynamic greeting ("Good morning," / "Good afternoon," / "Good evening,")
- * - Dynamic user name with responsive scaling for long names
- * - Friendly store overview supporting text
- * - Interactive store pill with vector storefront badge: [ 🏪 TindaMate Store › ]
- * - Dedicated pure React Native marketplace illustration
+ * - Dynamic user name ("Manolo! 👋") in dark slate typography
+ * - Friendly store overview supporting text ("Here's your store today")
+ * - Compact store context pill [ 🏪 TindaMate Store › ]
+ * - Authentic 3D sari-sari storefront illustration
  */
 export function DashboardHeroBanner({
   displayName,
   storeName = 'TindaMate Store',
   onStorePress,
 }: DashboardHeroBannerProps) {
-  // Determine time-of-day greeting
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return 'Good morning,';
@@ -52,31 +52,29 @@ export function DashboardHeroBanner({
   const isSmallPhone = windowWidth < 380;
   const isLargePhone = windowWidth >= 414;
 
-  // Responsive illustration size occupying right 35-45% of banner
-  const illustrationWidth = isNarrowPhone ? 124 : isSmallPhone ? 138 : isLargePhone ? 166 : 152;
-  const illustrationHeight = isNarrowPhone ? 114 : isSmallPhone ? 126 : isLargePhone ? 150 : 138;
+  const illustrationWidth = isNarrowPhone ? 116 : isSmallPhone ? 128 : isLargePhone ? 152 : 140;
+  const illustrationHeight = isNarrowPhone ? 104 : isSmallPhone ? 116 : isLargePhone ? 138 : 126;
 
-  // Responsive typography for long names
   const nameFontSize =
     displayName.length > 22
-      ? isSmallPhone ? 18 : 20
+      ? isSmallPhone ? 17 : 19
       : displayName.length > 14
-      ? isSmallPhone ? 20 : 22
-      : isSmallPhone ? 22 : Typography.sizes.displaySm;
+      ? isSmallPhone ? 19 : 21
+      : isSmallPhone ? 21 : 23;
 
-  const nameLineHeight = nameFontSize >= 24 ? Typography.lineHeights.heading : nameFontSize + 4;
+  const nameLineHeight = nameFontSize + 4;
 
   return (
-    <View style={[styles.container, isNarrowPhone && styles.containerNarrow]}>
+    <View style={[styles.card, isNarrowPhone && styles.cardNarrow]}>
       <View style={styles.contentRow}>
         {/* Left Side: Text Hierarchy & Store Badge (55-65% width) */}
         <View style={styles.leftColumn}>
-          {/* 1. Greeting - semibold */}
+          {/* 1. Greeting */}
           <Text style={styles.greetingTitle} maxFontSizeMultiplier={1.3}>
             {getGreeting()}
           </Text>
 
-          {/* 2. User Name - large / bold / responsive */}
+          {/* 2. User Name */}
           <Text
             style={[
               styles.displayNameText,
@@ -87,7 +85,7 @@ export function DashboardHeroBanner({
             {displayName}! 👋
           </Text>
 
-          {/* 3. Supporting sentence */}
+          {/* 3. Supporting text */}
           <Text
             style={styles.greetingSubtext}
             numberOfLines={1}
@@ -115,7 +113,7 @@ export function DashboardHeroBanner({
             <Text
               style={[
                 styles.storePillText,
-                { maxWidth: isNarrowPhone ? 105 : 140 },
+                { maxWidth: isNarrowPhone ? 100 : 130 },
               ]}
               numberOfLines={1}
               maxFontSizeMultiplier={1.3}>
@@ -127,7 +125,7 @@ export function DashboardHeroBanner({
           </Pressable>
         </View>
 
-        {/* Right Side: Dedicated Marketplace Illustration (35-45% width) */}
+        {/* Right Side: Dedicated Marketplace Illustration */}
         <View style={styles.illustrationWrapper}>
           <DashboardMarketIllustration
             width={illustrationWidth}
@@ -140,15 +138,19 @@ export function DashboardHeroBanner({
 }
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: 'transparent',
-    paddingVertical: Spacing.one,
-    paddingHorizontal: 0,
-    minHeight: 105,
-    justifyContent: 'center',
+  card: {
+    backgroundColor: Colors.surface,
+    borderRadius: 20,
+    paddingVertical: Spacing.twoHalf,
+    paddingHorizontal: Spacing.threeHalf,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginTop: Spacing.two,
+    ...Shadows.sm,
   },
-  containerNarrow: {
-    minHeight: 95,
+  cardNarrow: {
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.twoHalf,
   },
   contentRow: {
     flexDirection: 'row',
@@ -163,58 +165,57 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   greetingTitle: {
-    fontSize: Typography.sizes.bodySm,
+    fontSize: Typography.sizes.caption,
     fontWeight: Typography.weights.semiBold,
-    color: '#D1FAE5',
+    color: '#64748B',
   },
   displayNameText: {
     fontWeight: Typography.weights.extraBold,
-    color: Colors.textInverse,
+    color: '#0F172A',
     letterSpacing: -0.4,
     marginBottom: 1,
   },
   greetingSubtext: {
     fontSize: Typography.sizes.caption,
-    color: '#A7F3D0',
+    color: '#94A3B8',
     fontWeight: Typography.weights.medium,
     lineHeight: 16,
     marginBottom: Spacing.two,
   },
-  // Store pill button
   storePill: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    backgroundColor: Colors.primarySoft,
+    backgroundColor: '#F8FAFC',
     paddingLeft: Spacing.two,
     paddingRight: Spacing.twoHalf,
-    paddingVertical: 4,
+    paddingVertical: 3,
     borderRadius: BorderRadius.full,
     borderWidth: 1,
-    borderColor: Colors.primaryBorder,
-    gap: 6,
+    borderColor: '#E2E8F0',
+    gap: 5,
   },
   storePillPressed: {
-    backgroundColor: Colors.primaryLight,
+    backgroundColor: '#F1F5F9',
     transform: [{ scale: 0.98 }],
   },
   storeIconCircle: {
-    width: 20,
-    height: 20,
+    width: 18,
+    height: 18,
     borderRadius: BorderRadius.full,
     backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   storePillText: {
-    fontSize: Typography.sizes.caption,
+    fontSize: 11,
     fontWeight: Typography.weights.bold,
-    color: Colors.primaryDark,
+    color: '#0F172A',
   },
   storePillChevron: {
     fontSize: Typography.sizes.sm,
     fontWeight: Typography.weights.extraBold,
-    color: Colors.primary,
+    color: '#64748B',
     marginTop: -1,
   },
   illustrationWrapper: {
@@ -223,4 +224,3 @@ const styles = StyleSheet.create({
     paddingLeft: Spacing.xxs,
   },
 });
-

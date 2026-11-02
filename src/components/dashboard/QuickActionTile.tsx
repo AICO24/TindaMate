@@ -40,26 +40,21 @@ const ACTION_VECTOR_IDS = new Set([
 ]);
 
 /**
- * QuickActionTile
+ * QuickActionTile (Design 2.0 Showcase Alignment)
  *
- * Visually strong action tile using the TindaMate Design System:
- * - Supports primary visual priority (`isPrimary`) for the #1 daily action (Record Sale)
- * - Centralized Colors.pastel tokens (green, orange, blue, purple)
- * - Responsive circular icon container with crisp white vector icon
- * - Bold two-line centered title and bottom arrow (→) indicator
+ * Compact, thumb-friendly retail action tile:
+ * - Reduced vertical footprint (~58px height instead of 124px)
+ * - Prominent vibrant orange background for primary CTA (New Sale)
+ * - Clean elevated white surface for secondary operations (Product, Utang, Expense)
+ * - Crisp vector icons and legible typography that never crowds the viewport
  */
 export function QuickActionTile({ item }: QuickActionTileProps) {
   const currentTheme = Colors.pastel[item.theme];
   const hasVectorIcon = ACTION_VECTOR_IDS.has(item.id);
   const { width: windowWidth } = useWindowDimensions();
   const isNarrowPhone = windowWidth < 350;
-  const isCompactPhone = windowWidth < 380;
 
-  const iconCircleSize = isNarrowPhone
-    ? item.isPrimary ? 38 : 36
-    : isCompactPhone
-    ? item.isPrimary ? 42 : 40
-    : item.isPrimary ? 46 : 42;
+  const iconCircleSize = isNarrowPhone ? 24 : 28;
 
   return (
     <Pressable
@@ -74,16 +69,10 @@ export function QuickActionTile({ item }: QuickActionTileProps) {
       hitSlop={{ top: 4, bottom: 4, left: 2, right: 2 }}
       style={({ pressed }) => [
         styles.tile,
-        isCompactPhone && styles.tileCompact,
-        isNarrowPhone && styles.tileNarrow,
-        {
-          backgroundColor: currentTheme.bg,
-          borderColor: item.isPrimary ? currentTheme.accent : currentTheme.border,
-        },
-        item.isPrimary && styles.tilePrimary,
+        item.isPrimary ? styles.tilePrimary : styles.tileSecondary,
         pressed && styles.tilePressed,
       ]}>
-      {/* Top Circular Icon Badge */}
+      {/* Icon Circle */}
       <View
         style={[
           styles.iconCircle,
@@ -91,9 +80,8 @@ export function QuickActionTile({ item }: QuickActionTileProps) {
             width: iconCircleSize,
             height: iconCircleSize,
             borderRadius: iconCircleSize / 2,
-            backgroundColor: currentTheme.iconBg,
+            backgroundColor: item.isPrimary ? 'rgba(255, 255, 255, 0.22)' : currentTheme.iconBg,
           },
-          item.isPrimary && styles.iconCirclePrimary,
         ]}
         accessible={false}
         importantForAccessibility="no-hide-descendants">
@@ -113,52 +101,18 @@ export function QuickActionTile({ item }: QuickActionTileProps) {
         )}
       </View>
 
-      {/* Two-Line Centered Label */}
+      {/* Label */}
       <View style={styles.labelContainer}>
         <Text
           style={[
             styles.labelText,
-            isNarrowPhone && styles.labelTextNarrow,
-            item.isPrimary && styles.labelTextPrimary,
-            item.isPrimary && isNarrowPhone && styles.labelTextPrimaryNarrow,
-            { color: currentTheme.text },
+            item.isPrimary ? styles.labelTextPrimary : styles.labelTextSecondary,
           ]}
           numberOfLines={1}
           adjustsFontSizeToFit
           minimumFontScale={0.8}
-          maxFontSizeMultiplier={1.25}>
-          {item.labelLine1}
-        </Text>
-        <Text
-          style={[
-            styles.labelText,
-            isNarrowPhone && styles.labelTextNarrow,
-            item.isPrimary && styles.labelTextPrimary,
-            item.isPrimary && isNarrowPhone && styles.labelTextPrimaryNarrow,
-            { color: currentTheme.text },
-          ]}
-          numberOfLines={1}
-          adjustsFontSizeToFit
-          minimumFontScale={0.8}
-          maxFontSizeMultiplier={1.25}>
-          {item.labelLine2}
-        </Text>
-      </View>
-
-      {/* Bottom Arrow Indicator */}
-      <View
-        style={[
-          styles.arrowContainer,
-          item.isPrimary && { backgroundColor: currentTheme.border },
-        ]}
-        importantForAccessibility="no">
-        <Text
-          style={[
-            styles.arrow,
-            isNarrowPhone && styles.arrowNarrow,
-            { color: currentTheme.accent },
-          ]}>
-          →
+          maxFontSizeMultiplier={1.2}>
+          {item.labelLine1} {item.labelLine2}
         </Text>
       </View>
     </Pressable>
@@ -169,87 +123,52 @@ const styles = StyleSheet.create({
   tile: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'space-between',
-    borderRadius: BorderRadius.lg,
-    paddingVertical: Spacing.twoHalf,
-    paddingHorizontal: Spacing.xs,
-    borderWidth: 1,
-    minHeight: 124,
-    gap: 6,
+    justifyContent: 'center',
+    borderRadius: BorderRadius.md,
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.one,
+    minHeight: 58,
+    gap: 4,
     ...Shadows.xs,
   },
-  tileCompact: {
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.xxs,
-    minHeight: 118,
-    gap: 5,
-  },
-  tileNarrow: {
-    paddingVertical: 7,
-    paddingHorizontal: 1,
-    minHeight: 114,
-    gap: 4,
-  },
   tilePrimary: {
-    borderWidth: 1.8,
+    backgroundColor: '#EA580C',
+    borderWidth: 1,
+    borderColor: '#C2410C',
     ...Shadows.sm,
+  },
+  tileSecondary: {
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   tilePressed: {
     opacity: 0.88,
-    transform: [{ scale: 0.96 }],
+    transform: [{ scale: 0.97 }],
   },
   iconCircle: {
     alignItems: 'center',
     justifyContent: 'center',
-    ...Shadows.xs,
-  },
-  iconCirclePrimary: {
-    borderWidth: 2,
-    borderColor: Colors.surface,
-    ...Shadows.sm,
   },
   iconText: {
-    fontSize: Typography.sizes.lg,
+    fontSize: 14,
     color: Colors.textInverse,
   },
   labelContainer: {
-    width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
   },
   labelText: {
-    fontSize: Typography.sizes.xs,
+    fontSize: 11,
     fontWeight: Typography.weights.bold,
     textAlign: 'center',
-    lineHeight: 15,
-  },
-  labelTextNarrow: {
-    fontSize: Typography.sizes.caption,
     lineHeight: 13,
   },
   labelTextPrimary: {
-    fontSize: Typography.sizes.sm,
-    fontWeight: Typography.weights.extraBold,
-    lineHeight: 16,
-  },
-  labelTextPrimaryNarrow: {
-    fontSize: Typography.sizes.xs,
-    lineHeight: 14,
-  },
-  arrowContainer: {
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: BorderRadius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  arrow: {
-    fontSize: Typography.sizes.bodySm,
+    color: Colors.textInverse,
     fontWeight: Typography.weights.extraBold,
   },
-  arrowNarrow: {
-    fontSize: Typography.sizes.xs,
+  labelTextSecondary: {
+    color: '#334155',
   },
 });
-
-
