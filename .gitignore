@@ -39,6 +39,9 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
+# binaries
+*.apk
+
 # temporary scripts
 scripts/*.ps1
 
