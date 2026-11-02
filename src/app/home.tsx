@@ -587,8 +587,8 @@ export default function AuthenticatedDashboardScreen() {
     },
     {
       id: 'record_utang',
-      labelLine1: 'Customers',
-      labelLine2: '& Utang',
+      labelLine1: 'Utang',
+      labelLine2: '',
       theme: 'green',
       onPress: () => {
         if (isGuestMode) {
@@ -600,8 +600,8 @@ export default function AuthenticatedDashboardScreen() {
     },
     {
       id: 'add_expense',
-      labelLine1: 'Record',
-      labelLine2: 'Expense',
+      labelLine1: 'Expense',
+      labelLine2: '',
       theme: 'neutral',
       onPress: () => {
         if (isGuestMode) {
@@ -844,26 +844,7 @@ export default function AuthenticatedDashboardScreen() {
               </Pressable>
             </View>
 
-            {/* 5. Quick Actions Section (Moved up for mobile ergonomic accessibility) */}
-            <View style={styles.section}>
-              <SectionHeader
-                title="Quick Actions"
-                subtitle="High-frequency store operations"
-              />
-
-              <View
-                style={[
-                  styles.quickActionsRow,
-                  isNarrowPhone && styles.quickActionsRowNarrow,
-                ]}>
-                <QuickActionTile item={quickActions[0]} />
-                <QuickActionTile item={quickActions[1]} />
-                <QuickActionTile item={quickActions[2]} />
-                <QuickActionTile item={quickActions[3]} />
-              </View>
-            </View>
-
-            {/* 6. Sales Overview Chart Section */}
+            {/* 5. Sales Overview Chart Section (Dominant Analytical Anchor in First Viewport) */}
             <View style={styles.chartCard}>
               <View style={styles.chartHeaderRow}>
                 <View>
@@ -949,7 +930,7 @@ export default function AuthenticatedDashboardScreen() {
               </View>
             </View>
 
-            {/* 7. Low-Stock Alert Banner */}
+            {/* 6. Operational Low-Stock Alert Banner (Conditional) */}
             {isLowStockWarning ? (
               <Pressable
                 accessibilityRole="button"
@@ -990,8 +971,20 @@ export default function AuthenticatedDashboardScreen() {
               </Pressable>
             ) : null}
 
-            {/* 8. Utang & Expense Overview Cards */}
-            <View style={styles.section}>
+            {/* 7. Quick Actions (Compact Recomposed Action Strip) */}
+            <View
+              style={[
+                styles.quickActionsRow,
+                isNarrowPhone && styles.quickActionsRowNarrow,
+              ]}>
+              <QuickActionTile item={quickActions[0]} />
+              <QuickActionTile item={quickActions[1]} />
+              <QuickActionTile item={quickActions[2]} />
+              <QuickActionTile item={quickActions[3]} />
+            </View>
+
+            {/* 8. Store Finances: Utang & Expenses (Integrated Compact Dual Summary) */}
+            <View style={styles.storeFinancesRow}>
               <UtangOverviewCard
                 summary={utangSummary}
                 isLoading={isCardLoading}
@@ -1004,10 +997,8 @@ export default function AuthenticatedDashboardScreen() {
                   }
                   router.push('/customers' as any);
                 }}
+                compact
               />
-            </View>
-
-            <View style={styles.section}>
               <ExpenseOverviewCard
                 summary={expenseSummary}
                 isLoading={isCardLoading}
@@ -1020,10 +1011,11 @@ export default function AuthenticatedDashboardScreen() {
                   }
                   router.push('/expenses' as any);
                 }}
+                compact
               />
             </View>
 
-            {/* 10. Recent Activity Section */}
+            {/* 9. Recent Activity Section (Compact Separated Rows inside Unified Card) */}
             <RecentActivitySection
               sales={recentSales}
               isLoading={isCardLoading}
@@ -1262,11 +1254,12 @@ const styles = StyleSheet.create({
     maxWidth: DashboardMaxContentWidth,
     alignSelf: 'center',
     paddingHorizontal: Spacing.three,
-    paddingTop: Spacing.three,
-    gap: Spacing.threeHalf,
+    paddingTop: Spacing.twoHalf,
+    paddingBottom: Spacing.five,
+    gap: Spacing.three,
   },
   section: {
-    gap: Spacing.twoHalf,
+    gap: Spacing.two,
   },
   cardPressed: {
     opacity: 0.92,
@@ -1575,6 +1568,10 @@ const styles = StyleSheet.create({
   },
   quickActionsRowNarrow: {
     gap: Spacing.one,
+  },
+  storeFinancesRow: {
+    flexDirection: 'row',
+    gap: Spacing.twoHalf,
   },
   // Profile Modal Styling
   modalOverlay: {

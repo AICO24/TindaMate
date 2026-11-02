@@ -24,14 +24,13 @@ interface RecentActivitySectionProps {
 }
 
 /**
- * RecentActivitySection
+ * RecentActivitySection (Design 2.0 Showcase Alignment)
  *
- * Displays the recent completed sales activity feed on the Dashboard:
- * - When sales exist: Displays newest 3-5 completed sale transactions
- *   (Product name, quantity & unit price, total amount, formatted time/date)
- *   with direct tap-through to Sale Details and "View All" to Sales History.
- * - When empty: Displays the polished vector checklist pad empty state card
- *   with warm sparkle rays and friendly store guidance.
+ * Displays recent sales as compact rows inside a unified card container with subtle separators:
+ * - Direct visual alignment with Screen 1 of TindaMate POS App Showcase.png
+ * - Small cart/bag icon, concise product name, total price, timestamp
+ * - Payment badge pill for credit/utang transactions
+ * - Direct tap-through to Sale Details and "View All →" action
  */
 export function RecentActivitySection({
   sales,
@@ -49,7 +48,7 @@ export function RecentActivitySection({
 
   return (
     <View style={styles.container}>
-      {/* Reusable Design-System Section Header (shows View All when activity exists) */}
+      {/* Header: Title + View All Link */}
       <SectionHeader
         title="Recent Activity"
         actionLabel={showViewAll ? 'View All' : undefined}
@@ -57,16 +56,17 @@ export function RecentActivitySection({
       />
 
       {hasSales && sales ? (
-        /* Real Recent Sales List (limited to 5 records, newest first) */
-        <View style={styles.salesList}>
-          {sales.slice(0, 5).map((sale) => {
+        /* Unified Card with Compact Separated Rows */
+        <View style={styles.activityListCard}>
+          {sales.slice(0, 5).map((sale, index) => {
             const isMultiItem = (sale.item_count ?? 1) > 1;
             const formattedTotal = formatPesoCurrency(sale.total_amount);
             const formattedUnitPrice = formatPesoCurrency(sale.unit_price);
             const formattedTime = formatRecentSaleTime(sale.created_at);
+            const isLast = index === Math.min(sales.length, 5) - 1;
 
             const accessibilityLabel = isMultiItem
-              ? `Sale: ${sale.product_name}, ${sale.item_count} products, ${sale.quantity} total units, total ${formattedTotal}, ${formattedTime}`
+              ? `Sale: ${sale.product_name}, ${sale.item_count} products, total ${formattedTotal}, ${formattedTime}`
               : `Sale: ${sale.product_name}, ${sale.quantity} ${sale.unit} at ${formattedUnitPrice} each, total ${formattedTotal}, ${formattedTime}`;
 
             return (
@@ -77,78 +77,72 @@ export function RecentActivitySection({
                 accessibilityHint="Opens complete details for this sale"
                 onPress={() => onSalePress?.(sale)}
                 style={({ pressed }) => [
-                  styles.saleCard,
-                  isCompactPhone && styles.saleCardCompact,
-                  pressed && styles.saleCardPressed,
+                  styles.saleRowItem,
+                  !isLast && styles.saleRowBorder,
+                  pressed && styles.saleRowPressed,
                 ]}>
-                <View style={styles.saleRow}>
-                  {/* Left Icon Circle */}
-                  <View
-                    style={[
-                      styles.saleIconCircle,
-                      sale.payment_method === 'credit' && styles.saleIconCircleCredit,
-                    ]}
-                    accessible={false}
-                    importantForAccessibility="no-hide-descendants">
-                    <CartVectorIcon
-                      size={18}
-                      color={
-                        sale.payment_method === 'credit'
-                          ? Colors.accent
-                          : Colors.primaryDark
-                      }
-                    />
-                  </View>
+                {/* Left: Compact Green / Amber Icon Circle */}
+                <View
+                  style={[
+                    styles.saleIconCircle,
+                    sale.payment_method === 'credit' && styles.saleIconCircleCredit,
+                  ]}
+                  accessible={false}
+                  importantForAccessibility="no-hide-descendants">
+                  <CartVectorIcon
+                    size={15}
+                    color={
+                      sale.payment_method === 'credit'
+                        ? '#D97706'
+                        : '#0D7A4D'
+                    }
+                  />
+                </View>
 
-                  {/* Middle Column: Product name, Quantity & Unit Price */}
-                  <View style={styles.saleInfoCol}>
-                    <View style={styles.nameHeaderRow}>
-                      <Text
-                        style={styles.saleProductName}
-                        numberOfLines={1}
-                        ellipsizeMode="tail"
-                        maxFontSizeMultiplier={1.3}>
-                        {sale.product_name}
-                      </Text>
-                      {isMultiItem && (
-                        <View style={styles.multiBadge}>
-                          <Text style={styles.multiBadgeText}>
-                            {sale.item_count} items
-                          </Text>
-                        </View>
-                      )}
-                      {sale.payment_method === 'credit' && (
-                        <View style={styles.utangBadge}>
-                          <Text style={styles.utangBadgeText}>Utang</Text>
-                        </View>
-                      )}
-                    </View>
-
-                    <View style={styles.saleMetaRow}>
-                      <Text style={styles.saleQuantityText} maxFontSizeMultiplier={1.2}>
-                        {isMultiItem
-                          ? `${sale.item_count} products · ${sale.quantity} units`
-                          : `${sale.quantity} ${sale.unit} × ${formattedUnitPrice}`}
-                      </Text>
-                      <Text style={styles.saleMetaDot}>•</Text>
-                      <Text style={styles.saleTimeText} maxFontSizeMultiplier={1.2}>
-                        {formattedTime}
-                      </Text>
-                    </View>
-                  </View>
-
-                  {/* Right Column: Total Amount & Chevron */}
-                  <View style={styles.saleAmountCol}>
+                {/* Middle: Sale Title & Details */}
+                <View style={styles.saleInfoCol}>
+                  <View style={styles.nameHeaderRow}>
                     <Text
-                      style={styles.saleTotalAmount}
+                      style={styles.saleProductName}
                       numberOfLines={1}
-                      maxFontSizeMultiplier={1.3}>
-                      {formattedTotal}
+                      ellipsizeMode="tail"
+                      maxFontSizeMultiplier={1.2}>
+                      {sale.product_name}
                     </Text>
-                    <Text style={styles.saleChevron} importantForAccessibility="no">
-                      ›
-                    </Text>
+                    {isMultiItem && (
+                      <View style={styles.multiBadge}>
+                        <Text style={styles.multiBadgeText}>
+                          {sale.item_count} items
+                        </Text>
+                      </View>
+                    )}
+                    {sale.payment_method === 'credit' && (
+                      <View style={styles.utangBadge}>
+                        <Text style={styles.utangBadgeText}>Utang</Text>
+                      </View>
+                    )}
                   </View>
+
+                  <Text style={styles.saleMetaText} maxFontSizeMultiplier={1.15}>
+                    {isMultiItem
+                      ? `${sale.quantity} units total`
+                      : `${sale.quantity} ${sale.unit}`}
+                    {' · '}
+                    {formattedTime}
+                  </Text>
+                </View>
+
+                {/* Right: Amount & Chevron */}
+                <View style={styles.saleAmountCol}>
+                  <Text
+                    style={styles.saleTotalAmount}
+                    numberOfLines={1}
+                    maxFontSizeMultiplier={1.25}>
+                    {formattedTotal}
+                  </Text>
+                  <Text style={styles.saleChevron} importantForAccessibility="no">
+                    ›
+                  </Text>
                 </View>
               </Pressable>
             );
@@ -157,19 +151,10 @@ export function RecentActivitySection({
       ) : (
         /* Empty State Card */
         <View style={[styles.emptyCard, isCompactPhone && styles.emptyCardCompact]}>
-          {/* Vector Checklist Card with Warm Sparkle Rays */}
           <View
             style={styles.illustrationContainer}
             accessible={false}
             importantForAccessibility="no-hide-descendants">
-            {/* Left Warm Sparkle Rays */}
-            <View style={styles.raysLeft}>
-              <View style={[styles.ray, styles.rayTopLeft]} />
-              <View style={[styles.ray, styles.rayMidLeft]} />
-              <View style={[styles.ray, styles.rayBotLeft]} />
-            </View>
-
-            {/* Tilted Mint Checklist Sheet */}
             <View style={styles.checklistPad}>
               {[0, 1, 2].map((idx) => (
                 <View key={idx} style={styles.checkRow}>
@@ -178,23 +163,14 @@ export function RecentActivitySection({
                 </View>
               ))}
             </View>
-
-            {/* Right Warm Sparkle Rays */}
-            <View style={styles.raysRight}>
-              <View style={[styles.ray, styles.rayTopRight]} />
-              <View style={[styles.ray, styles.rayMidRight]} />
-              <View style={[styles.ray, styles.rayBotRight]} />
-            </View>
           </View>
 
-          {/* Text Details */}
           <View style={styles.textGroup}>
             <Text style={styles.emptyTitle} maxFontSizeMultiplier={1.3}>
               No recent activity yet.
             </Text>
             <Text style={styles.emptyDescription} maxFontSizeMultiplier={1.3}>
-              Your <Text style={styles.boldWord}>transactions</Text> and updates will
-              appear here once you start using the app.
+              Your <Text style={styles.boldWord}>sales</Text> will appear here once you record your first transaction.
             </Text>
           </View>
         </View>
@@ -205,231 +181,164 @@ export function RecentActivitySection({
 
 const styles = StyleSheet.create({
   container: {
-    gap: Spacing.twoHalf,
-  },
-  salesList: {
     gap: Spacing.two,
   },
-  saleCard: {
+  activityListCard: {
     backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.lg,
-    paddingVertical: Spacing.three,
-    paddingHorizontal: Spacing.three,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: '#E2E8F0',
+    overflow: 'hidden',
     ...Shadows.xs,
   },
-  saleCardCompact: {
-    paddingVertical: Spacing.twoHalf,
-    paddingHorizontal: Spacing.twoHalf,
-  },
-  saleCardPressed: {
-    backgroundColor: Colors.backgroundAlt,
-    borderColor: Colors.primaryBorder,
-    opacity: 0.95,
-  },
-  saleRow: {
+  saleRowItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingVertical: 11,
+    paddingHorizontal: Spacing.three,
     gap: Spacing.twoHalf,
   },
+  saleRowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  saleRowPressed: {
+    backgroundColor: '#F8FAFC',
+  },
   saleIconCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: Colors.primarySoft,
-    borderWidth: 1,
-    borderColor: Colors.primaryBorder,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#DCFCE7',
     alignItems: 'center',
     justifyContent: 'center',
   },
   saleIconCircleCredit: {
-    backgroundColor: Colors.accentLight,
-    borderColor: Colors.accentBorder,
+    backgroundColor: '#FEF3C7',
   },
   saleInfoCol: {
     flex: 1,
-    gap: 3,
+    gap: 2,
   },
   nameHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    flexWrap: 'wrap',
+    gap: 5,
+  },
+  saleProductName: {
+    fontSize: Typography.sizes.bodySm,
+    fontWeight: Typography.weights.bold,
+    color: '#0F172A',
+    flexShrink: 1,
   },
   multiBadge: {
-    backgroundColor: Colors.pastel.blue.bg,
-    borderRadius: BorderRadius.xs,
-    paddingHorizontal: 5,
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 6,
     paddingVertical: 1,
-    borderWidth: 1,
-    borderColor: Colors.pastel.blue.border,
+    borderRadius: BorderRadius.full,
   },
   multiBadgeText: {
     fontSize: 10,
     fontWeight: Typography.weights.bold,
-    color: Colors.pastel.blue.accent,
-    textTransform: 'uppercase',
-    letterSpacing: 0.3,
+    color: Colors.textSecondary,
   },
   utangBadge: {
-    backgroundColor: Colors.accentLight,
-    borderRadius: BorderRadius.xs,
-    paddingHorizontal: 5,
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 6,
     paddingVertical: 1,
-    borderWidth: 1,
-    borderColor: Colors.accentBorder,
+    borderRadius: BorderRadius.full,
   },
   utangBadgeText: {
     fontSize: 10,
-    fontWeight: Typography.weights.bold,
-    color: Colors.accent,
-    textTransform: 'uppercase',
-    letterSpacing: 0.3,
+    fontWeight: Typography.weights.extraBold,
+    color: '#D97706',
   },
-  saleProductName: {
-    fontSize: Typography.sizes.body,
-    fontWeight: Typography.weights.bold,
-    color: Colors.textPrimary,
-  },
-  saleMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 4,
-  },
-  saleQuantityText: {
-    fontSize: Typography.sizes.xs,
-    fontWeight: Typography.weights.medium,
-    color: Colors.textSecondary,
-  },
-  saleMetaDot: {
-    fontSize: Typography.sizes.xs,
+  saleMetaText: {
+    fontSize: Typography.sizes.caption,
     color: Colors.textMuted,
-  },
-  saleTimeText: {
-    fontSize: Typography.sizes.xs,
     fontWeight: Typography.weights.medium,
-    color: Colors.textMuted,
   },
   saleAmountCol: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 5,
   },
   saleTotalAmount: {
-    fontSize: Typography.sizes.body,
+    fontSize: Typography.sizes.bodySm,
     fontWeight: Typography.weights.extraBold,
-    color: Colors.primaryDark,
+    color: '#0F172A',
+    fontVariant: ['tabular-nums'],
+    textAlign: 'right',
   },
   saleChevron: {
-    fontSize: Typography.sizes.lg,
-    fontWeight: Typography.weights.bold,
+    fontSize: Typography.sizes.base,
     color: Colors.textMuted,
+    fontWeight: Typography.weights.bold,
   },
   emptyCard: {
-    backgroundColor: Colors.primarySoft,
-    borderRadius: BorderRadius.lg,
-    paddingVertical: Spacing.three,
-    paddingHorizontal: Spacing.three,
+    backgroundColor: Colors.surface,
+    borderRadius: 20,
+    padding: Spacing.four,
     borderWidth: 1,
-    borderColor: Colors.pastel.green.border,
-    flexDirection: 'row',
+    borderColor: '#E2E8F0',
     alignItems: 'center',
-    gap: Spacing.three,
+    gap: Spacing.two,
     ...Shadows.xs,
   },
   emptyCardCompact: {
-    paddingVertical: Spacing.twoHalf,
-    paddingHorizontal: Spacing.twoHalf,
-    gap: Spacing.twoHalf,
+    padding: Spacing.three,
   },
   illustrationContainer: {
-    width: 72,
-    height: 54,
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    paddingVertical: Spacing.one,
   },
   checklistPad: {
-    width: 42,
+    width: 44,
     height: 48,
-    borderRadius: BorderRadius.sm,
-    backgroundColor: '#99D5C3',
-    paddingVertical: 9,
-    paddingHorizontal: 8,
-    justifyContent: 'space-between',
-    transform: [{ rotate: '-5deg' }],
-    ...Shadows.xs,
+    borderRadius: 8,
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    padding: 6,
+    gap: 5,
+    justifyContent: 'center',
   },
   checkRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 4,
   },
   checkDot: {
-    width: 4.5,
-    height: 4.5,
-    borderRadius: 2.5,
-    backgroundColor: Colors.surface,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#10B981',
   },
   checkLine: {
     flex: 1,
-    height: 2.5,
+    height: 3,
     borderRadius: 1.5,
-    backgroundColor: Colors.surface,
-  },
-  raysLeft: {
-    height: 36,
-    justifyContent: 'space-between',
-    marginRight: 5,
-  },
-  raysRight: {
-    height: 36,
-    justifyContent: 'space-between',
-    marginLeft: 5,
-  },
-  ray: {
-    width: 6,
-    height: 2.2,
-    borderRadius: 1.2,
-    backgroundColor: Colors.accentWarm,
-  },
-  rayTopLeft: {
-    transform: [{ rotate: '28deg' }],
-  },
-  rayMidLeft: {
-    width: 7,
-  },
-  rayBotLeft: {
-    transform: [{ rotate: '-28deg' }],
-  },
-  rayTopRight: {
-    transform: [{ rotate: '-28deg' }],
-  },
-  rayMidRight: {
-    width: 7,
-  },
-  rayBotRight: {
-    transform: [{ rotate: '28deg' }],
+    backgroundColor: '#CBD5E1',
   },
   textGroup: {
-    flex: 1,
+    alignItems: 'center',
     gap: 3,
   },
   emptyTitle: {
-    fontSize: Typography.sizes.body,
-    fontWeight: Typography.weights.extraBold,
-    color: Colors.primaryDark,
+    fontSize: Typography.sizes.bodySm,
+    fontWeight: Typography.weights.bold,
+    color: '#0F172A',
   },
   emptyDescription: {
-    fontSize: Typography.sizes.xs,
-    color: Colors.textMuted,
-    lineHeight: Typography.lineHeights.tight,
+    fontSize: Typography.sizes.caption,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 16,
   },
   boldWord: {
     fontWeight: Typography.weights.bold,
-    color: Colors.textSecondary,
+    color: '#0F172A',
   },
 });
