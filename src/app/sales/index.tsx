@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import {
   router,
   useFocusEffect,
@@ -457,7 +458,7 @@ export default function SalesScreen() {
       router.replace('/products');
       return;
     }
-    if (tab === 'utang') {
+    if (tab === 'customers' || tab === 'utang') {
       router.replace('/customers' as any);
       return;
     }
@@ -469,6 +470,7 @@ export default function SalesScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      <StatusBar style="light" />
       <KeyboardAvoidingView
         style={styles.mainContainer}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>

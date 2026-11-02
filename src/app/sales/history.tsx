@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import { router, useFocusEffect, usePathname } from 'expo-router';
 
 import {
@@ -128,7 +129,7 @@ export default function SalesHistoryScreen() {
       router.replace('/products');
       return;
     }
-    if (tab === 'utang') {
+    if (tab === 'customers' || tab === 'utang') {
       router.replace('/customers' as any);
       return;
     }
@@ -197,6 +198,7 @@ export default function SalesHistoryScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      <StatusBar style="light" />
       <View style={styles.mainContainer}>
         {/* Deep Green Top Screen Header */}
         <View style={styles.heroHeaderZone}>
@@ -359,7 +361,7 @@ export default function SalesHistoryScreen() {
                     </Text>
                     <View style={styles.summaryBadgePill}>
                       <Text style={styles.summaryBadgeText}>
-                        ↑ +15.2%
+                        No comparison yet
                       </Text>
                     </View>
                   </View>
