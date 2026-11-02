@@ -12,6 +12,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import { router, useFocusEffect, usePathname } from 'expo-router';
 
 import {
@@ -27,6 +28,8 @@ import {
 } from '@/components/dashboard/DashboardNavIcons';
 import { ProductCard } from '@/components/products/ProductCard';
 import { ProductScreenHeader } from '@/components/products/ProductScreenHeader';
+import { TindaMateSearchBar } from '@/components/ui/TindaMateSearchBar';
+import { FilterChipRow } from '@/components/ui/FilterChipRow';
 import { TindaMateButton } from '@/components/ui/TindaMateButton';
 import {
   BorderRadius,
@@ -114,7 +117,7 @@ export default function ProductsListScreen() {
       router.replace('/sales' as any);
       return;
     }
-    if (tab === 'utang') {
+    if (tab === 'customers' || tab === 'utang') {
       router.replace('/customers' as any);
       return;
     }
@@ -168,64 +171,44 @@ export default function ProductsListScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      <StatusBar style="light" />
       <KeyboardAvoidingView
         style={styles.mainContainer}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        {/* Deep Green Top Header + Search Bar */}
-        <View style={styles.heroHeaderZone}>
-          <ProductScreenHeader
-            title="Products"
-            showBack={false}
-            leftIcon={<NavProductsIcon color={Colors.textInverse} />}
-            rightActionLabel="+ Add Product"
-            rightActionAccessibilityLabel="Add a new product"
-            onRightActionPress={() => router.push('/products/add')}
-          />
-
-          {/* Search Products Input + Filter Toggle Button */}
+        {/* Deep Green Top Header + Embedded Search Bar */}
+        <ProductScreenHeader
+          title="Products"
+          showBack={false}
+          leftIcon={<NavProductsIcon color={Colors.textInverse} />}
+          rightActionLabel="+ Add Product"
+          rightActionAccessibilityLabel="Add a new product"
+          onRightActionPress={() => router.push('/products/add')}>
           {!isInitialLoading && products.length > 0 ? (
-            <View style={styles.searchRowWrap}>
-              <View style={styles.searchBar}>
-                <SearchVectorIcon color={Colors.textMuted} size={18} />
-                <TextInput
-                  value={searchQuery}
-                  onChangeText={setSearchQuery}
-                  placeholder="Search products..."
-                  placeholderTextColor={Colors.textMuted}
-                  style={styles.searchInput}
-                  returnKeyType="search"
-                  autoCorrect={false}
-                  accessibilityLabel="Search store products"
-                />
-                {searchQuery.trim().length > 0 ? (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Clear search"
-                    onPress={() => setSearchQuery('')}
-                    style={styles.clearSearchBtn}>
-                    <Text style={styles.clearSearchText}>✕</Text>
-                  </Pressable>
-                ) : null}
-              </View>
-
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Toggle category filters"
-                onPress={() => setShowCategoryStrip((prev) => !prev)}
-                style={({ pressed }) => [
-                  styles.filterIconButton,
-                  showCategoryStrip && styles.filterIconButtonActive,
-                  pressed && styles.filterChipPressed,
-                ]}>
-                <View style={styles.filterLinesWrap}>
-                  <View style={[styles.filterLine, { width: 16 }]} />
-                  <View style={[styles.filterLine, { width: 11 }]} />
-                  <View style={[styles.filterLine, { width: 6 }]} />
-                </View>
-              </Pressable>
-            </View>
+            <TindaMateSearchBar
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholder="Search products..."
+              accessibilityLabel="Search store products"
+              rightAction={
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Toggle category filters"
+                  onPress={() => setShowCategoryStrip((prev) => !prev)}
+                  style={({ pressed }) => [
+                    styles.filterIconButton,
+                    showCategoryStrip && styles.filterIconButtonActive,
+                    pressed && styles.filterChipPressed,
+                  ]}>
+                  <View style={styles.filterLinesWrap}>
+                    <View style={[styles.filterLine, { width: 16 }]} />
+                    <View style={[styles.filterLine, { width: 11 }]} />
+                    <View style={[styles.filterLine, { width: 6 }]} />
+                  </View>
+                </Pressable>
+              }
+            />
           ) : null}
-        </View>
+        </ProductScreenHeader>
 
         {/* Scrollable Content */}
         <ScrollView
