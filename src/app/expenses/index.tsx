@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import {
   router,
   useFocusEffect,
@@ -141,7 +142,7 @@ export default function ExpensesListScreen() {
       router.replace('/sales' as any);
       return;
     }
-    if (tab === 'utang') {
+    if (tab === 'customers' || tab === 'utang') {
       router.replace('/customers' as any);
       return;
     }
@@ -221,6 +222,7 @@ export default function ExpensesListScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      <StatusBar style="light" />
       <View style={styles.mainContainer}>
         {/* Top Screen Header */}
         <ProductScreenHeader
