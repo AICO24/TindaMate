@@ -255,89 +255,112 @@ export function NavPosIcon({ color = Colors.textMuted, size = IconSizes.nav }: I
 /**
  * Floating Center POS / Scan Action Vector Icon (Viewfinder brackets + center scan line)
  */
+/**
+ * Customers / People Silhouette Vector Icon (Design 2.0)
+ */
+export function NavCustomersIcon({ color = Colors.textMuted, size = IconSizes.nav }: IconProps) {
+  return (
+    <View style={[styles.center, { width: size, height: size }]}>
+      {/* Secondary Person (Behind on Left) */}
+      <View style={{ position: 'absolute', left: 1, top: 2, alignItems: 'center', opacity: 0.75 }}>
+        <View
+          style={{
+            width: 7,
+            height: 7,
+            borderRadius: 3.5,
+            borderWidth: 1.5,
+            borderColor: color,
+            marginBottom: 1,
+          }}
+        />
+        <View
+          style={{
+            width: 11,
+            height: 6,
+            borderTopLeftRadius: 5.5,
+            borderTopRightRadius: 5.5,
+            borderWidth: 1.5,
+            borderBottomWidth: 0,
+            borderColor: color,
+          }}
+        />
+      </View>
+      {/* Primary Person (Foreground on Right) */}
+      <View style={{ position: 'absolute', right: 1, top: 4, alignItems: 'center' }}>
+        <View
+          style={{
+            width: 8,
+            height: 8,
+            borderRadius: 4,
+            borderWidth: 1.8,
+            borderColor: color,
+            backgroundColor: Colors.surface,
+            marginBottom: 1,
+          }}
+        />
+        <View
+          style={{
+            width: 14,
+            height: 7,
+            borderTopLeftRadius: 7,
+            borderTopRightRadius: 7,
+            borderWidth: 1.8,
+            borderBottomWidth: 0,
+            borderColor: color,
+            backgroundColor: Colors.surface,
+          }}
+        />
+      </View>
+    </View>
+  );
+}
+
+/**
+ * Floating Center POS / New Sale Action Vector Icon (Prominent Shopping Bag + Plus CTA)
+ */
 export function NavFloatingCenterIcon({
   color = Colors.textInverse,
   size = 28,
 }: IconProps) {
-  const corner = 7.5;
-  const stroke = 2.2;
   return (
     <View style={[styles.center, { width: size, height: size }]}>
-      <View style={{ width: 26, height: 26, position: 'relative', alignItems: 'center', justifyContent: 'center' }}>
-        {/* Top-Left Corner */}
+      {/* Main Bag Body */}
+      <View
+        style={{
+          width: 20,
+          height: 18,
+          borderWidth: 2.2,
+          borderColor: color,
+          borderRadius: 4,
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginTop: 4,
+        }}>
+        {/* Arch Handle */}
         <View
           style={{
             position: 'absolute',
-            top: 0,
-            left: 0,
-            width: corner,
-            height: corner,
-            borderTopWidth: stroke,
-            borderLeftWidth: stroke,
+            top: -7,
+            width: 10,
+            height: 7,
+            borderTopLeftRadius: 5,
+            borderTopRightRadius: 5,
+            borderWidth: 2.2,
+            borderBottomWidth: 0,
             borderColor: color,
-            borderTopLeftRadius: 3,
           }}
         />
-        {/* Top-Right Corner */}
+        {/* Bold Plus Icon inside bag */}
+        <View style={{ width: 9, height: 2.2, backgroundColor: color, borderRadius: 1.1 }} />
         <View
           style={{
             position: 'absolute',
-            top: 0,
-            right: 0,
-            width: corner,
-            height: corner,
-            borderTopWidth: stroke,
-            borderRightWidth: stroke,
-            borderColor: color,
-            borderTopRightRadius: 3,
+            width: 2.2,
+            height: 9,
+            backgroundColor: color,
+            borderRadius: 1.1,
           }}
         />
-        {/* Bottom-Left Corner */}
-        <View
-          style={{
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            width: corner,
-            height: corner,
-            borderBottomWidth: stroke,
-            borderLeftWidth: stroke,
-            borderColor: color,
-            borderBottomLeftRadius: 3,
-          }}
-        />
-        {/* Bottom-Right Corner */}
-        <View
-          style={{
-            position: 'absolute',
-            bottom: 0,
-            right: 0,
-            width: corner,
-            height: corner,
-            borderBottomWidth: stroke,
-            borderRightWidth: stroke,
-            borderColor: color,
-            borderBottomRightRadius: 3,
-          }}
-        />
-        {/* Center Dotted Pattern matching reference floating button */}
-        <View style={{ width: 12, height: 12, alignItems: 'center', justifyContent: 'center', gap: 2 }}>
-          <View style={{ flexDirection: 'row', gap: 2 }}>
-            <View style={{ width: 2.2, height: 2.2, borderRadius: 1.1, backgroundColor: color }} />
-            <View style={{ width: 2.2, height: 2.2, borderRadius: 1.1, backgroundColor: color }} />
-            <View style={{ width: 2.2, height: 2.2, borderRadius: 1.1, backgroundColor: color }} />
-          </View>
-          <View style={{ flexDirection: 'row', gap: 2 }}>
-            <View style={{ width: 2.2, height: 2.2, borderRadius: 1.1, backgroundColor: color }} />
-            <View style={{ width: 2.8, height: 2.8, borderRadius: 1.4, backgroundColor: color }} />
-            <View style={{ width: 2.2, height: 2.2, borderRadius: 1.1, backgroundColor: color }} />
-          </View>
-          <View style={{ flexDirection: 'row', gap: 2 }}>
-            <View style={{ width: 2.2, height: 2.2, borderRadius: 1.1, backgroundColor: color }} />
-            <View style={{ width: 2.2, height: 2.2, borderRadius: 1.1, backgroundColor: color }} />
-            <View style={{ width: 2.2, height: 2.2, borderRadius: 1.1, backgroundColor: color }} />
-          </View>
-        </View>
       </View>
     </View>
   );

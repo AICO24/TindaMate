@@ -4,10 +4,10 @@ import { usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
+  NavCustomersIcon,
   NavFloatingCenterIcon,
   NavHomeIcon,
   NavMoreIcon,
-  NavPosIcon,
   NavProductsIcon,
 } from './DashboardNavIcons';
 import { OrganicWaveDecoration } from './OrganicWaveDecoration';
@@ -19,7 +19,7 @@ import {
   Typography,
 } from '@/constants/theme';
 
-export type NavTab = 'home' | 'products' | 'sales' | 'utang' | 'more';
+export type NavTab = 'home' | 'products' | 'sales' | 'customers' | 'more' | 'utang';
 
 interface DashboardBottomNavProps {
   /** Optional explicit tab override (e.g., when a sheet/sub-view is active on the current route) */
@@ -34,9 +34,10 @@ export function resolveActiveNavTab(pathname: string): NavTab {
   const normalized = pathname.toLowerCase();
   if (normalized.startsWith('/products')) return 'products';
   if (normalized.startsWith('/sales')) return 'sales';
+  if (normalized.startsWith('/customers') || normalized.startsWith('/utang')) {
+    return 'customers';
+  }
   if (
-    normalized.startsWith('/customers') ||
-    normalized.startsWith('/utang') ||
     normalized.startsWith('/expenses') ||
     normalized.startsWith('/reports') ||
     normalized.startsWith('/more') ||
@@ -51,10 +52,10 @@ export function resolveActiveNavTab(pathname: string): NavTab {
 /**
  * DashboardBottomNav (TindaMate Design 2.0)
  *
- * Modern asymmetric 4-tab + Floating Center Action navigation bar:
- * - Left side: Home, POS
- * - Center: Prominent floating circular TindaMate POS/Scan action button rising above the bar
- * - Right side: Products, More
+ * Distinct 5-destination bottom navigation bar:
+ * - Left side: Home (1), Products (2)
+ * - Center: Prominent floating circular TindaMate New Sale / POS CTA (3) rising above the bar
+ * - Right side: Customers & Utang (4), More Hub (5)
  * - Clean white surface with rounded upper edges, subtle elevation, and safe-area inset support
  */
 export function DashboardBottomNav({
@@ -64,7 +65,7 @@ export function DashboardBottomNav({
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const rawTab = activeTab ?? resolveActiveNavTab(pathname);
-  const currentTab: NavTab = rawTab === 'utang' ? 'more' : rawTab;
+  const currentTab: NavTab = rawTab === 'utang' ? 'customers' : rawTab;
 
   // Flow the clean white surface through the bottom safe area on devices with a home indicator bar
   const bottomInsetPadding = insets.bottom > 0 ? insets.bottom : Spacing.two;
@@ -80,9 +81,9 @@ export function DashboardBottomNav({
       renderIcon: (color) => <NavHomeIcon color={color} />,
     },
     {
-      key: 'sales',
-      label: 'POS',
-      renderIcon: (color) => <NavPosIcon color={color} />,
+      key: 'products',
+      label: 'Products',
+      renderIcon: (color) => <NavProductsIcon color={color} />,
     },
   ];
 
@@ -92,9 +93,9 @@ export function DashboardBottomNav({
     renderIcon: (color: string) => React.ReactNode;
   }[] = [
     {
-      key: 'products',
-      label: 'Products',
-      renderIcon: (color) => <NavProductsIcon color={color} />,
+      key: 'customers',
+      label: 'Customers',
+      renderIcon: (color) => <NavCustomersIcon color={color} />,
     },
     {
       key: 'more',
@@ -154,12 +155,12 @@ export function DashboardBottomNav({
       <View
         style={[styles.navBar, { paddingBottom: bottomInsetPadding }]}
         accessibilityRole="tablist">
-        {/* Left Side: Home & POS */}
+        {/* Left Side: Home & Products */}
         <View style={styles.sideGroup}>
           {leftTabs.map(renderTabButton)}
         </View>
 
-        {/* Center Slot Spacer + Floating Action Button */}
+        {/* Center Slot Spacer + Floating Action Button (New Sale / POS) */}
         <View style={styles.centerSlot}>
           <View style={styles.floatingCradle}>
             <Pressable
@@ -180,7 +181,7 @@ export function DashboardBottomNav({
           </View>
         </View>
 
-        {/* Right Side: Products & More */}
+        {/* Right Side: Customers & More */}
         <View style={styles.sideGroup}>
           {rightTabs.map(renderTabButton)}
         </View>
@@ -309,4 +310,3 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
 });
-
