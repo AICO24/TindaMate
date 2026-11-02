@@ -24,18 +24,17 @@ export interface ExpenseOverviewCardProps {
   onViewExpenses?: () => void;
   error?: string | null;
   onRetry?: () => void;
+  compact?: boolean;
 }
 
 /**
- * ExpenseOverviewCard (Design 2.0 Golden Screen Foundation)
+ * ExpenseOverviewCard (Design 2.0 Showcase Alignment)
  *
  * Dedicated Store Expense Summary Card for the Main Dashboard:
- * 1. Prominent Today's Expenses: Authoritative store-derived expense total (e.g. ₱450.00)
- * 2. Recorded Today: Count of expense records logged for today (e.g. 2 expenses today)
- * 3. Outlay Status: Contextual status of operating cashflow outlays
- * 4. Action: Direct "View All →" navigation into the Expense Management screen
- *
- * Designed with Design 2.0 tokens (crisp white card, slate & subtle crimson outlay accents, zero pastel blue).
+ * - Supports `compact` mode for side-by-side integration with Utang
+ * - Authoritative store-derived expense total (e.g. ₱450.00)
+ * - Recorded entry count for today
+ * - Direct "View All →" navigation into Expense Management screen
  */
 export function ExpenseOverviewCard({
   summary,
@@ -43,10 +42,10 @@ export function ExpenseOverviewCard({
   onViewExpenses,
   error,
   onRetry,
+  compact = false,
 }: ExpenseOverviewCardProps) {
   const { width: windowWidth } = useWindowDimensions();
   const isNarrowPhone = windowWidth < 350;
-  const isCompactPhone = windowWidth < 380;
 
   const hasExpenses = summary.totalExpenses > 0;
   const expenseCountLabel =
@@ -60,6 +59,69 @@ export function ExpenseOverviewCard({
     ? 'Operating outlay'
     : 'Zero outlay';
 
+  // Compact card presentation (for side-by-side Store Finances row)
+  if (compact) {
+    return (
+      <View style={styles.compactCard}>
+        {/* Header: Icon + Section Title + View All */}
+        <View style={styles.compactTopRow}>
+          <View style={styles.compactHeaderLeft}>
+            <View style={styles.compactIconCircle}>
+              <NavMoreIcon size={13} color="#EF4444" />
+            </View>
+            <Text style={styles.compactTitleText} numberOfLines={1}>
+              Expenses
+            </Text>
+          </View>
+
+          {onViewExpenses && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="View all store expenses"
+              onPress={isLoading ? undefined : onViewExpenses}
+              disabled={isLoading}
+              hitSlop={8}
+              style={({ pressed }) => [pressed && styles.pressed]}>
+              <Text style={styles.compactViewAllText}>All →</Text>
+            </Pressable>
+          )}
+        </View>
+
+        {/* Primary Amount */}
+        {isLoading ? (
+          <View style={styles.compactSkeletonAmount} />
+        ) : (
+          <Text
+            style={[
+              styles.compactAmountText,
+              !hasExpenses && styles.compactAmountZero,
+            ]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.8}>
+            {formatPesoCurrency(summary.totalExpenses)}
+          </Text>
+        )}
+
+        {/* Footer Subtext */}
+        <View style={styles.compactFooterRow}>
+          <Text style={styles.compactSubtext} numberOfLines={1}>
+            {expenseCountLabel}
+          </Text>
+          <Text
+            style={[
+              styles.compactStatusText,
+              hasExpenses ? styles.compactStatusOutlay : styles.compactStatusNeutral,
+            ]}
+            numberOfLines={1}>
+            {outlayStatusLabel}
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  // Full card presentation
   return (
     <View
       style={styles.card}
@@ -103,7 +165,7 @@ export function ExpenseOverviewCard({
         ) : null}
       </View>
 
-      {/* 2. Error Recovery State (non-crashing) */}
+      {/* 2. Error Recovery State */}
       {error ? (
         <View style={styles.errorBox}>
           <Text style={styles.errorText}>
@@ -133,7 +195,6 @@ export function ExpenseOverviewCard({
             <Text
               style={[
                 styles.totalExpenseAmount,
-                isCompactPhone && styles.totalExpenseAmountCompact,
                 isNarrowPhone && styles.totalExpenseAmountNarrow,
                 !hasExpenses && styles.totalExpenseAmountZero,
               ]}
@@ -152,13 +213,8 @@ export function ExpenseOverviewCard({
         )}
       </View>
 
-      {/* 4. Supporting Metrics: Expense Count & Outlay Status */}
-      <View
-        style={[
-          styles.statsRow,
-          isNarrowPhone && styles.statsRowNarrow,
-        ]}>
-        {/* Metric 1: Expenses Count */}
+      {/* 4. Supporting Metrics */}
+      <View style={styles.statsRow}>
         <View style={styles.statBox}>
           <Text style={styles.statLabel}>Recorded Today</Text>
           {isLoading ? (
@@ -175,7 +231,6 @@ export function ExpenseOverviewCard({
           )}
         </View>
 
-        {/* Metric 2: Status */}
         <View style={styles.statBox}>
           <Text style={styles.statLabel}>Store Outlay</Text>
           {isLoading ? (
@@ -200,6 +255,91 @@ export function ExpenseOverviewCard({
 }
 
 const styles = StyleSheet.create({
+  // Compact presentation styles
+  compactCard: {
+    flex: 1,
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    paddingVertical: Spacing.twoHalf,
+    paddingHorizontal: Spacing.three,
+    justifyContent: 'space-between',
+    minHeight: 98,
+    ...Shadows.xs,
+  },
+  compactTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  compactHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  compactIconCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#FEE2E2',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  compactTitleText: {
+    fontSize: 12,
+    fontWeight: Typography.weights.extraBold,
+    color: '#0F172A',
+  },
+  compactViewAllText: {
+    fontSize: 11,
+    fontWeight: Typography.weights.bold,
+    color: Colors.primary,
+  },
+  compactAmountText: {
+    fontSize: 18,
+    fontWeight: Typography.weights.extraBold,
+    color: '#0F172A',
+    fontVariant: ['tabular-nums'],
+    letterSpacing: -0.3,
+    marginVertical: 2,
+  },
+  compactAmountZero: {
+    color: Colors.textMuted,
+  },
+  compactFooterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 4,
+  },
+  compactSubtext: {
+    fontSize: 11,
+    color: Colors.textSecondary,
+    fontWeight: Typography.weights.medium,
+  },
+  compactStatusText: {
+    fontSize: 11,
+    fontWeight: Typography.weights.bold,
+  },
+  compactStatusOutlay: {
+    color: '#EF4444',
+  },
+  compactStatusNeutral: {
+    color: Colors.textMuted,
+  },
+  compactSkeletonAmount: {
+    width: '70%',
+    height: 22,
+    borderRadius: BorderRadius.sm,
+    backgroundColor: Colors.border,
+    marginVertical: 4,
+  },
+  pressed: {
+    opacity: 0.7,
+  },
+
+  // Full presentation styles
   card: {
     backgroundColor: Colors.surface,
     borderRadius: BorderRadius.primaryCard,
@@ -299,9 +439,6 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
     letterSpacing: -0.5,
   },
-  totalExpenseAmountCompact: {
-    fontSize: Typography.sizes.displaySm,
-  },
   totalExpenseAmountNarrow: {
     fontSize: Typography.sizes.xl,
   },
@@ -316,10 +453,6 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
     gap: Spacing.twoHalf,
-  },
-  statsRowNarrow: {
-    flexDirection: 'column',
-    gap: Spacing.two,
   },
   statBox: {
     flex: 1,
@@ -344,7 +477,7 @@ const styles = StyleSheet.create({
     color: '#EF4444',
   },
   statValueNeutral: {
-    color: Colors.textSecondary,
+    color: Colors.textMuted,
   },
   skeletonAmountWrap: {
     gap: 8,
