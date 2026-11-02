@@ -58,8 +58,13 @@ export function CustomerCard({ customer, onPress }: CustomerCardProps) {
   const hasUtang = balance > 0;
   const formattedBalance = formatPesoCurrency(balance);
   const lastActivityDate = formatShortActivityDate(
-    customer.credit_summary?.last_transaction_at ?? customer.updated_at
+    customer.credit_summary?.last_transaction_at
   );
+  const secondaryMeta = lastActivityDate
+    ? `Last activity: ${lastActivityDate}`
+    : customer.phone
+    ? `Phone: ${customer.phone}`
+    : null;
 
   const accessibilityLabel = `${customer.name}, ${
     customer.phone ? `Phone: ${customer.phone}, ` : ''
@@ -133,16 +138,14 @@ export function CustomerCard({ customer, onPress }: CustomerCardProps) {
             </View>
           )}
 
-          <Text
-            style={styles.activityMetaText}
-            numberOfLines={1}
-            maxFontSizeMultiplier={1.2}>
-            {lastActivityDate
-              ? `Last payment: ${lastActivityDate}`
-              : customer.phone
-              ? `Phone: ${customer.phone}`
-              : 'Last payment: Oct 30'}
-          </Text>
+          {secondaryMeta ? (
+            <Text
+              style={styles.activityMetaText}
+              numberOfLines={1}
+              maxFontSizeMultiplier={1.2}>
+              {secondaryMeta}
+            </Text>
+          ) : null}
         </View>
 
         {/* Right: Chevron */}

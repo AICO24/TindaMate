@@ -12,6 +12,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import { router, useFocusEffect, usePathname } from 'expo-router';
 
 import { CustomerCard } from '@/components/customers/CustomerCard';
@@ -28,6 +29,7 @@ import {
   SearchVectorIcon,
 } from '@/components/dashboard/DashboardNavIcons';
 import { ProductScreenHeader } from '@/components/products/ProductScreenHeader';
+import { TindaMateSearchBar } from '@/components/ui/TindaMateSearchBar';
 import { TindaMateButton } from '@/components/ui/TindaMateButton';
 import {
   BorderRadius,
@@ -117,7 +119,7 @@ export default function CustomersListScreen() {
   );
 
   const handleTabPress = (tab: NavTab) => {
-    if (tab === 'utang') {
+    if (tab === 'customers' || tab === 'utang') {
       return;
     }
     if (tab === 'home') {
@@ -164,65 +166,45 @@ export default function CustomersListScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      <StatusBar style="light" />
       <KeyboardAvoidingView
         style={styles.mainContainer}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        {/* Deep Green Top Header + Search Bar */}
-        <View style={styles.heroHeaderZone}>
-          <ProductScreenHeader
-            title="Customers"
-            showBack={true}
-            onBack={() =>
-              router.canGoBack() ? router.back() : router.replace('/home')
+        {/* Deep Green Top Header + Embedded Search Bar */}
+        <ProductScreenHeader
+          title="Customers"
+          showBack={true}
+          onBack={() =>
+            router.canGoBack() ? router.back() : router.replace('/home')
+          }
+          leftIcon={<NavUtangIcon color={Colors.textInverse} />}
+          rightActionLabel="+ Add Customer"
+          rightActionAccessibilityLabel="Add a new customer"
+          onRightActionPress={() => router.push('/customers/add' as any)}>
+          <TindaMateSearchBar
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholder="Search customers..."
+            accessibilityLabel="Search customers"
+            rightAction={
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Toggle customer filters"
+                onPress={() => setShowFilterRow((prev) => !prev)}
+                style={({ pressed }) => [
+                  styles.filterIconButton,
+                  showFilterRow && styles.filterIconButtonActive,
+                  pressed && styles.buttonPressed,
+                ]}>
+                <View style={styles.filterLinesWrap}>
+                  <View style={[styles.filterLine, { width: 16 }]} />
+                  <View style={[styles.filterLine, { width: 11 }]} />
+                  <View style={[styles.filterLine, { width: 6 }]} />
+                </View>
+              </Pressable>
             }
-            leftIcon={<NavUtangIcon color={Colors.textInverse} />}
-            rightActionLabel="+ Add Customer"
-            rightActionAccessibilityLabel="Add a new customer"
-            onRightActionPress={() => router.push('/customers/add' as any)}
           />
-
-          {/* Search Customers Input + Filter Toggle Button */}
-          <View style={styles.searchRowWrap}>
-            <View style={styles.searchBar}>
-              <SearchVectorIcon color={Colors.textMuted} size={18} />
-              <TextInput
-                style={styles.searchInput}
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                placeholder="Search customers..."
-                placeholderTextColor={Colors.textMuted}
-                accessibilityLabel="Search customers"
-                returnKeyType="search"
-                autoCorrect={false}
-              />
-              {searchQuery.length > 0 ? (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Clear search input"
-                  onPress={handleClearSearch}
-                  style={styles.clearSearchBtn}>
-                  <Text style={styles.clearSearchText}>✕</Text>
-                </Pressable>
-              ) : null}
-            </View>
-
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Toggle customer filters"
-              onPress={() => setShowFilterRow((prev) => !prev)}
-              style={({ pressed }) => [
-                styles.filterIconButton,
-                showFilterRow && styles.filterIconButtonActive,
-                pressed && styles.buttonPressed,
-              ]}>
-              <View style={styles.filterLinesWrap}>
-                <View style={[styles.filterLine, { width: 16 }]} />
-                <View style={[styles.filterLine, { width: 11 }]} />
-                <View style={[styles.filterLine, { width: 6 }]} />
-              </View>
-            </Pressable>
-          </View>
-        </View>
+        </ProductScreenHeader>
 
         {/* Scrollable Content */}
         <ScrollView

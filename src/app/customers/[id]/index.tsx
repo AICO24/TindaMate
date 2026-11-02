@@ -13,6 +13,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 
 import { CreditTransactionCard } from '@/components/customers/CreditTransactionCard';
@@ -275,6 +276,7 @@ export default function CustomerDetailsScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      <StatusBar style="light" />
       <View style={styles.mainContainer}>
         {/* Screen Header */}
         <ProductScreenHeader
