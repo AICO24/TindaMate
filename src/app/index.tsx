@@ -8,6 +8,7 @@ import {
   NativeSyntheticEvent,
   Pressable,
   ScrollView,
+  type ScrollViewInstance,
   StyleSheet,
   Text,
   useWindowDimensions,
@@ -99,7 +100,7 @@ export default function WelcomeScreen() {
   const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
 
-  const carouselScrollRef = useRef<ScrollView>(null);
+  const carouselScrollRef = useRef<ScrollViewInstance>(null);
 
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const frameWidth = Math.min(windowWidth, AuthMaxContentWidth);

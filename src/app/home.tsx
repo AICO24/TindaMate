@@ -12,6 +12,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import { router, useFocusEffect, useLocalSearchParams, usePathname } from 'expo-router';
 import * as Linking from 'expo-linking';
 import { User } from '@supabase/supabase-js';
@@ -464,7 +465,7 @@ export default function AuthenticatedDashboardScreen() {
       return;
     }
 
-    if (tab === 'utang') {
+    if (tab === 'customers' || tab === 'utang') {
       if (isGuestMode) {
         handleModuleClick('Customers & Utang', 'Batch 8');
         return;
@@ -486,6 +487,7 @@ export default function AuthenticatedDashboardScreen() {
   if (isLoading) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
+      <StatusBar style="light" />
         <TindaMateLoadingView message="Loading TindaMate Dashboard..." />
       </SafeAreaView>
     );
@@ -733,8 +735,7 @@ export default function AuthenticatedDashboardScreen() {
               </View>
 
               <View style={styles.mainSalesBadgePill}>
-                <Text style={styles.mainSalesBadgeArrow}>↑</Text>
-                <Text style={styles.mainSalesBadgeText}>+12.4% vs kahapon</Text>
+                <Text style={styles.mainSalesBadgeText}>No comparison yet</Text>
               </View>
             </Pressable>
 
@@ -747,7 +748,7 @@ export default function AuthenticatedDashboardScreen() {
               {/* Card 1: Total Sales Count */}
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={`Total Sales: ${allStoreSales.length || todaySalesSummary.transactionCount} transactions`}
+                accessibilityLabel={`Total Sales: ${allStoreSales.length > 0 ? allStoreSales.length : todaySalesSummary.transactionCount} transactions`}
                 onPress={() => {
                   if (isGuestMode) {
                     handleModuleClick('Sales History', 'Batch 5');
@@ -768,10 +769,10 @@ export default function AuthenticatedDashboardScreen() {
                   numberOfLines={1}
                   adjustsFontSizeToFit>
                   {isGuestMode
-                    ? '42'
+                    ? '0'
                     : allStoreSales.length > 0
                     ? allStoreSales.length
-                    : todaySalesSummary.transactionCount || 42}
+                    : todaySalesSummary.transactionCount}
                 </Text>
                 <Text style={styles.secondaryKpiLabel} numberOfLines={1}>
                   Total Sales
