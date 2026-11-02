@@ -1,5 +1,12 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  Pressable,
+  StyleProp,
+  StyleSheet,
+  Text,
+  View,
+  ViewStyle,
+} from 'react-native';
 import { router } from 'expo-router';
 
 import { ArrowLeftIcon } from '@/components/ui/AuthIcons';
@@ -13,7 +20,7 @@ import {
   Typography,
 } from '@/constants/theme';
 
-interface ProductScreenHeaderProps {
+export interface ProductScreenHeaderProps {
   title: string;
   subtitle?: string;
   showBack?: boolean;
@@ -23,17 +30,25 @@ interface ProductScreenHeaderProps {
   onRightActionPress?: () => void;
   rightActionAccessibilityLabel?: string;
   rightElement?: React.ReactNode;
+  /** Optional embedded search bar, filter chip row, or custom controls inside the curved green zone */
+  children?: React.ReactNode;
+  /** Optional style override for outer curved container */
+  style?: StyleProp<ViewStyle>;
+  /** Optional style override for inner centered container */
+  contentContainerStyle?: StyleProp<ViewStyle>;
 }
 
 /**
- * ProductScreenHeader (TindaMate Design 2.0)
+ * ProductScreenHeader / ScreenHeroHeader (TindaMate Design 2.0)
  *
- * Unified deep forest green header bar across POS, Products, Customers,
+ * Unified deep forest green header foundation across POS, Products, Customers,
  * Sales History, Expenses, Reports, and More screens:
- * - Rich TindaMate Deep Green (#064E3B) surface with subtle emerald & warm organic accents
+ * - Rich TindaMate Deep Green (#064E3B) surface with subtle organic curves
  * - Accessible back button or custom module icon
  * - Crisp white title and soft mint subtitle hierarchy
  * - Optional primary green pill CTA or custom action element on the right
+ * - Direct first-class support for embedded children (search bars, filter chips)
+ *   without requiring duplicate nested hero header zones.
  */
 export function ProductScreenHeader({
   title,
@@ -45,6 +60,9 @@ export function ProductScreenHeader({
   onRightActionPress,
   rightActionAccessibilityLabel,
   rightElement,
+  children,
+  style,
+  contentContainerStyle,
 }: ProductScreenHeaderProps) {
   const handleBack = () => {
     if (onBack) {
@@ -59,7 +77,7 @@ export function ProductScreenHeader({
   };
 
   return (
-    <View style={styles.outerZone}>
+    <View style={[styles.outerZone, style]}>
       {/* Subtle Decorative Organic Header Curves */}
       <View
         style={styles.decorCircleRight}
@@ -72,7 +90,7 @@ export function ProductScreenHeader({
         pointerEvents="none"
       />
 
-      <View style={styles.innerContainer}>
+      <View style={[styles.innerContainer, contentContainerStyle]}>
         <View style={styles.topRow}>
           <View style={styles.leftRow}>
             {showBack ? (
@@ -137,17 +155,29 @@ export function ProductScreenHeader({
             </Pressable>
           ) : null}
         </View>
+
+        {/* Embedded Children (e.g. Search Bar, Filter Chips) */}
+        {children ? (
+          <View style={styles.embeddedChildrenWrap}>
+            {children}
+          </View>
+        ) : null}
       </View>
     </View>
   );
 }
 
+/**
+ * ScreenHeroHeader — Semantic alias for ProductScreenHeader
+ */
+export const ScreenHeroHeader = ProductScreenHeader;
+
 const styles = StyleSheet.create({
   outerZone: {
     width: '100%',
     backgroundColor: Colors.primaryDark,
-    borderBottomLeftRadius: BorderRadius.xl,
-    borderBottomRightRadius: BorderRadius.xl,
+    borderBottomLeftRadius: BorderRadius.heroHeader,
+    borderBottomRightRadius: BorderRadius.heroHeader,
     paddingTop: Spacing.twoHalf,
     paddingBottom: Spacing.threeHalf,
     overflow: 'hidden',
@@ -255,5 +285,8 @@ const styles = StyleSheet.create({
     fontWeight: Typography.weights.extraBold,
     letterSpacing: 0.2,
   },
+  embeddedChildrenWrap: {
+    marginTop: Spacing.twoHalf,
+    width: '100%',
+  },
 });
-
