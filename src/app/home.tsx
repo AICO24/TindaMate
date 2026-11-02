@@ -589,7 +589,7 @@ export default function AuthenticatedDashboardScreen() {
       id: 'record_utang',
       labelLine1: 'Customers',
       labelLine2: '& Utang',
-      theme: 'purple',
+      theme: 'green',
       onPress: () => {
         if (isGuestMode) {
           handleModuleClick('Customers & Utang', 'Batch 8');
@@ -602,7 +602,7 @@ export default function AuthenticatedDashboardScreen() {
       id: 'add_expense',
       labelLine1: 'Record',
       labelLine2: 'Expense',
-      theme: 'blue',
+      theme: 'neutral',
       onPress: () => {
         if (isGuestMode) {
           handleModuleClick('Add Expense', 'Batch 9A');
@@ -617,6 +617,7 @@ export default function AuthenticatedDashboardScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      <StatusBar style="light" />
       <View style={styles.mainContainer}>
         {/* Main Scrollable Dashboard Content */}
         <ScrollView
@@ -843,7 +844,26 @@ export default function AuthenticatedDashboardScreen() {
               </Pressable>
             </View>
 
-            {/* 5. Sales Overview Chart Section */}
+            {/* 5. Quick Actions Section (Moved up for mobile ergonomic accessibility) */}
+            <View style={styles.section}>
+              <SectionHeader
+                title="Quick Actions"
+                subtitle="High-frequency store operations"
+              />
+
+              <View
+                style={[
+                  styles.quickActionsRow,
+                  isNarrowPhone && styles.quickActionsRowNarrow,
+                ]}>
+                <QuickActionTile item={quickActions[0]} />
+                <QuickActionTile item={quickActions[1]} />
+                <QuickActionTile item={quickActions[2]} />
+                <QuickActionTile item={quickActions[3]} />
+              </View>
+            </View>
+
+            {/* 6. Sales Overview Chart Section */}
             <View style={styles.chartCard}>
               <View style={styles.chartHeaderRow}>
                 <View>
@@ -929,7 +949,7 @@ export default function AuthenticatedDashboardScreen() {
               </View>
             </View>
 
-            {/* 6. Low-Stock Alert Banner */}
+            {/* 7. Low-Stock Alert Banner */}
             {isLowStockWarning ? (
               <Pressable
                 accessibilityRole="button"
@@ -970,50 +990,6 @@ export default function AuthenticatedDashboardScreen() {
               </Pressable>
             ) : null}
 
-            {/* 9. Recent Activity Section */}
-            <RecentActivitySection
-              sales={recentSales}
-              isLoading={isCardLoading}
-              hasActivity={recentSales.length > 0}
-              activityCount={recentSales.length}
-              onViewAll={() => {
-                if (isGuestMode) {
-                  handleModuleClick('Recent Activity', 'Batch 5');
-                  return;
-                }
-                router.push('/sales/history');
-              }}
-              onSalePress={(sale) => {
-                if (isGuestMode) {
-                  handleModuleClick('Sale Details', 'Batch 5');
-                  return;
-                }
-                router.push({
-                  pathname: '/sales/[id]',
-                  params: { id: sale.id },
-                });
-              }}
-            />
-
-            {/* 7. Quick Actions Section */}
-            <View style={styles.section}>
-              <SectionHeader
-                title="Quick Actions"
-                subtitle="Manage your store, faster."
-              />
-
-              <View
-                style={[
-                  styles.quickActionsRow,
-                  isNarrowPhone && styles.quickActionsRowNarrow,
-                ]}>
-                <QuickActionTile item={quickActions[0]} />
-                <QuickActionTile item={quickActions[1]} />
-                <QuickActionTile item={quickActions[2]} />
-                <QuickActionTile item={quickActions[3]} />
-              </View>
-            </View>
-
             {/* 8. Utang & Expense Overview Cards */}
             <View style={styles.section}>
               <UtangOverviewCard
@@ -1046,6 +1022,31 @@ export default function AuthenticatedDashboardScreen() {
                 }}
               />
             </View>
+
+            {/* 10. Recent Activity Section */}
+            <RecentActivitySection
+              sales={recentSales}
+              isLoading={isCardLoading}
+              hasActivity={recentSales.length > 0}
+              activityCount={recentSales.length}
+              onViewAll={() => {
+                if (isGuestMode) {
+                  handleModuleClick('Recent Activity', 'Batch 5');
+                  return;
+                }
+                router.push('/sales/history');
+              }}
+              onSalePress={(sale) => {
+                if (isGuestMode) {
+                  handleModuleClick('Sale Details', 'Batch 5');
+                  return;
+                }
+                router.push({
+                  pathname: '/sales/[id]',
+                  params: { id: sale.id },
+                });
+              }}
+            />
           </View>
         </ScrollView>
 
@@ -1315,6 +1316,7 @@ const styles = StyleSheet.create({
     fontWeight: Typography.weights.extraBold,
     color: Colors.textInverse,
     letterSpacing: -0.5,
+    fontVariant: ['tabular-nums'],
   },
   mainSalesBadgePill: {
     flexDirection: 'row',
@@ -1382,6 +1384,7 @@ const styles = StyleSheet.create({
     fontWeight: Typography.weights.extraBold,
     color: Colors.textPrimary,
     letterSpacing: -0.3,
+    fontVariant: ['tabular-nums'],
   },
   secondaryKpiLabel: {
     fontSize: Typography.sizes.caption,

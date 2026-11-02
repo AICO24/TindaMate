@@ -7,7 +7,7 @@ import {
   View,
 } from 'react-native';
 
-import { DashboardBadgeVectorIcon } from './DashboardNavIcons';
+import { NavCustomersIcon } from './DashboardNavIcons';
 import {
   BorderRadius,
   Colors,
@@ -18,7 +18,7 @@ import {
 import { formatPesoCurrency } from '@/lib/products';
 import { DashboardUtangSummary } from '@/types/customer';
 
-interface UtangOverviewCardProps {
+export interface UtangOverviewCardProps {
   summary: DashboardUtangSummary;
   isLoading?: boolean;
   onViewCustomers?: () => void;
@@ -27,15 +27,15 @@ interface UtangOverviewCardProps {
 }
 
 /**
- * UtangOverviewCard (Batch 8F)
+ * UtangOverviewCard (Design 2.0 Golden Screen Foundation)
  *
  * Dedicated Customer Credit & Utang Summary Card for the Main Dashboard:
  * 1. Prominent Outstanding Utang: Authoritative ledger-derived credit balance (e.g. ₱3,250.00)
- * 2. Distinct Customers with Balance: Count of customers with positive utang (e.g. 12 customers with balance)
- * 3. Today's Payments: Total credit repayments received today (e.g. ₱850.00 paid today)
+ * 2. Distinct Customers with Balance: Count of customers with positive utang (e.g. 5 customers with balance)
+ * 3. Today's Collections: Total credit repayments received today (e.g. ₱850.00 paid today)
  * 4. Action: Direct "View Customers →" navigation into the Customers screen
  *
- * Designed with the TindaMate Purple pastel design tokens and zero layout shift during loading.
+ * Styled in the clean, elevated Design 2.0 visual language (crisp white card, amber/orange highlights, zero purple).
  */
 export function UtangOverviewCard({
   summary,
@@ -51,27 +51,32 @@ export function UtangOverviewCard({
   const hasOutstandingBalance = summary.totalOutstandingUtang > 0;
   const customerCountLabel =
     summary.customersWithBalanceCount === 0
-      ? 'No customers with balance'
+      ? '0 customers'
       : `${summary.customersWithBalanceCount} ${
           summary.customersWithBalanceCount === 1 ? 'customer' : 'customers'
-        } with balance`;
+        }`;
 
-  const paymentsLabel = `${formatPesoCurrency(summary.todayPaymentsTotal)} paid today`;
+  const paymentsLabel = formatPesoCurrency(summary.todayPaymentsTotal);
 
   return (
     <View
       style={styles.card}
       accessibilityRole="summary"
-      accessibilityLabel={`Utang Overview. Outstanding balance: ${formatPesoCurrency(
+      accessibilityLabel={`Customers & Utang Overview. Outstanding balance: ${formatPesoCurrency(
         summary.totalOutstandingUtang
-      )}. ${customerCountLabel}. ${paymentsLabel}.`}>
-      {/* 1. Header: Pill Badge + View Customers Action */}
+      )}. ${customerCountLabel} with balance. ${paymentsLabel} paid today.`}>
+      {/* 1. Header: Section Icon + Title + View Customers Link */}
       <View style={styles.topRow}>
-        <View style={styles.badgePill}>
-          <View style={styles.badgeIconCircle}>
-            <DashboardBadgeVectorIcon type="utang" color={Colors.textInverse} />
+        <View style={styles.headerLeft}>
+          <View style={styles.iconCircle}>
+            <NavCustomersIcon size={18} color="#D97706" />
           </View>
-          <Text style={styles.badgeText}>Utang Overview</Text>
+          <View>
+            <Text style={styles.sectionTitle} accessibilityRole="header">
+              Customers & Utang
+            </Text>
+            <Text style={styles.sectionSubtitle}>Credit balance & repayments</Text>
+          </View>
         </View>
 
         {onViewCustomers ? (
@@ -87,7 +92,7 @@ export function UtangOverviewCard({
               pressed && !isLoading && styles.viewCustomersActionPressed,
             ]}>
             <Text style={styles.viewCustomersText} maxFontSizeMultiplier={1.25}>
-              View Customers
+              View All
             </Text>
             <Text style={styles.viewCustomersArrow} importantForAccessibility="no">
               →
@@ -139,7 +144,7 @@ export function UtangOverviewCard({
             <Text style={styles.outstandingLabel}>
               {hasOutstandingBalance
                 ? 'Total Outstanding Utang'
-                : 'No outstanding customer utang'}
+                : 'All customer balances settled 🎉'}
             </Text>
           </>
         )}
@@ -153,15 +158,12 @@ export function UtangOverviewCard({
         ]}>
         {/* Metric 1: Customers With Balance */}
         <View style={styles.statBox}>
-          <View style={styles.statHeader}>
-            <View style={styles.customerIconDot} />
-            <Text style={styles.statTitle}>Active Accounts</Text>
-          </View>
+          <Text style={styles.statLabel}>Active Debtors</Text>
           {isLoading ? (
             <View style={styles.skeletonStatText} />
           ) : (
             <Text
-              style={styles.statMainText}
+              style={styles.statValue}
               numberOfLines={1}
               adjustsFontSizeToFit
               minimumFontScale={0.85}
@@ -173,15 +175,12 @@ export function UtangOverviewCard({
 
         {/* Metric 2: Today's Payments */}
         <View style={styles.statBox}>
-          <View style={styles.statHeader}>
-            <View style={styles.paymentIconDot} />
-            <Text style={styles.statTitle}>Collections Today</Text>
-          </View>
+          <Text style={styles.statLabel}>Collected Today</Text>
           {isLoading ? (
             <View style={styles.skeletonStatText} />
           ) : (
             <Text
-              style={styles.statMainText}
+              style={[styles.statValue, styles.statValueSuccess]}
               numberOfLines={1}
               adjustsFontSizeToFit
               minimumFontScale={0.85}
@@ -197,13 +196,13 @@ export function UtangOverviewCard({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: Colors.pastel.purple.bg,
-    borderRadius: BorderRadius.xl,
-    borderWidth: 1.5,
-    borderColor: Colors.pastel.purple.border,
-    padding: Spacing.four,
-    gap: Spacing.three,
-    ...Shadows.xs,
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.primaryCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: Spacing.md,
+    gap: Spacing.md,
+    ...Shadows.card,
   },
   topRow: {
     flexDirection: 'row',
@@ -211,31 +210,29 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: Spacing.two,
   },
-  badgePill: {
+  headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    backgroundColor: Colors.surface,
-    paddingHorizontal: Spacing.twoHalf,
-    paddingVertical: 4,
-    borderRadius: BorderRadius.full,
-    borderWidth: 1,
-    borderColor: Colors.pastel.purple.border,
+    gap: Spacing.twoHalf,
+    flex: 1,
   },
-  badgeIconCircle: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: Colors.pastel.purple.iconBg,
+  iconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FEF3C7',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  badgeText: {
-    fontSize: Typography.sizes.caption,
+  sectionTitle: {
+    fontSize: Typography.sizes.md,
     fontWeight: Typography.weights.extraBold,
-    color: Colors.pastel.purple.text,
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
+    color: Colors.textPrimary,
+  },
+  sectionSubtitle: {
+    fontSize: Typography.sizes.xs,
+    color: Colors.textSecondary,
+    fontWeight: Typography.weights.regular,
   },
   viewCustomersAction: {
     flexDirection: 'row',
@@ -250,56 +247,66 @@ const styles = StyleSheet.create({
   viewCustomersText: {
     fontSize: Typography.sizes.xs,
     fontWeight: Typography.weights.bold,
-    color: Colors.pastel.purple.accent,
+    color: Colors.primary,
   },
   viewCustomersArrow: {
     fontSize: Typography.sizes.sm,
     fontWeight: Typography.weights.bold,
-    color: Colors.pastel.purple.accent,
+    color: Colors.primary,
   },
   errorBox: {
+    backgroundColor: '#FEF2F2',
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    padding: Spacing.twoHalf,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: Colors.errorLight,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    borderRadius: BorderRadius.md,
-    borderWidth: 1,
-    borderColor: Colors.errorBorder,
   },
   errorText: {
-    fontSize: Typography.sizes.caption,
+    fontSize: Typography.sizes.xs,
     color: Colors.error,
     fontWeight: Typography.weights.medium,
+    flex: 1,
   },
   retryBtn: {
-    paddingHorizontal: Spacing.two,
-    paddingVertical: Spacing.half,
+    paddingHorizontal: Spacing.twoHalf,
+    paddingVertical: 4,
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    borderColor: '#FECACA',
   },
   retryBtnText: {
-    fontSize: Typography.sizes.caption,
+    fontSize: Typography.sizes.xs,
     fontWeight: Typography.weights.bold,
     color: Colors.error,
-    textDecorationLine: 'underline',
   },
   mainKpiSection: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: BorderRadius.md,
+    paddingVertical: Spacing.three,
+    paddingHorizontal: Spacing.threeHalf,
+    borderWidth: 1,
+    borderColor: Colors.borderSubtle,
     gap: 2,
   },
   outstandingAmount: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: Typography.weights.extraBold,
-    color: Colors.pastel.purple.text,
+    color: '#D97706',
     letterSpacing: -0.5,
+    fontVariant: ['tabular-nums'],
   },
   outstandingAmountCompact: {
-    fontSize: 28,
-  },
-  outstandingAmountNarrow: {
     fontSize: 24,
   },
+  outstandingAmountNarrow: {
+    fontSize: 22,
+  },
   outstandingAmountZero: {
-    color: Colors.textSecondary,
+    color: Colors.success,
   },
   outstandingLabel: {
     fontSize: Typography.sizes.xs,
@@ -316,64 +323,48 @@ const styles = StyleSheet.create({
   },
   statBox: {
     flex: 1,
-    backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.lg,
+    backgroundColor: '#F8FAFC',
+    borderRadius: BorderRadius.md,
     paddingVertical: Spacing.twoHalf,
     paddingHorizontal: Spacing.three,
     borderWidth: 1,
     borderColor: Colors.borderSubtle,
-    gap: 4,
+    gap: 2,
   },
-  statHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  customerIconDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: Colors.pastel.purple.iconBg,
-  },
-  paymentIconDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: Colors.primary,
-  },
-  statTitle: {
-    fontSize: 11,
-    fontWeight: Typography.weights.semiBold,
+  statLabel: {
+    fontSize: Typography.sizes.xs,
     color: Colors.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.3,
+    fontWeight: Typography.weights.medium,
   },
-  statMainText: {
-    fontSize: Typography.sizes.caption,
+  statValue: {
+    fontSize: Typography.sizes.base,
     fontWeight: Typography.weights.bold,
     color: Colors.textPrimary,
+    fontVariant: ['tabular-nums'],
+  },
+  statValueSuccess: {
+    color: Colors.success,
   },
   skeletonAmountWrap: {
-    gap: 6,
-    paddingVertical: 4,
+    gap: 8,
   },
   skeletonAmount: {
     width: '60%',
     height: 32,
-    borderRadius: BorderRadius.sm,
-    backgroundColor: Colors.pastel.purple.border,
+    backgroundColor: '#E2E8F0',
+    borderRadius: 6,
   },
   skeletonSubtitle: {
     width: '40%',
     height: 14,
-    borderRadius: BorderRadius.xs,
-    backgroundColor: Colors.pastel.purple.border,
+    backgroundColor: '#E2E8F0',
+    borderRadius: 4,
   },
   skeletonStatText: {
-    width: '80%',
-    height: 14,
-    borderRadius: BorderRadius.xs,
-    backgroundColor: Colors.pastel.purple.border,
+    width: '70%',
+    height: 18,
+    backgroundColor: '#E2E8F0',
+    borderRadius: 4,
     marginTop: 2,
   },
 });

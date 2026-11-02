@@ -7,7 +7,7 @@ import {
   View,
 } from 'react-native';
 
-import { DashboardBadgeVectorIcon } from './DashboardNavIcons';
+import { NavMoreIcon } from './DashboardNavIcons';
 import {
   BorderRadius,
   Colors,
@@ -18,7 +18,7 @@ import {
 import { formatPesoCurrency } from '@/lib/products';
 import { DashboardExpenseSummary } from '@/types/expense';
 
-interface ExpenseOverviewCardProps {
+export interface ExpenseOverviewCardProps {
   summary: DashboardExpenseSummary;
   isLoading?: boolean;
   onViewExpenses?: () => void;
@@ -27,14 +27,15 @@ interface ExpenseOverviewCardProps {
 }
 
 /**
- * ExpenseOverviewCard (Batch 9B)
+ * ExpenseOverviewCard (Design 2.0 Golden Screen Foundation)
  *
  * Dedicated Store Expense Summary Card for the Main Dashboard:
  * 1. Prominent Today's Expenses: Authoritative store-derived expense total (e.g. ₱450.00)
- * 2. Today's Records: Count of expense records logged for today (e.g. 2 expenses today)
- * 3. Action: Direct "View Expenses →" navigation into the Expense Management screen
+ * 2. Recorded Today: Count of expense records logged for today (e.g. 2 expenses today)
+ * 3. Outlay Status: Contextual status of operating cashflow outlays
+ * 4. Action: Direct "View All →" navigation into the Expense Management screen
  *
- * Designed with the TindaMate Blue pastel design tokens and zero layout shift during loading.
+ * Designed with Design 2.0 tokens (crisp white card, slate & subtle crimson outlay accents, zero pastel blue).
  */
 export function ExpenseOverviewCard({
   summary,
@@ -50,14 +51,14 @@ export function ExpenseOverviewCard({
   const hasExpenses = summary.totalExpenses > 0;
   const expenseCountLabel =
     summary.expenseCount === 0
-      ? 'No expenses recorded'
+      ? '0 entries'
       : `${summary.expenseCount} ${
-          summary.expenseCount === 1 ? 'expense' : 'expenses'
-        } today`;
+          summary.expenseCount === 1 ? 'entry' : 'entries'
+        }`;
 
   const outlayStatusLabel = hasExpenses
     ? 'Operating outlay'
-    : 'Zero outlay today';
+    : 'Zero outlay';
 
   return (
     <View
@@ -66,13 +67,18 @@ export function ExpenseOverviewCard({
       accessibilityLabel={`Expense Overview. Total today: ${formatPesoCurrency(
         summary.totalExpenses
       )}. ${expenseCountLabel}.`}>
-      {/* 1. Header: Pill Badge + View Expenses Action */}
+      {/* 1. Header: Section Icon + Title + View All Link */}
       <View style={styles.topRow}>
-        <View style={styles.badgePill}>
-          <View style={styles.badgeIconCircle}>
-            <DashboardBadgeVectorIcon type="expenses" color={Colors.textInverse} />
+        <View style={styles.headerLeft}>
+          <View style={styles.iconCircle}>
+            <NavMoreIcon size={18} color="#EF4444" />
           </View>
-          <Text style={styles.badgeText}>Today&apos;s Expenses</Text>
+          <View>
+            <Text style={styles.sectionTitle} accessibilityRole="header">
+              Operating Expenses
+            </Text>
+            <Text style={styles.sectionSubtitle}>Today&apos;s store outlays</Text>
+          </View>
         </View>
 
         {onViewExpenses ? (
@@ -88,7 +94,7 @@ export function ExpenseOverviewCard({
               pressed && !isLoading && styles.viewExpensesActionPressed,
             ]}>
             <Text style={styles.viewExpensesText} maxFontSizeMultiplier={1.25}>
-              View Expenses
+              View All
             </Text>
             <Text style={styles.viewExpensesArrow} importantForAccessibility="no">
               →
@@ -154,15 +160,12 @@ export function ExpenseOverviewCard({
         ]}>
         {/* Metric 1: Expenses Count */}
         <View style={styles.statBox}>
-          <View style={styles.statHeader}>
-            <View style={styles.expenseCountIconDot} />
-            <Text style={styles.statTitle}>Recorded Today</Text>
-          </View>
+          <Text style={styles.statLabel}>Recorded Today</Text>
           {isLoading ? (
             <View style={styles.skeletonStatText} />
           ) : (
             <Text
-              style={styles.statMainText}
+              style={styles.statValue}
               numberOfLines={1}
               adjustsFontSizeToFit
               minimumFontScale={0.85}
@@ -174,15 +177,15 @@ export function ExpenseOverviewCard({
 
         {/* Metric 2: Status */}
         <View style={styles.statBox}>
-          <View style={styles.statHeader}>
-            <View style={styles.statusIconDot} />
-            <Text style={styles.statTitle}>Store Outlay</Text>
-          </View>
+          <Text style={styles.statLabel}>Store Outlay</Text>
           {isLoading ? (
             <View style={styles.skeletonStatText} />
           ) : (
             <Text
-              style={styles.statMainText}
+              style={[
+                styles.statValue,
+                hasExpenses ? styles.statValueOutlay : styles.statValueNeutral,
+              ]}
               numberOfLines={1}
               adjustsFontSizeToFit
               minimumFontScale={0.85}
@@ -198,13 +201,13 @@ export function ExpenseOverviewCard({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: Colors.pastel.blue.bg,
-    borderRadius: BorderRadius.xl,
-    borderWidth: 1.5,
-    borderColor: Colors.pastel.blue.border,
-    padding: Spacing.four,
-    gap: Spacing.three,
-    ...Shadows.xs,
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.primaryCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: Spacing.md,
+    gap: Spacing.md,
+    ...Shadows.card,
   },
   topRow: {
     flexDirection: 'row',
@@ -212,62 +215,60 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: Spacing.two,
   },
-  badgePill: {
+  headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    backgroundColor: Colors.surface,
-    paddingHorizontal: Spacing.twoHalf,
-    paddingVertical: 4,
-    borderRadius: BorderRadius.full,
-    borderWidth: 1,
-    borderColor: Colors.pastel.blue.border,
+    gap: Spacing.twoHalf,
+    flex: 1,
   },
-  badgeIconCircle: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: Colors.pastel.blue.iconBg,
+  iconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FEE2E2',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  badgeText: {
-    fontSize: Typography.sizes.caption,
+  sectionTitle: {
+    fontSize: Typography.sizes.md,
     fontWeight: Typography.weights.extraBold,
-    color: Colors.pastel.blue.text,
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
+    color: Colors.textPrimary,
+  },
+  sectionSubtitle: {
+    fontSize: Typography.sizes.xs,
+    color: Colors.textSecondary,
+    fontWeight: Typography.weights.regular,
   },
   viewExpensesAction: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingVertical: 4,
+    paddingVertical: Spacing.half,
     paddingHorizontal: Spacing.one,
   },
   viewExpensesActionPressed: {
-    opacity: 0.7,
+    opacity: 0.65,
   },
   viewExpensesText: {
     fontSize: Typography.sizes.xs,
     fontWeight: Typography.weights.bold,
-    color: Colors.pastel.blue.accent,
+    color: Colors.primary,
   },
   viewExpensesArrow: {
-    fontSize: Typography.sizes.xs,
+    fontSize: Typography.sizes.sm,
     fontWeight: Typography.weights.bold,
-    color: Colors.pastel.blue.accent,
+    color: Colors.primary,
   },
   errorBox: {
+    backgroundColor: '#FEF2F2',
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: Colors.errorLight,
-    borderRadius: BorderRadius.md,
-    borderWidth: 1,
-    borderColor: Colors.errorBorder,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
     gap: Spacing.two,
   },
   errorText: {
@@ -282,7 +283,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.two,
     paddingVertical: 4,
     borderWidth: 1,
-    borderColor: Colors.errorBorder,
+    borderColor: '#FECACA',
   },
   retryBtnText: {
     fontSize: Typography.sizes.xs,
@@ -291,12 +292,11 @@ const styles = StyleSheet.create({
   },
   mainKpiSection: {
     gap: 4,
-    paddingVertical: Spacing.one,
+    paddingVertical: Spacing.half,
   },
   totalExpenseAmount: {
-    fontSize: Typography.sizes.display,
-    fontWeight: Typography.weights.extraBold,
-    color: Colors.pastel.blue.text,
+    ...Typography.presets.heroValue,
+    color: Colors.textPrimary,
     letterSpacing: -0.5,
   },
   totalExpenseAmountCompact: {
@@ -306,12 +306,12 @@ const styles = StyleSheet.create({
     fontSize: Typography.sizes.xl,
   },
   totalExpenseAmountZero: {
-    color: Colors.textSecondary,
+    color: Colors.textMuted,
   },
   totalExpenseLabel: {
     fontSize: Typography.sizes.xs,
-    fontWeight: Typography.weights.semiBold,
-    color: Colors.pastel.blue.text,
+    fontWeight: Typography.weights.medium,
+    color: Colors.textSecondary,
   },
   statsRow: {
     flexDirection: 'row',
@@ -323,39 +323,28 @@ const styles = StyleSheet.create({
   },
   statBox: {
     flex: 1,
-    backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.twoHalf,
-    borderWidth: 1,
-    borderColor: Colors.pastel.blue.border,
+    backgroundColor: Colors.surfaceSubtle,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.three,
     gap: 4,
   },
-  statHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  expenseCountIconDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: Colors.pastel.blue.iconBg,
-  },
-  statusIconDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: Colors.primary,
-  },
-  statTitle: {
+  statLabel: {
     fontSize: Typography.sizes.caption,
-    fontWeight: Typography.weights.bold,
+    fontWeight: Typography.weights.semiBold,
     color: Colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
   },
-  statMainText: {
+  statValue: {
     fontSize: Typography.sizes.bodySm,
     fontWeight: Typography.weights.extraBold,
     color: Colors.textPrimary,
+  },
+  statValueOutlay: {
+    color: '#EF4444',
+  },
+  statValueNeutral: {
+    color: Colors.textSecondary,
   },
   skeletonAmountWrap: {
     gap: 8,
@@ -365,20 +354,19 @@ const styles = StyleSheet.create({
     width: '60%',
     height: 34,
     borderRadius: BorderRadius.md,
-    backgroundColor: Colors.pastel.blue.border,
+    backgroundColor: Colors.border,
   },
   skeletonSubtitle: {
     width: '40%',
     height: 14,
     borderRadius: BorderRadius.xs,
-    backgroundColor: Colors.pastel.blue.border,
+    backgroundColor: Colors.border,
   },
   skeletonStatText: {
     width: '80%',
     height: 16,
     borderRadius: BorderRadius.xs,
-    backgroundColor: Colors.pastel.blue.border,
+    backgroundColor: Colors.border,
     marginTop: 2,
   },
 });
-

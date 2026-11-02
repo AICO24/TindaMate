@@ -15,6 +15,7 @@ import {
   View
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 
 import { TindaMateLoadingView } from '@/components/animated-icon';
 import { StorefrontLogo } from '@/components/ui/StorefrontLogo';
@@ -234,6 +235,7 @@ export default function WelcomeScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
+      <StatusBar style="dark" />
       {/* Subtle decorative warm mint halo on upper right matching reference */}
       <View style={styles.topRightHalo} pointerEvents="none" />
 
@@ -406,13 +408,13 @@ export default function WelcomeScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: Colors.backgroundWarm,
+    backgroundColor: Colors.background,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: Colors.backgroundWarm,
+    backgroundColor: Colors.background,
   },
   topRightHalo: {
     position: 'absolute',

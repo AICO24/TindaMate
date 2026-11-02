@@ -12,6 +12,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 
 import { AuthBottomDecorations } from '@/components/ui/AuthBottomDecorations';
 import { AuthErrorBanner } from '@/components/ui/AuthErrorBanner';
@@ -184,6 +185,7 @@ export default function LoginScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
+      <StatusBar style="dark" />
       <KeyboardAvoidingView
         style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -331,11 +333,11 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: Colors.backgroundWarm,
+    backgroundColor: Colors.background,
   },
   keyboardView: {
     flex: 1,
-    backgroundColor: Colors.backgroundWarm,
+    backgroundColor: Colors.background,
   },
   scrollView: {
     flex: 1,
@@ -410,7 +412,7 @@ const styles = StyleSheet.create({
   subtleDivider: {
     width: '100%',
     height: 1,
-    backgroundColor: '#E8E3D3',
+    backgroundColor: Colors.border,
     marginBottom: 20,
   },
   bottomNavPressable: {
