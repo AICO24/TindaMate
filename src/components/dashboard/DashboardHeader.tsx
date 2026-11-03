@@ -9,7 +9,7 @@ import {
   Typography,
 } from '@/constants/theme';
 
-const TINDAMATE_EMBLEM = require('@/assets/images/tindamate-emblem-clean.png');
+const TINDAMATE_EMBLEM = require('@/assets/images/tindamate-official-emblem.png');
 
 interface DashboardHeaderProps {
   userEmail?: string;
@@ -97,17 +97,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    maxWidth: 240,
+    maxWidth: 250,
   },
   emblemContainer: {
-    width: 42,
-    height: 38,
+    width: 46,
+    height: 36,
     alignItems: 'center',
     justifyContent: 'center',
   },
   emblemImage: {
-    width: 40,
-    height: 36,
+    width: 44,
+    height: 32,
   },
   titleCol: {
     gap: 1,
