@@ -26,7 +26,6 @@ interface DashboardHeroBannerProps {
 export function getFriendlyFirstName(rawName?: string | null): string {
   if (!rawName) return 'Partner';
   const trimmed = rawName.trim();
-  // If formatted as "Lastname, Firstname ..." (common in PH legal/profile formats)
   if (trimmed.includes(',')) {
     const afterComma = trimmed.split(',')[1]?.trim();
     if (afterComma) {
@@ -34,20 +33,19 @@ export function getFriendlyFirstName(rawName?: string | null): string {
       if (firstWord) return firstWord;
     }
   }
-  // Otherwise take the first word
   const firstWord = trimmed.split(' ')[0]?.trim();
   return firstWord || trimmed;
 }
 
 /**
- * DashboardHeroBanner (Exact Showcase Reference Reconstruction)
+ * DashboardHeroBanner (Exact Showcase Reference Alignment)
  *
  * Visually matches Screen 1 of TindaMate POS App Showcase.png:
- * - Open canvas greeting zone (NO enclosed white bordered card box)
+ * - Open canvas greeting zone sitting cleanly below the green header wave
  * - Friendly dynamic greeting ("Good afternoon,")
- * - Smart First Name display ("Manolo! 👋") directly on the canvas
+ * - Smart First Name display ("Manolo! 👋") in bold dark slate
  * - "Here's your store today" subtitle
- * - 3D-styled Filipino tindahan store artwork on the right overlapping the green-to-white wave boundary
+ * - 3D sari-sari storefront artwork on the right overlapping the wave boundary
  */
 export function DashboardHeroBanner({
   displayName,
@@ -63,7 +61,7 @@ export function DashboardHeroBanner({
   const isNarrowPhone = windowWidth < 350;
 
   const firstName = getFriendlyFirstName(displayName);
-  const artworkSize = isNarrowPhone ? 108 : 122;
+  const artworkSize = isNarrowPhone ? 104 : 118;
 
   return (
     <View style={styles.greetingZone}>
@@ -106,10 +104,11 @@ export function DashboardHeroBanner({
 const styles = StyleSheet.create({
   greetingZone: {
     width: '100%',
-    paddingTop: 2,
-    paddingBottom: 2,
+    paddingTop: Spacing.half,
+    paddingBottom: Spacing.xs,
     position: 'relative',
     overflow: 'visible',
+    zIndex: 4,
   },
   contentRow: {
     flexDirection: 'row',
@@ -143,7 +142,7 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   artworkWrapper: {
-    marginTop: -22,
+    marginTop: -20,
     marginRight: -2,
     alignItems: 'center',
     justifyContent: 'center',

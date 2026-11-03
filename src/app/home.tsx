@@ -26,6 +26,7 @@ import {
 import { DashboardErrorBanner } from '@/components/dashboard/DashboardErrorBanner';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { DashboardHeroBanner } from '@/components/dashboard/DashboardHeroBanner';
+import { HeaderWaveBackground } from '@/components/dashboard/HeaderWaveBackground';
 import {
   KpiCartCheckIcon,
   KpiLowStockBoxIcon,
@@ -653,19 +654,11 @@ export default function AuthenticatedDashboardScreen() {
           }>
           {/* 1. Deep Forest Green Curved Header Zone (Design 2.0 Reference Reconstruction) */}
           <View style={styles.fullBleedHeroZone}>
-            <View
-              style={styles.heroDecorCircle}
-              importantForAccessibility="no"
-              pointerEvents="none"
-            />
-            <View
-              style={styles.heroDecorWarm}
-              importantForAccessibility="no"
-              pointerEvents="none"
-            />
+            {/* Signature Multi-Layered Wavy Ribbon Background (Forest, Emerald, Mint & Warm Orange) */}
+            <HeaderWaveBackground height={160} />
 
             <View style={styles.heroInnerContainer}>
-              {/* Header: Brand Bag Emblem + Notification Bell */}
+              {/* Header: Authentic TindaMate Storefront Logo + Notification Bell */}
               <DashboardHeader
                 userEmail={isGuestMode ? undefined : user?.email}
                 notificationCount={alertProductCount}
@@ -698,11 +691,6 @@ export default function AuthenticatedDashboardScreen() {
                 </Pressable>
               ) : null}
             </View>
-
-            {/* Layered S-Wave Curve Transition into Open Canvas */}
-            <View style={styles.heroWaveEmerald} pointerEvents="none" />
-            <View style={styles.heroWaveMint} pointerEvents="none" />
-            <View style={styles.heroWaveCanvas} pointerEvents="none" />
           </View>
 
           {/* 2. Continuous Open Canvas Body Content */}
@@ -716,14 +704,14 @@ export default function AuthenticatedDashboardScreen() {
               />
             ) : null}
 
-            {/* 2A. Open Greeting + Overlapping Storefront Illustration (NO Card Box) */}
+            {/* 2A. Open Greeting + Overlapping 3D Storefront Illustration (NO Card Box) */}
             <DashboardHeroBanner
               displayName={displayName}
               storeName="TindaMate Store"
               onStorePress={() => setIsProfileModalVisible(true)}
             />
 
-            {/* 3. Main KPI Card: Today's Sales (Primary Visual Anchor) */}
+            {/* 3. Main KPI Card: Today's Sales (Primary Visual Anchor with Orange & Emerald Waves) */}
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={`Today's Sales: ${
@@ -740,9 +728,10 @@ export default function AuthenticatedDashboardScreen() {
                 styles.mainSalesKpiCard,
                 pressed && styles.cardPressed,
               ]}>
-              {/* Decorative internal emerald wave highlight on bottom-right */}
-              <View style={styles.mainSalesWaveHighlight} pointerEvents="none" />
-              <View style={styles.mainSalesWaveSecondary} pointerEvents="none" />
+              {/* Signature Orange & Emerald Wave Swoop on Bottom-Right */}
+              <View style={styles.mainSalesOrangeWave} pointerEvents="none" />
+              <View style={styles.mainSalesEmeraldWave} pointerEvents="none" />
+              <View style={styles.mainSalesMintWave} pointerEvents="none" />
 
               <View style={styles.mainSalesLeft}>
                 <View style={styles.mainSalesIconUnboxed}>
@@ -1242,78 +1231,21 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: Spacing.five,
   },
-  // 1. Curved Deep Forest Green Header Zone with S-Wave Transition into Open Canvas
+  // 1. Curved Deep Forest Green Header Zone with Layered Signature Wave Canopy
   fullBleedHeroZone: {
-    backgroundColor: Colors.primaryDark,
+    backgroundColor: '#064E3B',
     paddingTop: 2,
-    paddingBottom: 22,
+    paddingBottom: 20,
+    minHeight: 110,
     position: 'relative',
     overflow: 'hidden',
-  },
-  heroDecorCircle: {
-    position: 'absolute',
-    right: -30,
-    top: -36,
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    backgroundColor: Colors.primary,
-    opacity: 0.34,
-  },
-  heroDecorWarm: {
-    position: 'absolute',
-    left: -30,
-    bottom: -20,
-    width: 130,
-    height: 70,
-    borderRadius: 40,
-    backgroundColor: '#10B981',
-    opacity: 0.18,
   },
   heroInnerContainer: {
     width: '100%',
     maxWidth: DashboardMaxContentWidth,
     alignSelf: 'center',
     paddingHorizontal: Spacing.three,
-    zIndex: 3,
-  },
-  // Layered S-Wave Curves at bottom of green header transitioning to #F8FAFC canvas
-  heroWaveEmerald: {
-    position: 'absolute',
-    left: -30,
-    right: -30,
-    bottom: -14,
-    height: 36,
-    borderTopLeftRadius: 160,
-    borderTopRightRadius: 240,
-    backgroundColor: '#0D7A4D',
-    opacity: 0.55,
-    transform: [{ rotate: '-2deg' }],
-    zIndex: 1,
-  },
-  heroWaveMint: {
-    position: 'absolute',
-    left: -20,
-    right: 60,
-    bottom: -16,
-    height: 32,
-    borderTopLeftRadius: 140,
-    borderTopRightRadius: 180,
-    backgroundColor: '#A7F3D0',
-    opacity: 0.45,
-    transform: [{ rotate: '-1.5deg' }],
-    zIndex: 1,
-  },
-  heroWaveCanvas: {
-    position: 'absolute',
-    left: -24,
-    right: -24,
-    bottom: -18,
-    height: 32,
-    borderTopLeftRadius: 150,
-    borderTopRightRadius: 220,
-    backgroundColor: '#F8FAFC',
-    zIndex: 2,
+    zIndex: 5,
   },
   // 2. Continuous Open Canvas Body Container
   bodyContentContainer: {
@@ -1329,7 +1261,7 @@ const styles = StyleSheet.create({
     opacity: 0.92,
     transform: [{ scale: 0.985 }],
   },
-  // 3. Today's Sales Primary Hero KPI Card (Rich Emerald with Wave Highlight)
+  // 3. Today's Sales Primary Hero KPI Card (Rich Emerald with Signature Orange Wave Ribbon)
   mainSalesKpiCard: {
     backgroundColor: '#065F46',
     borderRadius: 18,
@@ -1345,27 +1277,42 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     ...Shadows.sm,
   },
-  mainSalesWaveHighlight: {
+  // Signature Warm Orange Wave Swoop on Bottom-Right
+  mainSalesOrangeWave: {
     position: 'absolute',
-    right: -24,
-    bottom: -26,
-    width: 160,
-    height: 64,
-    borderRadius: 48,
-    backgroundColor: '#10B981',
-    opacity: 0.28,
-    transform: [{ rotate: '-8deg' }],
+    right: -14,
+    bottom: -18,
+    width: 140,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#F59E0B',
+    opacity: 0.92,
+    transform: [{ rotate: '-10deg' }],
+    zIndex: 1,
   },
-  mainSalesWaveSecondary: {
+  mainSalesEmeraldWave: {
     position: 'absolute',
-    right: 30,
-    bottom: -28,
-    width: 120,
-    height: 46,
-    borderRadius: 32,
-    backgroundColor: '#34D399',
-    opacity: 0.18,
-    transform: [{ rotate: '6deg' }],
+    right: 22,
+    bottom: -22,
+    width: 130,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#10B981',
+    opacity: 0.65,
+    transform: [{ rotate: '-4deg' }],
+    zIndex: 1,
+  },
+  mainSalesMintWave: {
+    position: 'absolute',
+    right: -4,
+    bottom: 0,
+    width: 90,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#A7F3D0',
+    opacity: 0.45,
+    transform: [{ rotate: '-8deg' }],
+    zIndex: 1,
   },
   mainSalesLeft: {
     flex: 1,
