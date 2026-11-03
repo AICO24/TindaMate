@@ -14,6 +14,7 @@ import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
 
 import { DashboardErrorBanner } from '@/components/dashboard/DashboardErrorBanner';
+import { TindaMateLoadingView } from '@/components/animated-icon';
 import {
   CartVectorIcon,
   DashboardBadgeVectorIcon,
@@ -207,8 +208,7 @@ export default function ProductDetailsScreen() {
 
             {isLoading ? (
               <View style={styles.stateCard}>
-                <ActivityIndicator size="large" color={Colors.primaryDark} />
-                <Text style={styles.stateTitle}>Loading Product Details...</Text>
+                <TindaMateLoadingView compact message="Loading Product Details..." />
               </View>
             ) : !product ? (
               <View style={styles.stateCard}>

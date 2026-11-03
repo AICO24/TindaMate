@@ -28,6 +28,7 @@ import {
 } from '@/components/dashboard/DashboardNavIcons';
 import { ProductCard } from '@/components/products/ProductCard';
 import { ProductScreenHeader } from '@/components/products/ProductScreenHeader';
+import { TindaMateLoadingView } from '@/components/animated-icon';
 import { TindaMateSearchBar } from '@/components/ui/TindaMateSearchBar';
 import { FilterChipRow } from '@/components/ui/FilterChipRow';
 import { TindaMateButton } from '@/components/ui/TindaMateButton';
@@ -238,11 +239,10 @@ export default function ProductsListScreen() {
             {/* 1. Initial Loading State */}
             {isInitialLoading ? (
               <View style={styles.stateCard}>
-                <ActivityIndicator size="large" color={Colors.primaryDark} />
-                <Text style={styles.stateTitle}>Loading Products...</Text>
-                <Text style={styles.stateSubtitle}>
-                  Fetching your store inventory from Supabase.
-                </Text>
+                <TindaMateLoadingView
+                  compact
+                  message="Fetching your store inventory..."
+                />
               </View>
             ) : errorMessage && products.length === 0 ? (
               /* 2. Full Error State when initial fetch failed and list is empty */
