@@ -2,7 +2,6 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { CartVectorIcon } from './DashboardNavIcons';
-import { SectionHeader } from '@/components/ui/SectionHeader';
 import {
   BorderRadius,
   Colors,
@@ -26,15 +25,15 @@ interface RecentActivitySectionProps {
 /**
  * RecentActivitySection (Design 2.0 Showcase Alignment)
  *
- * Displays recent sales as compact rows inside a unified card container with subtle separators:
- * - Direct visual alignment with Screen 1 of TindaMate POS App Showcase.png
- * - Small cart/bag icon, concise product name, total price, timestamp
- * - Payment badge pill for credit/utang transactions
- * - Direct tap-through to Sale Details and "View All →" action
+ * Visually matches Screen 1 of TindaMate POS App Showcase.png:
+ * - Flat section header ("Recent Activity" on left, "View All →" on right)
+ * - Compact single-line pill/row for each recent transaction:
+ *   Left: Soft green circle with cart icon
+ *   Middle: Single-line summary ("New Sale • ₱350" or "{product_name} • {formattedTotal}")
+ *   Right: Relative timestamp ("2m ago")
  */
 export function RecentActivitySection({
   sales,
-  isLoading = false,
   onViewAll,
   onSalePress,
   hasActivity = false,
@@ -48,26 +47,43 @@ export function RecentActivitySection({
 
   return (
     <View style={styles.container}>
-      {/* Header: Title + View All Link */}
-      <SectionHeader
-        title="Recent Activity"
-        actionLabel={showViewAll ? 'View All' : undefined}
-        onActionPress={showViewAll ? onViewAll : undefined}
-      />
+      {/* Flat Section Header matching reference */}
+      <View style={styles.headerRow}>
+        <Text
+          style={styles.headerTitle}
+          accessibilityRole="header"
+          maxFontSizeMultiplier={1.25}>
+          Recent Activity
+        </Text>
+
+        {showViewAll ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="View all recent activity"
+            accessibilityHint="Navigates to full sales history screen"
+            onPress={onViewAll}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            style={({ pressed }) => [
+              styles.viewAllButton,
+              pressed && styles.viewAllPressed,
+            ]}>
+            <Text style={styles.viewAllText} maxFontSizeMultiplier={1.2}>
+              View All →
+            </Text>
+          </Pressable>
+        ) : null}
+      </View>
 
       {hasSales && sales ? (
-        /* Unified Card with Compact Separated Rows */
-        <View style={styles.activityListCard}>
-          {sales.slice(0, 5).map((sale, index) => {
-            const isMultiItem = (sale.item_count ?? 1) > 1;
+        /* Compact Single-Line Rows matching reference */
+        <View style={styles.rowsContainer}>
+          {sales.slice(0, 2).map((sale) => {
             const formattedTotal = formatPesoCurrency(sale.total_amount);
-            const formattedUnitPrice = formatPesoCurrency(sale.unit_price);
             const formattedTime = formatRecentSaleTime(sale.created_at);
-            const isLast = index === Math.min(sales.length, 5) - 1;
+            const isCredit = sale.payment_method === 'credit';
+            const titleLabel = sale.product_name || 'New Sale';
 
-            const accessibilityLabel = isMultiItem
-              ? `Sale: ${sale.product_name}, ${sale.item_count} products, total ${formattedTotal}, ${formattedTime}`
-              : `Sale: ${sale.product_name}, ${sale.quantity} ${sale.unit} at ${formattedUnitPrice} each, total ${formattedTotal}, ${formattedTime}`;
+            const accessibilityLabel = `Sale: ${titleLabel}, total ${formattedTotal}, ${formattedTime}`;
 
             return (
               <Pressable
@@ -77,102 +93,71 @@ export function RecentActivitySection({
                 accessibilityHint="Opens complete details for this sale"
                 onPress={() => onSalePress?.(sale)}
                 style={({ pressed }) => [
-                  styles.saleRowItem,
-                  !isLast && styles.saleRowBorder,
+                  styles.salePillRow,
                   pressed && styles.saleRowPressed,
                 ]}>
                 {/* Left: Compact Green / Amber Icon Circle */}
                 <View
                   style={[
                     styles.saleIconCircle,
-                    sale.payment_method === 'credit' && styles.saleIconCircleCredit,
+                    isCredit && styles.saleIconCircleCredit,
                   ]}
                   accessible={false}
                   importantForAccessibility="no-hide-descendants">
                   <CartVectorIcon
                     size={15}
-                    color={
-                      sale.payment_method === 'credit'
-                        ? '#D97706'
-                        : '#0D7A4D'
-                    }
+                    color={isCredit ? '#D97706' : '#0D7A4D'}
                   />
                 </View>
 
-                {/* Middle: Sale Title & Details */}
-                <View style={styles.saleInfoCol}>
-                  <View style={styles.nameHeaderRow}>
-                    <Text
-                      style={styles.saleProductName}
-                      numberOfLines={1}
-                      ellipsizeMode="tail"
-                      maxFontSizeMultiplier={1.2}>
-                      {sale.product_name}
-                    </Text>
-                    {isMultiItem && (
-                      <View style={styles.multiBadge}>
-                        <Text style={styles.multiBadgeText}>
-                          {sale.item_count} items
-                        </Text>
-                      </View>
-                    )}
-                    {sale.payment_method === 'credit' && (
-                      <View style={styles.utangBadge}>
-                        <Text style={styles.utangBadgeText}>Utang</Text>
-                      </View>
-                    )}
-                  </View>
-
-                  <Text style={styles.saleMetaText} maxFontSizeMultiplier={1.15}>
-                    {isMultiItem
-                      ? `${sale.quantity} units total`
-                      : `${sale.quantity} ${sale.unit}`}
-                    {' · '}
-                    {formattedTime}
-                  </Text>
-                </View>
-
-                {/* Right: Amount & Chevron */}
-                <View style={styles.saleAmountCol}>
+                {/* Middle: Single-line "New Sale • ₱350" format */}
+                <View style={styles.saleInlineRow}>
                   <Text
-                    style={styles.saleTotalAmount}
+                    style={styles.saleInlinePrimary}
                     numberOfLines={1}
-                    maxFontSizeMultiplier={1.25}>
+                    ellipsizeMode="tail"
+                    maxFontSizeMultiplier={1.2}>
+                    {titleLabel}
+                  </Text>
+                  <Text style={styles.saleInlineBullet} importantForAccessibility="no">
+                    •
+                  </Text>
+                  <Text
+                    style={styles.saleInlineAmount}
+                    numberOfLines={1}
+                    maxFontSizeMultiplier={1.2}>
                     {formattedTotal}
                   </Text>
-                  <Text style={styles.saleChevron} importantForAccessibility="no">
-                    ›
-                  </Text>
+                  {isCredit && (
+                    <View style={styles.utangBadge}>
+                      <Text style={styles.utangBadgeText}>Utang</Text>
+                    </View>
+                  )}
                 </View>
+
+                {/* Right: Relative Timestamp */}
+                <Text
+                  style={styles.saleTimeText}
+                  numberOfLines={1}
+                  maxFontSizeMultiplier={1.15}>
+                  {formattedTime}
+                </Text>
               </Pressable>
             );
           })}
         </View>
       ) : (
-        /* Empty State Card */
-        <View style={[styles.emptyCard, isCompactPhone && styles.emptyCardCompact]}>
+        /* Compact Single-Line Empty State Pill */
+        <View style={[styles.emptyPillRow, isCompactPhone && styles.emptyPillRowCompact]}>
           <View
-            style={styles.illustrationContainer}
+            style={styles.saleIconCircle}
             accessible={false}
             importantForAccessibility="no-hide-descendants">
-            <View style={styles.checklistPad}>
-              {[0, 1, 2].map((idx) => (
-                <View key={idx} style={styles.checkRow}>
-                  <View style={styles.checkDot} />
-                  <View style={styles.checkLine} />
-                </View>
-              ))}
-            </View>
+            <CartVectorIcon size={15} color="#0D7A4D" />
           </View>
-
-          <View style={styles.textGroup}>
-            <Text style={styles.emptyTitle} maxFontSizeMultiplier={1.3}>
-              No recent activity yet.
-            </Text>
-            <Text style={styles.emptyDescription} maxFontSizeMultiplier={1.3}>
-              Your <Text style={styles.boldWord}>sales</Text> will appear here once you record your first transaction.
-            </Text>
-          </View>
+          <Text style={styles.emptyInlineText} numberOfLines={1} maxFontSizeMultiplier={1.2}>
+            No sales recorded yet — tap POS to start
+          </Text>
         </View>
       )}
     </View>
@@ -181,35 +166,57 @@ export function RecentActivitySection({
 
 const styles = StyleSheet.create({
   container: {
-    gap: Spacing.two,
+    gap: 8,
   },
-  activityListCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    overflow: 'hidden',
-    ...Shadows.xs,
-  },
-  saleRowItem: {
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 11,
-    paddingHorizontal: Spacing.three,
-    gap: Spacing.twoHalf,
+    paddingHorizontal: 2,
   },
-  saleRowBorder: {
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+  headerTitle: {
+    fontSize: 15.5,
+    fontWeight: Typography.weights.extraBold,
+    color: '#0F172A',
+    letterSpacing: -0.3,
+  },
+  viewAllButton: {
+    paddingVertical: 2,
+    paddingHorizontal: 2,
+  },
+  viewAllPressed: {
+    opacity: 0.65,
+  },
+  viewAllText: {
+    fontSize: 12,
+    fontWeight: Typography.weights.semiBold,
+    color: '#475569',
+  },
+  rowsContainer: {
+    gap: 6,
+  },
+  salePillRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.surface,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    paddingVertical: 9,
+    paddingHorizontal: Spacing.twoHalf,
+    gap: Spacing.two,
+    minHeight: 44,
+    ...Shadows.xs,
   },
   saleRowPressed: {
     backgroundColor: '#F8FAFC',
+    transform: [{ scale: 0.99 }],
   },
   saleIconCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: '#DCFCE7',
     alignItems: 'center',
     justifyContent: 'center',
@@ -217,31 +224,29 @@ const styles = StyleSheet.create({
   saleIconCircleCredit: {
     backgroundColor: '#FEF3C7',
   },
-  saleInfoCol: {
+  saleInlineRow: {
     flex: 1,
-    gap: 2,
-  },
-  nameHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
+    overflow: 'hidden',
   },
-  saleProductName: {
-    fontSize: Typography.sizes.bodySm,
+  saleInlinePrimary: {
+    fontSize: 13.5,
     fontWeight: Typography.weights.bold,
     color: '#0F172A',
     flexShrink: 1,
   },
-  multiBadge: {
-    backgroundColor: '#F1F5F9',
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: BorderRadius.full,
-  },
-  multiBadgeText: {
-    fontSize: 10,
+  saleInlineBullet: {
+    fontSize: 13,
     fontWeight: Typography.weights.bold,
-    color: Colors.textSecondary,
+    color: '#64748B',
+  },
+  saleInlineAmount: {
+    fontSize: 13.5,
+    fontWeight: Typography.weights.extraBold,
+    color: '#0F172A',
+    fontVariant: ['tabular-nums'],
   },
   utangBadge: {
     backgroundColor: '#FEF3C7',
@@ -254,91 +259,31 @@ const styles = StyleSheet.create({
     fontWeight: Typography.weights.extraBold,
     color: '#D97706',
   },
-  saleMetaText: {
-    fontSize: Typography.sizes.caption,
-    color: Colors.textMuted,
+  saleTimeText: {
+    fontSize: 12,
+    color: '#64748B',
     fontWeight: Typography.weights.medium,
   },
-  saleAmountCol: {
+  emptyPillRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-  },
-  saleTotalAmount: {
-    fontSize: Typography.sizes.bodySm,
-    fontWeight: Typography.weights.extraBold,
-    color: '#0F172A',
-    fontVariant: ['tabular-nums'],
-    textAlign: 'right',
-  },
-  saleChevron: {
-    fontSize: Typography.sizes.base,
-    color: Colors.textMuted,
-    fontWeight: Typography.weights.bold,
-  },
-  emptyCard: {
     backgroundColor: Colors.surface,
-    borderRadius: 20,
-    padding: Spacing.four,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    alignItems: 'center',
+    borderColor: '#F1F5F9',
+    paddingVertical: 9,
+    paddingHorizontal: Spacing.twoHalf,
     gap: Spacing.two,
+    minHeight: 44,
     ...Shadows.xs,
   },
-  emptyCardCompact: {
-    padding: Spacing.three,
+  emptyPillRowCompact: {
+    paddingHorizontal: Spacing.two,
   },
-  illustrationContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: Spacing.one,
-  },
-  checklistPad: {
-    width: 44,
-    height: 48,
-    borderRadius: 8,
-    backgroundColor: '#F1F5F9',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    padding: 6,
-    gap: 5,
-    justifyContent: 'center',
-  },
-  checkRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  checkDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#10B981',
-  },
-  checkLine: {
+  emptyInlineText: {
     flex: 1,
-    height: 3,
-    borderRadius: 1.5,
-    backgroundColor: '#CBD5E1',
-  },
-  textGroup: {
-    alignItems: 'center',
-    gap: 3,
-  },
-  emptyTitle: {
-    fontSize: Typography.sizes.bodySm,
-    fontWeight: Typography.weights.bold,
-    color: '#0F172A',
-  },
-  emptyDescription: {
-    fontSize: Typography.sizes.caption,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 16,
-  },
-  boldWord: {
-    fontWeight: Typography.weights.bold,
-    color: '#0F172A',
+    fontSize: 13,
+    fontWeight: Typography.weights.medium,
+    color: '#64748B',
   },
 });

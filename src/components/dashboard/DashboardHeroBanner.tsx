@@ -8,8 +8,6 @@ import {
 
 import { DashboardStoreArtwork } from './DashboardStoreArtwork';
 import {
-  Colors,
-  Shadows,
   Spacing,
   Typography,
 } from '@/constants/theme';
@@ -42,15 +40,14 @@ export function getFriendlyFirstName(rawName?: string | null): string {
 }
 
 /**
- * DashboardHeroBanner (Exact Showcase Match)
+ * DashboardHeroBanner (Exact Showcase Reference Reconstruction)
  *
- * Visually matches media_1793685516173_46f6ff18.png and Screen 1 of Showcase:
- * - Organic curved wave transition from deep green hero into white greeting card
+ * Visually matches Screen 1 of TindaMate POS App Showcase.png:
+ * - Open canvas greeting zone (NO enclosed white bordered card box)
  * - Friendly dynamic greeting ("Good afternoon,")
- * - Smart First Name display ("Manolo! 👋") with zero truncation or payroll formatting
+ * - Smart First Name display ("Manolo! 👋") directly on the canvas
  * - "Here's your store today" subtitle
- * - Authentic 3D-styled Filipino tindahan store artwork with striped awning, amber halo, and foliage
- * - Pure React Native code (zero cropped screenshots, 100% responsive)
+ * - 3D-styled Filipino tindahan store artwork on the right overlapping the green-to-white wave boundary
  */
 export function DashboardHeroBanner({
   displayName,
@@ -66,46 +63,40 @@ export function DashboardHeroBanner({
   const isNarrowPhone = windowWidth < 350;
 
   const firstName = getFriendlyFirstName(displayName);
-  const artworkSize = isNarrowPhone ? 110 : 124;
+  const artworkSize = isNarrowPhone ? 108 : 122;
 
   return (
-    <View style={styles.cardContainer}>
-      {/* Wave Layer 1: Subtle deep emerald accent curve peeking from top-left */}
-      <View style={styles.waveAccentBack} pointerEvents="none" />
+    <View style={styles.greetingZone}>
+      <View style={styles.contentRow}>
+        {/* Left Column: Open Greeting Hierarchy directly on Canvas */}
+        <View style={styles.leftColumn}>
+          {/* 1. Time-of-day greeting */}
+          <Text style={styles.greetingTitle} maxFontSizeMultiplier={1.2}>
+            {getGreeting()}
+          </Text>
 
-      {/* Wave Layer 2: Main organic curved white card surface */}
-      <View style={[styles.card, isNarrowPhone && styles.cardNarrow]}>
-        <View style={styles.contentRow}>
-          {/* Left Column: Greeting Hierarchy */}
-          <View style={styles.leftColumn}>
-            {/* 1. Time-of-day greeting */}
-            <Text style={styles.greetingTitle} maxFontSizeMultiplier={1.25}>
-              {getGreeting()}
-            </Text>
+          {/* 2. Friendly First Name + Waving Hand Emoji */}
+          <Text
+            style={styles.displayNameText}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.85}
+            maxFontSizeMultiplier={1.2}>
+            {firstName}! 👋
+          </Text>
 
-            {/* 2. Friendly First Name + Waving Hand Emoji */}
-            <Text
-              style={styles.displayNameText}
-              numberOfLines={1}
-              adjustsFontSizeToFit
-              minimumFontScale={0.85}
-              maxFontSizeMultiplier={1.25}>
-              {firstName}! 👋
-            </Text>
+          {/* 3. Subtitle */}
+          <Text
+            style={styles.greetingSubtext}
+            numberOfLines={1}
+            maxFontSizeMultiplier={1.15}>
+            Here&apos;s your store today
+          </Text>
+        </View>
 
-            {/* 3. Subtitle */}
-            <Text
-              style={styles.greetingSubtext}
-              numberOfLines={1}
-              maxFontSizeMultiplier={1.2}>
-              Here&apos;s your store today
-            </Text>
-          </View>
-
-          {/* Right Column: Authentic 3D Tindahan Artwork */}
-          <View style={styles.artworkWrapper}>
-            <DashboardStoreArtwork size={artworkSize} />
-          </View>
+        {/* Right Column: Overlapping 3D Tindahan Artwork */}
+        <View style={styles.artworkWrapper}>
+          <DashboardStoreArtwork size={artworkSize} />
         </View>
       </View>
     </View>
@@ -113,37 +104,12 @@ export function DashboardHeroBanner({
 }
 
 const styles = StyleSheet.create({
-  cardContainer: {
+  greetingZone: {
     width: '100%',
+    paddingTop: 2,
+    paddingBottom: 2,
     position: 'relative',
-    marginTop: Spacing.one,
-  },
-  // Organic green wave scoop peeking out on top-left matching reference
-  waveAccentBack: {
-    position: 'absolute',
-    top: -10,
-    left: 8,
-    width: '60%',
-    height: 24,
-    borderTopLeftRadius: 36,
-    borderTopRightRadius: 60,
-    backgroundColor: '#0D7A4D',
-    opacity: 0.38,
-    transform: [{ rotate: '-2deg' }],
-  },
-  card: {
-    backgroundColor: Colors.surface,
-    borderRadius: 24,
-    paddingVertical: 14,
-    paddingHorizontal: Spacing.four,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
     overflow: 'visible',
-    ...Shadows.sm,
-  },
-  cardNarrow: {
-    paddingVertical: 12,
-    paddingHorizontal: Spacing.three,
   },
   contentRow: {
     flexDirection: 'row',
@@ -151,33 +117,36 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   leftColumn: {
-    flex: 1.25,
-    gap: 3,
+    flex: 1,
+    gap: 1,
     paddingRight: Spacing.two,
     justifyContent: 'center',
   },
   greetingTitle: {
     fontSize: 14,
     fontWeight: Typography.weights.semiBold,
-    color: '#475569',
+    color: '#334155',
     letterSpacing: -0.1,
   },
   displayNameText: {
-    fontSize: 24,
+    fontSize: 25,
     lineHeight: 30,
     fontWeight: Typography.weights.extraBold,
     color: '#0F172A',
     letterSpacing: -0.5,
-    marginVertical: 1,
   },
   greetingSubtext: {
-    fontSize: 13,
-    color: '#94A3B8',
+    fontSize: 12.5,
+    color: '#64748B',
     fontWeight: Typography.weights.medium,
-    lineHeight: 18,
+    lineHeight: 17,
+    marginTop: 1,
   },
   artworkWrapper: {
+    marginTop: -22,
+    marginRight: -2,
     alignItems: 'center',
     justifyContent: 'center',
+    zIndex: 10,
   },
 });

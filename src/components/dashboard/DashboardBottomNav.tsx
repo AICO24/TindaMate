@@ -126,10 +126,7 @@ export function DashboardBottomNav({
           pressed && styles.tabItemPressed,
         ]}>
         <View
-          style={[
-            styles.iconWrapper,
-            isActive && styles.iconWrapperActive,
-          ]}
+          style={styles.iconWrapper}
           accessible={false}
           importantForAccessibility="no-hide-descendants">
           {tab.renderIcon(iconColor)}

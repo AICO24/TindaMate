@@ -1,6 +1,5 @@
 import React from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { BellNotificationIcon } from './DashboardNavIcons';
 import {
@@ -21,22 +20,17 @@ interface DashboardHeaderProps {
 /**
  * DashboardHeader (Exact Showcase Match)
  *
- * Visually matches media_1793685516173_46f6ff18.png and Screen 1 of Showcase:
- * - Dynamic safe-area top clearance ensuring zero collision with camera punch-holes or Dynamic Island
+ * Visually matches Screen 1 of TindaMate POS App Showcase.png:
+ * - Single safe-area top clearance (parent SafeAreaView handles top inset, avoiding double padding)
  * - Left: Authentic orange TindaMate bag emblem ("T") + bold white wordmark + mint tagline
- * - Center: Wide open space preventing camera notch overlap
- * - Right: Pure notification bell with red badge (3 / alert count)
+ * - Right: Unboxed solid white notification bell with red count badge
  */
 export function DashboardHeader({
   notificationCount = 0,
   onNotificationPress,
 }: DashboardHeaderProps) {
-  const insets = useSafeAreaInsets();
-  // Safe clearance guaranteed below Dynamic Island / camera punch-hole on all phones
-  const safeTopPadding = Math.max(insets.top, Platform.OS === 'android' ? 32 : 44) + 4;
-
   return (
-    <View style={[styles.header, { paddingTop: safeTopPadding }]}>
+    <View style={styles.header}>
       {/* Decorative ambient leaf silhouettes in header background */}
       <View style={styles.floatingLeafOne} pointerEvents="none" />
       <View style={styles.floatingLeafTwo} pointerEvents="none" />
@@ -63,7 +57,7 @@ export function DashboardHeader({
         </View>
       </View>
 
-      {/* Right: Single Notification Bell with Badge (Showcase 1:1) */}
+      {/* Right: Clean Unboxed Notification Bell with Red Badge (Showcase 1:1) */}
       <View style={styles.rightActions}>
         <Pressable
           accessibilityRole="button"
@@ -78,7 +72,7 @@ export function DashboardHeader({
             styles.iconButton,
             pressed && styles.iconButtonPressed,
           ]}>
-          <BellNotificationIcon size={20} color={Colors.textInverse} />
+          <BellNotificationIcon size={24} color={Colors.textInverse} />
           {notificationCount > 0 && (
             <View style={styles.notificationBadge}>
               <Text style={styles.notificationBadgeText}>
@@ -97,61 +91,62 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingBottom: Spacing.twoHalf,
+    paddingTop: Spacing.one,
+    paddingBottom: Spacing.two,
     position: 'relative',
     overflow: 'visible',
   },
   // Ambient organic floating leaves matching showcase
   floatingLeafOne: {
     position: 'absolute',
-    top: 4,
-    right: 70,
-    width: 32,
-    height: 48,
-    borderRadius: 16,
+    top: -4,
+    right: 64,
+    width: 34,
+    height: 50,
+    borderRadius: 17,
     backgroundColor: '#10B981',
-    opacity: 0.16,
+    opacity: 0.22,
     transform: [{ rotate: '34deg' }],
   },
   floatingLeafTwo: {
     position: 'absolute',
-    top: 14,
-    right: 110,
-    width: 22,
-    height: 36,
-    borderRadius: 11,
+    top: 8,
+    right: 108,
+    width: 24,
+    height: 38,
+    borderRadius: 12,
     backgroundColor: '#34D399',
-    opacity: 0.12,
+    opacity: 0.16,
     transform: [{ rotate: '-22deg' }],
   },
   brandRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.twoHalf,
-    maxWidth: 220,
+    gap: Spacing.two,
+    maxWidth: 240,
   },
   bagBadge: {
-    width: 42,
-    height: 44,
+    width: 38,
+    height: 40,
     alignItems: 'center',
     justifyContent: 'flex-end',
   },
   bagHandle: {
-    width: 18,
-    height: 9,
-    borderTopLeftRadius: 9,
-    borderTopRightRadius: 9,
+    width: 16,
+    height: 8,
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
     borderWidth: 2.5,
     borderBottomWidth: 0,
     borderColor: '#34D399',
     marginBottom: -1,
   },
   bagBody: {
-    width: 38,
-    height: 34,
-    borderRadius: 10,
+    width: 34,
+    height: 31,
+    borderRadius: 9,
     backgroundColor: '#F97316',
-    borderWidth: 1.5,
+    borderWidth: 1.2,
     borderColor: '#FDBA74',
     alignItems: 'center',
     justifyContent: 'center',
@@ -159,7 +154,7 @@ const styles = StyleSheet.create({
   },
   bagLetter: {
     color: Colors.textInverse,
-    fontSize: 19,
+    fontSize: 18,
     fontWeight: Typography.weights.extraBold,
     letterSpacing: -0.5,
   },
@@ -167,7 +162,7 @@ const styles = StyleSheet.create({
     gap: 1,
   },
   brandTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: Typography.weights.extraBold,
     color: Colors.textInverse,
     letterSpacing: -0.4,
@@ -186,12 +181,9 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   iconButton: {
-    width: 42,
-    height: 42,
+    width: 36,
+    height: 36,
     borderRadius: BorderRadius.full,
-    backgroundColor: 'rgba(255, 255, 255, 0.16)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.25)',
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
@@ -202,12 +194,12 @@ const styles = StyleSheet.create({
   },
   notificationBadge: {
     position: 'absolute',
-    top: -2,
-    right: -2,
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
-    paddingHorizontal: 4,
+    top: 1,
+    right: 1,
+    minWidth: 17,
+    height: 17,
+    borderRadius: 8.5,
+    paddingHorizontal: 3.5,
     backgroundColor: '#EF4444',
     borderWidth: 1.5,
     borderColor: '#064E3B',
@@ -216,7 +208,8 @@ const styles = StyleSheet.create({
   },
   notificationBadgeText: {
     color: Colors.textInverse,
-    fontSize: 10,
+    fontSize: 9.5,
     fontWeight: Typography.weights.extraBold,
+    lineHeight: 11,
   },
 });
