@@ -6,39 +6,46 @@ interface HeaderWaveBackgroundProps {
 }
 
 /**
- * HeaderWaveBackground (TindaMate Design 2.0 Showcase Signature Waves)
+ * HeaderWaveBackground (TindaMate Signature Zigzag & Diagonal Wave Canopy)
  *
- * Renders the authentic, multi-layered flowing diagonal wave ribbons seen across
- * all screens of TindaMate POS App Showcase.png (Dashboard, Product Details, Reports, More):
- * - Deep Forest Green (#064E3B) rich foundation
- * - Flowing vibrant Emerald (#059669 / #0D7A4D) diagonal wave sweep
- * - Warm Market Orange (#F97316 / #F59E0B) dynamic accent ribbon on the right edge
- * - Mint / Sage (#34D399 / #A7F3D0) soft wave crest
- * - Organic foliage leaf silhouettes floating in the header ambience
+ * Implements the authentic multi-layered zigzag / diagonal ribbon design seen in
+ * the TindaMate Design 2.0 Showcase:
+ * - Deep Forest Green foundation (#064E3B)
+ * - Dynamic Warm Market Orange (#F59E0B / #F97316) zigzag ribbon cutting across the right
+ * - Supporting vibrant Emerald (#047857) and Mint (#10B981) geometric wave bands
+ * - Crisp zigzag chevron angles (/ \ /) creating the signature retail energy
+ * - Organic leaf silhouettes floating in the header ambience
+ * - Smooth curved bottom transition into the light hero canvas
  */
-export function HeaderWaveBackground({ height = 156 }: HeaderWaveBackgroundProps) {
+export function HeaderWaveBackground({ height = 150 }: HeaderWaveBackgroundProps) {
   return (
     <View style={[styles.container, { height }]} pointerEvents="none">
       {/* 1. Base Deep Forest Green is set on container */}
 
-      {/* 2. Top-Right Ambient Glow Circle */}
+      {/* 2. Soft Ambient Emerald Glow in top-right */}
       <View style={styles.ambientGlow} />
 
-      {/* 3. Sweeping Warm Orange / Amber Dynamic Ribbon on the Right */}
-      <View style={styles.orangeWaveRibbon} />
+      {/* 3. Deep Emerald Wave Band */}
+      <View style={styles.emeraldWaveBand} />
 
-      {/* 4. Layered Diagonal Emerald Green Wave Sweep */}
-      <View style={styles.emeraldWaveSweep} />
+      {/* 4. Signature Dynamic Warm Orange Zigzag Ribbon 1 (Upper Diagonal) */}
+      <View style={styles.orangeZigzagSegment1} />
 
-      {/* 5. Supporting Deep Mint Wave Ribbon */}
-      <View style={styles.mintWaveRibbon} />
+      {/* 5. Signature Dynamic Warm Orange Zigzag Ribbon 2 (Lower Diagonal Bend) */}
+      <View style={styles.orangeZigzagSegment2} />
 
-      {/* 6. Ambient Organic Leaf Silhouettes floating in the header */}
+      {/* 6. Sharp Mint Chevron / Accent Line running along the zigzag crest */}
+      <View style={styles.mintAccentRibbon} />
+
+      {/* 7. Secondary Emerald Diagonal Wave Contour */}
+      <View style={styles.emeraldContourSweep} />
+
+      {/* 8. Floating Brand Leaves */}
       <View style={styles.leafOne} />
       <View style={styles.leafTwo} />
       <View style={styles.leafThree} />
 
-      {/* 7. Bottom Organic S-Wave Transition into White Canvas */}
+      {/* 9. Soft Curved Bottom Wave Transitions */}
       <View style={styles.bottomWaveEmerald} />
       <View style={styles.bottomWaveWhite} />
     </View>
@@ -55,112 +62,134 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     zIndex: 0,
   },
-  // Soft ambient emerald glow
+  // Ambient radial glow in top right
   ambientGlow: {
     position: 'absolute',
-    top: -50,
-    right: -30,
-    width: 200,
-    height: 200,
-    borderRadius: 100,
+    top: -40,
+    right: -20,
+    width: 220,
+    height: 220,
+    borderRadius: 110,
     backgroundColor: '#0D7A4D',
-    opacity: 0.6,
+    opacity: 0.65,
   },
-  // Signature Warm Market Orange Wave Ribbon on the right
-  orangeWaveRibbon: {
+  // Deep emerald wave band cutting across
+  emeraldWaveBand: {
     position: 'absolute',
-    top: 10,
-    right: -45,
-    width: 170,
-    height: 120,
-    borderTopLeftRadius: 90,
-    borderBottomLeftRadius: 110,
-    backgroundColor: '#F59E0B',
+    top: -20,
+    right: -30,
+    width: 240,
+    height: 140,
+    borderBottomLeftRadius: 160,
+    backgroundColor: '#047857',
     opacity: 0.85,
+    transform: [{ rotate: '-8deg' }],
+  },
+  // Segment 1 of the Warm Orange Zigzag ribbon: Sweeping down diagonally from top-right
+  orangeZigzagSegment1: {
+    position: 'absolute',
+    top: 2,
+    right: -35,
+    width: 190,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#F59E0B',
+    opacity: 0.92,
+    transform: [{ rotate: '-24deg' }],
+  },
+  // Segment 2 of the Warm Orange Zigzag ribbon: Angling back in an energetic zigzag bend
+  orangeZigzagSegment2: {
+    position: 'absolute',
+    top: 36,
+    right: 25,
+    width: 140,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#EA580C',
+    opacity: 0.88,
+    transform: [{ rotate: '26deg' }],
+  },
+  // Mint accent line highlighting the zigzag intersection
+  mintAccentRibbon: {
+    position: 'absolute',
+    top: 48,
+    right: 15,
+    width: 110,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#34D399',
+    opacity: 0.75,
     transform: [{ rotate: '-18deg' }],
   },
-  // Main sweeping emerald wave cutting diagonally across the header
-  emeraldWaveSweep: {
+  // Secondary emerald contour sweep
+  emeraldContourSweep: {
     position: 'absolute',
-    top: -15,
-    left: -40,
-    right: 30,
-    height: 130,
-    borderBottomRightRadius: 180,
-    borderBottomLeftRadius: 140,
-    backgroundColor: '#047857',
-    opacity: 0.88,
-    transform: [{ rotate: '-5deg' }],
+    top: 65,
+    right: -10,
+    width: 170,
+    height: 55,
+    borderTopLeftRadius: 80,
+    borderBottomLeftRadius: 90,
+    backgroundColor: '#059669',
+    opacity: 0.65,
+    transform: [{ rotate: '-14deg' }],
   },
-  // Soft mint wave ribbon
-  mintWaveRibbon: {
-    position: 'absolute',
-    top: 35,
-    left: 20,
-    right: -20,
-    height: 85,
-    borderTopLeftRadius: 160,
-    borderBottomLeftRadius: 140,
-    backgroundColor: '#10B981',
-    opacity: 0.38,
-    transform: [{ rotate: '-12deg' }],
-  },
-  // Floating organic leaf silhouettes matching showcase header
+  // Floating organic leaves
   leafOne: {
     position: 'absolute',
-    top: 8,
-    right: 80,
-    width: 32,
-    height: 48,
-    borderRadius: 16,
-    backgroundColor: '#34D399',
-    opacity: 0.22,
-    transform: [{ rotate: '38deg' }],
+    top: 14,
+    right: 125,
+    width: 26,
+    height: 40,
+    borderRadius: 13,
+    backgroundColor: '#6EE7B7',
+    opacity: 0.28,
+    transform: [{ rotate: '42deg' }],
   },
   leafTwo: {
     position: 'absolute',
-    top: 24,
-    right: 120,
-    width: 22,
-    height: 34,
-    borderRadius: 11,
-    backgroundColor: '#10B981',
-    opacity: 0.18,
-    transform: [{ rotate: '-24deg' }],
-  },
-  leafThree: {
-    position: 'absolute',
-    top: -6,
-    right: 170,
+    top: 34,
+    right: 175,
     width: 18,
     height: 28,
     borderRadius: 9,
-    backgroundColor: '#A7F3D0',
-    opacity: 0.15,
-    transform: [{ rotate: '15deg' }],
+    backgroundColor: '#34D399',
+    opacity: 0.22,
+    transform: [{ rotate: '-28deg' }],
   },
-  // Bottom transition curves into #F8FAFC canvas
+  leafThree: {
+    position: 'absolute',
+    top: -4,
+    right: 200,
+    width: 16,
+    height: 24,
+    borderRadius: 8,
+    backgroundColor: '#A7F3D0',
+    opacity: 0.18,
+    transform: [{ rotate: '18deg' }],
+  },
+  // Bottom curved transition into light canvas
   bottomWaveEmerald: {
     position: 'absolute',
-    bottom: -16,
-    left: -30,
-    right: -30,
-    height: 38,
+    bottom: -14,
+    left: -20,
+    right: -20,
+    height: 34,
     borderTopLeftRadius: 180,
-    borderTopRightRadius: 260,
-    backgroundColor: '#059669',
+    borderTopRightRadius: 240,
+    backgroundColor: '#047857',
     opacity: 0.45,
-    transform: [{ rotate: '-1.5deg' }],
+    transform: [{ rotate: '-1deg' }],
   },
   bottomWaveWhite: {
     position: 'absolute',
-    bottom: -20,
+    bottom: -18,
     left: -20,
     right: -20,
-    height: 32,
+    height: 28,
     borderTopLeftRadius: 160,
-    borderTopRightRadius: 240,
+    borderTopRightRadius: 220,
     backgroundColor: '#F8FAFC',
+    opacity: 0.8,
   },
 });
-
