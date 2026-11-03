@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -46,6 +46,7 @@ export function ExpenseOverviewCard({
 }: ExpenseOverviewCardProps) {
   const { width: windowWidth } = useWindowDimensions();
   const isNarrowPhone = windowWidth < 350;
+  const [isHovered, setIsHovered] = useState(false);
 
   const hasExpenses = summary.totalExpenses > 0;
   const expenseCountLabel =
@@ -62,7 +63,17 @@ export function ExpenseOverviewCard({
   // Compact card presentation (for side-by-side Store Finances row)
   if (compact) {
     return (
-      <View style={styles.compactCard}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Expenses summary: ${formatPesoCurrency(summary.totalExpenses)}, ${expenseCountLabel}. Tap to view expenses.`}
+        onPress={isLoading ? undefined : onViewExpenses}
+        onHoverIn={() => setIsHovered(true)}
+        onHoverOut={() => setIsHovered(false)}
+        style={({ pressed }) => [
+          styles.compactCard,
+          isHovered && styles.compactCardHovered,
+          pressed && styles.compactCardPressed,
+        ]}>
         {/* Header: Icon + Section Title + View All */}
         <View style={styles.compactTopRow}>
           <View style={styles.compactHeaderLeft}>
@@ -75,15 +86,9 @@ export function ExpenseOverviewCard({
           </View>
 
           {onViewExpenses && (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="View all store expenses"
-              onPress={isLoading ? undefined : onViewExpenses}
-              disabled={isLoading}
-              hitSlop={8}
-              style={({ pressed }) => [pressed && styles.pressed]}>
-              <Text style={styles.compactViewAllText}>All →</Text>
-            </Pressable>
+            <Text style={styles.compactViewAllText}>
+              All →
+            </Text>
           )}
         </View>
 
@@ -117,7 +122,7 @@ export function ExpenseOverviewCard({
             {outlayStatusLabel}
           </Text>
         </View>
-      </View>
+      </Pressable>
     );
   }
 
@@ -268,6 +273,13 @@ const styles = StyleSheet.create({
     minHeight: 98,
     ...Shadows.xs,
   },
+  compactCardHovered: {
+    borderColor: '#000000',
+  },
+  compactCardPressed: {
+    opacity: 0.9,
+    transform: [{ scale: 0.98 }],
+  },
   compactTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -286,6 +298,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  compactIconCircleHovered: {
+    transform: [{ scale: 1.12 }],
+  },
   compactTitleText: {
     fontSize: 12,
     fontWeight: Typography.weights.extraBold,
@@ -295,6 +310,9 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: Typography.weights.bold,
     color: Colors.primary,
+  },
+  compactViewAllHovered: {
+    transform: [{ translateX: 2 }],
   },
   compactAmountText: {
     fontSize: 18,

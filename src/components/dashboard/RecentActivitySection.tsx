@@ -1,7 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
-import { CartVectorIcon } from './DashboardNavIcons';
+import {
+  CartVectorIcon,
+  RecentActivityClockIcon,
+  UserPaymentVectorIcon,
+} from './DashboardNavIcons';
 import {
   BorderRadius,
   Colors,
@@ -23,14 +27,16 @@ interface RecentActivitySectionProps {
 }
 
 /**
- * RecentActivitySection (Design 2.0 Showcase Alignment)
+ * RecentActivitySection (Target Reference 1:1 Alignment + Black Corner Hover Line)
  *
- * Visually matches Screen 1 of TindaMate POS App Showcase.png:
- * - Flat section header ("Recent Activity" on left, "View All →" on right)
- * - Compact single-line pill/row for each recent transaction:
- *   Left: Soft green circle with cart icon
- *   Middle: Single-line summary ("New Sale • ₱350" or "{product_name} • {formattedTotal}")
- *   Right: Relative timestamp ("2m ago")
+ * Visually matches the Recent Activity section in the Dashboard reference:
+ * - Section Header: Circular clock-arrow history icon + "Recent Activity" on left, "View All →" on right
+ * - Activity Rows: Floating white pill cards (#FFFFFF, 15px border radius):
+ *   - Regular sale: Soft green circle (#DCFCE7) + emerald cart icon
+ *   - Credit / Customer transaction: Soft warm peach circle (#FFEDD5) + orange user icon
+ *   - Middle: Bold inline summary ("New Sale • ₱850")
+ *   - Right: Relative timestamp ("2m ago")
+ *   - Hover: Crisp black border line outline around the pill corners
  */
 export function RecentActivitySection({
   sales,
@@ -41,20 +47,24 @@ export function RecentActivitySection({
 }: RecentActivitySectionProps) {
   const { width: windowWidth } = useWindowDimensions();
   const isCompactPhone = windowWidth < 375;
+  const [hoveredSaleId, setHoveredSaleId] = useState<string | null>(null);
 
   const hasSales = Boolean(sales && sales.length > 0);
   const showViewAll = (hasSales || hasActivity || activityCount > 0) && !!onViewAll;
 
   return (
     <View style={styles.container}>
-      {/* Flat Section Header matching reference */}
+      {/* Section Header with Clock-Arrow Icon + Title + View All */}
       <View style={styles.headerRow}>
-        <Text
-          style={styles.headerTitle}
-          accessibilityRole="header"
-          maxFontSizeMultiplier={1.25}>
-          Recent Activity
-        </Text>
+        <View style={styles.titleCluster}>
+          <RecentActivityClockIcon size={20} color="#0A5234" />
+          <Text
+            style={styles.headerTitle}
+            accessibilityRole="header"
+            maxFontSizeMultiplier={1.25}>
+            Recent Activity
+          </Text>
+        </View>
 
         {showViewAll ? (
           <Pressable
@@ -75,13 +85,14 @@ export function RecentActivitySection({
       </View>
 
       {hasSales && sales ? (
-        /* Compact Single-Line Rows matching reference */
+        /* Compact Floating Pill Rows matching reference */
         <View style={styles.rowsContainer}>
           {sales.slice(0, 2).map((sale) => {
             const formattedTotal = formatPesoCurrency(sale.total_amount);
             const formattedTime = formatRecentSaleTime(sale.created_at);
             const isCredit = sale.payment_method === 'credit';
             const titleLabel = sale.product_name || 'New Sale';
+            const isHovered = hoveredSaleId === sale.id;
 
             const accessibilityLabel = `Sale: ${titleLabel}, total ${formattedTotal}, ${formattedTime}`;
 
@@ -92,11 +103,16 @@ export function RecentActivitySection({
                 accessibilityLabel={accessibilityLabel}
                 accessibilityHint="Opens complete details for this sale"
                 onPress={() => onSalePress?.(sale)}
+                onHoverIn={() => setHoveredSaleId(sale.id)}
+                onHoverOut={() =>
+                  setHoveredSaleId((prev) => (prev === sale.id ? null : prev))
+                }
                 style={({ pressed }) => [
                   styles.salePillRow,
+                  isHovered && styles.salePillRowHovered,
                   pressed && styles.saleRowPressed,
                 ]}>
-                {/* Left: Compact Green / Amber Icon Circle */}
+                {/* Left: Green Cart Circle (Cash) or Warm Peach User Circle (Credit/Utang) */}
                 <View
                   style={[
                     styles.saleIconCircle,
@@ -104,13 +120,14 @@ export function RecentActivitySection({
                   ]}
                   accessible={false}
                   importantForAccessibility="no-hide-descendants">
-                  <CartVectorIcon
-                    size={15}
-                    color={isCredit ? '#D97706' : '#0D7A4D'}
-                  />
+                  {isCredit ? (
+                    <UserPaymentVectorIcon size={16} color="#D97706" />
+                  ) : (
+                    <CartVectorIcon size={16} color="#15803D" />
+                  )}
                 </View>
 
-                {/* Middle: Single-line "New Sale • ₱350" format */}
+                {/* Middle: Single-line "New Sale • ₱850" format */}
                 <View style={styles.saleInlineRow}>
                   <Text
                     style={styles.saleInlinePrimary}
@@ -153,7 +170,7 @@ export function RecentActivitySection({
             style={styles.saleIconCircle}
             accessible={false}
             importantForAccessibility="no-hide-descendants">
-            <CartVectorIcon size={15} color="#0D7A4D" />
+            <CartVectorIcon size={16} color="#15803D" />
           </View>
           <Text style={styles.emptyInlineText} numberOfLines={1} maxFontSizeMultiplier={1.2}>
             No sales recorded yet — tap POS to start
@@ -166,7 +183,7 @@ export function RecentActivitySection({
 
 const styles = StyleSheet.create({
   container: {
-    gap: 8,
+    gap: 7,
   },
   headerRow: {
     flexDirection: 'row',
@@ -174,23 +191,29 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 2,
   },
+  titleCluster: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+  },
   headerTitle: {
-    fontSize: 15.5,
+    fontSize: 16.5,
     fontWeight: Typography.weights.extraBold,
-    color: '#0F172A',
+    color: '#0A3D28',
     letterSpacing: -0.3,
   },
   viewAllButton: {
-    paddingVertical: 2,
-    paddingHorizontal: 2,
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: 999,
   },
   viewAllPressed: {
     opacity: 0.65,
   },
   viewAllText: {
-    fontSize: 12,
-    fontWeight: Typography.weights.semiBold,
-    color: '#475569',
+    fontSize: 13,
+    fontWeight: Typography.weights.bold,
+    color: '#0A5234',
   },
   rowsContainer: {
     gap: 6,
@@ -200,29 +223,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: Colors.surface,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#F1F5F9',
-    paddingVertical: 9,
-    paddingHorizontal: Spacing.twoHalf,
+    borderRadius: 15,
+    borderWidth: 1.5,
+    borderColor: '#EDF4EE',
+    paddingVertical: 8,
+    paddingHorizontal: Spacing.three,
     gap: Spacing.two,
     minHeight: 44,
     ...Shadows.xs,
   },
+  salePillRowHovered: {
+    borderColor: '#000000',
+  },
   saleRowPressed: {
     backgroundColor: '#F8FAFC',
-    transform: [{ scale: 0.99 }],
+    opacity: 0.9,
   },
   saleIconCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: '#DCFCE7',
     alignItems: 'center',
     justifyContent: 'center',
   },
   saleIconCircleCredit: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#FFEDD5',
   },
   saleInlineRow: {
     flex: 1,
@@ -232,7 +258,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   saleInlinePrimary: {
-    fontSize: 13.5,
+    fontSize: 14,
     fontWeight: Typography.weights.bold,
     color: '#0F172A',
     flexShrink: 1,
@@ -240,10 +266,10 @@ const styles = StyleSheet.create({
   saleInlineBullet: {
     fontSize: 13,
     fontWeight: Typography.weights.bold,
-    color: '#64748B',
+    color: '#334155',
   },
   saleInlineAmount: {
-    fontSize: 13.5,
+    fontSize: 14,
     fontWeight: Typography.weights.extraBold,
     color: '#0F172A',
     fontVariant: ['tabular-nums'],
@@ -260,21 +286,21 @@ const styles = StyleSheet.create({
     color: '#D97706',
   },
   saleTimeText: {
-    fontSize: 12,
-    color: '#64748B',
+    fontSize: 12.5,
+    color: '#475569',
     fontWeight: Typography.weights.medium,
   },
   emptyPillRow: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.surface,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#F1F5F9',
-    paddingVertical: 9,
-    paddingHorizontal: Spacing.twoHalf,
-    gap: Spacing.two,
-    minHeight: 44,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#EDF4EE',
+    paddingVertical: 10,
+    paddingHorizontal: Spacing.three,
+    gap: Spacing.twoHalf,
+    minHeight: 50,
     ...Shadows.xs,
   },
   emptyPillRowCompact: {
@@ -284,6 +310,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 13,
     fontWeight: Typography.weights.medium,
-    color: '#64748B',
+    color: '#475569',
   },
 });
