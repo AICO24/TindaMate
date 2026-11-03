@@ -18,6 +18,7 @@ import {
   resolveActiveNavTab,
 } from '@/components/dashboard/DashboardBottomNav';
 import { DashboardErrorBanner } from '@/components/dashboard/DashboardErrorBanner';
+import { TindaMateLoadingView } from '@/components/animated-icon';
 import {
   CalendarFilterIcon,
   DashboardBadgeVectorIcon,
@@ -278,11 +279,10 @@ export default function SalesHistoryScreen() {
             {/* 1. Loading State */}
             {isInitialLoading ? (
               <View style={styles.stateCard}>
-                <ActivityIndicator size="large" color={Colors.primaryDark} />
-                <Text style={styles.stateTitle}>Loading Sales History...</Text>
-                <Text style={styles.stateSubtitle}>
-                  Fetching your store sales records from Supabase.
-                </Text>
+                <TindaMateLoadingView
+                  compact
+                  message="Fetching sales records..."
+                />
               </View>
             ) : errorMessage && sales.length === 0 ? (
               /* 2. Full Error State */

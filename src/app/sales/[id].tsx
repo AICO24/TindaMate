@@ -14,6 +14,7 @@ import { StatusBar } from 'expo-status-bar';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 
 import { DashboardErrorBanner } from '@/components/dashboard/DashboardErrorBanner';
+import { TindaMateLoadingView } from '@/components/animated-icon';
 import { ProductScreenHeader } from '@/components/products/ProductScreenHeader';
 import { CheckIcon } from '@/components/ui/AuthIcons';
 import { TindaMateButton } from '@/components/ui/TindaMateButton';
@@ -169,8 +170,7 @@ export default function SaleDetailsScreen() {
             {/* 1. Loading State */}
             {isLoading ? (
               <View style={styles.stateCard}>
-                <ActivityIndicator size="large" color={Colors.primaryDark} />
-                <Text style={styles.stateTitle}>Loading Sale Details...</Text>
+                <TindaMateLoadingView compact message="Loading Sale Details..." />
               </View>
             ) : !sale ? (
               /* 2. Error / Not Found State */

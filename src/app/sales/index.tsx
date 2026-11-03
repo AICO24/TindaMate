@@ -29,6 +29,7 @@ import {
   resolveActiveNavTab,
 } from '@/components/dashboard/DashboardBottomNav';
 import { DashboardErrorBanner } from '@/components/dashboard/DashboardErrorBanner';
+import { TindaMateLoadingView } from '@/components/animated-icon';
 import {
   CartVectorIcon,
   DashboardBadgeVectorIcon,
@@ -569,11 +570,10 @@ export default function SalesScreen() {
             {/* 1. Initial Loading State */}
             {isInitialLoading ? (
               <View style={styles.stateCard}>
-                <ActivityIndicator size="large" color={Colors.primaryDark} />
-                <Text style={styles.stateTitle}>Loading POS Catalog...</Text>
-                <Text style={styles.stateSubtitle}>
-                  Checking your store inventory for available products.
-                </Text>
+                <TindaMateLoadingView
+                  compact
+                  message="Checking available products..."
+                />
               </View>
             ) : loadError && allProducts.length === 0 ? (
               /* 2. Full Error State when initial fetch failed */
