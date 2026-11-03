@@ -1,5 +1,5 @@
 import React from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { BellNotificationIcon } from './DashboardNavIcons';
 import {
@@ -9,8 +9,6 @@ import {
   Typography,
 } from '@/constants/theme';
 
-const TINDAMATE_EMBLEM = require('@/assets/images/tindamate-official-emblem.png');
-
 interface DashboardHeaderProps {
   userEmail?: string;
   onProfilePress?: () => void;
@@ -19,13 +17,57 @@ interface DashboardHeaderProps {
 }
 
 /**
- * DashboardHeader (TindaMate Showcase Alignment with Authentic Brand Assets)
+ * MiniHeaderStoreIcon (Code-Driven 3D Storefront Emblem for Header)
  *
- * Visually matches Screen 1 of TindaMate POS App Showcase.png:
- * - Uses the authentic TindaMate Storefront Emblem ("T" shaped tindahan with orange awning & green leaf)
- * - Clear single safe-area top clearance
- * - Bold white "Tinda" + vibrant orange "Mate" wordmark + soft mint tagline
- * - Clean unboxed white notification bell with red alert badge
+ * Matches the charming orange-and-white striped storefront icon on the top-left
+ * of the target Dashboard reference:
+ * - 5 alternating orange & white awning stripes with scalloped bottom edge
+ * - Cream store facade with two mint windows and a dark brown center door
+ * - Little green bushes on both sides and warm ground base
+ */
+function MiniHeaderStoreIcon() {
+  return (
+    <View
+      style={styles.storeIconWrap}
+      accessible={false}
+      importantForAccessibility="no-hide-descendants">
+      {/* Side Mini Bushes */}
+      <View style={styles.miniBushLeft} />
+      <View style={styles.miniBushRight} />
+
+      {/* Roof Ridge */}
+      <View style={styles.miniRoofRidge} />
+
+      {/* 5-Stripe Orange & White Awning */}
+      <View style={styles.miniAwningRow}>
+        <View style={[styles.miniStripe, styles.miniStripeOrange]} />
+        <View style={[styles.miniStripe, styles.miniStripeWhite]} />
+        <View style={[styles.miniStripe, styles.miniStripeOrange]} />
+        <View style={[styles.miniStripe, styles.miniStripeWhite]} />
+        <View style={[styles.miniStripe, styles.miniStripeOrange]} />
+      </View>
+
+      {/* Storefront Facade */}
+      <View style={styles.miniFacade}>
+        <View style={styles.miniWindow} />
+        <View style={styles.miniDoor}>
+          <View style={styles.miniDoorKnob} />
+        </View>
+        <View style={styles.miniWindow} />
+      </View>
+
+      {/* Base Step */}
+      <View style={styles.miniBaseStep} />
+    </View>
+  );
+}
+
+/**
+ * DashboardHeader (Target Reference 1:1 Alignment)
+ *
+ * Visually matches the top header of the Dashboard reference:
+ * - Left: 3D Orange-Awning Storefront Emblem + "TindaMate" wordmark + "Your Digital Tindahan Assistant"
+ * - Right: Large crisp white Notification Bell with bright red badge
  */
 export function DashboardHeader({
   notificationCount = 0,
@@ -33,16 +75,9 @@ export function DashboardHeader({
 }: DashboardHeaderProps) {
   return (
     <View style={styles.header}>
-      {/* Left: Authentic TindaMate Brand Emblem + Wordmark + Tagline */}
+      {/* Left: Brand Storefront Icon + Wordmark + Tagline */}
       <View style={styles.brandRow}>
-        <View style={styles.emblemContainer}>
-          <Image
-            source={TINDAMATE_EMBLEM}
-            style={styles.emblemImage}
-            resizeMode="contain"
-            accessibilityLabel="TindaMate Logo"
-          />
-        </View>
+        <MiniHeaderStoreIcon />
 
         <View style={styles.titleCol}>
           <Text style={styles.brandTitle} maxFontSizeMultiplier={1.2}>
@@ -54,7 +89,7 @@ export function DashboardHeader({
         </View>
       </View>
 
-      {/* Right: Clean Unboxed Notification Bell with Red Badge (Showcase 1:1) */}
+      {/* Right: Crisp White Notification Bell with Red Alert Badge */}
       <View style={styles.rightActions}>
         <Pressable
           accessibilityRole="button"
@@ -69,7 +104,7 @@ export function DashboardHeader({
             styles.iconButton,
             pressed && styles.iconButtonPressed,
           ]}>
-          <BellNotificationIcon size={24} color={Colors.textInverse} />
+          <BellNotificationIcon size={25} color={Colors.textInverse} />
           {notificationCount > 0 && (
             <View style={styles.notificationBadge}>
               <Text style={styles.notificationBadgeText}>
@@ -88,7 +123,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: Spacing.two,
+    paddingTop: Spacing.one,
     paddingBottom: Spacing.twoHalf,
     position: 'relative',
     zIndex: 5,
@@ -96,34 +131,126 @@ const styles = StyleSheet.create({
   brandRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    maxWidth: 260,
+    gap: 11,
+    maxWidth: 275,
   },
-  emblemContainer: {
-    width: 52,
-    height: 38,
+  // Mini 3D Storefront Icon Styles
+  storeIconWrap: {
+    width: 48,
+    height: 42,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-end',
+    position: 'relative',
+    paddingBottom: 2,
   },
-  emblemImage: {
-    width: 50,
-    height: 36,
+  miniBushLeft: {
+    position: 'absolute',
+    left: 1,
+    bottom: 3,
+    width: 11,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#22C55E',
+    borderWidth: 1,
+    borderColor: '#15803D',
+  },
+  miniBushRight: {
+    position: 'absolute',
+    right: 1,
+    bottom: 3,
+    width: 11,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#22C55E',
+    borderWidth: 1,
+    borderColor: '#15803D',
+  },
+  miniRoofRidge: {
+    width: 34,
+    height: 4,
+    borderTopLeftRadius: 3,
+    borderTopRightRadius: 3,
+    backgroundColor: '#EA580C',
+  },
+  miniAwningRow: {
+    flexDirection: 'row',
+    width: 40,
+    height: 12,
+    borderTopLeftRadius: 3,
+    borderTopRightRadius: 3,
+    overflow: 'hidden',
+  },
+  miniStripe: {
+    flex: 1,
+    height: '100%',
+    borderBottomLeftRadius: 4,
+    borderBottomRightRadius: 4,
+  },
+  miniStripeOrange: {
+    backgroundColor: '#F97316',
+  },
+  miniStripeWhite: {
+    backgroundColor: '#FFFBEB',
+  },
+  miniFacade: {
+    width: 34,
+    height: 18,
+    backgroundColor: '#FDE68A',
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: '#D97706',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-evenly',
+    paddingHorizontal: 2,
+  },
+  miniWindow: {
+    width: 7,
+    height: 8,
+    borderRadius: 1.5,
+    backgroundColor: '#14B8A6',
+    borderWidth: 1,
+    borderColor: '#92400E',
+  },
+  miniDoor: {
+    width: 8,
+    height: 14,
+    borderTopLeftRadius: 2,
+    borderTopRightRadius: 2,
+    backgroundColor: '#1E3A2F',
+    alignSelf: 'flex-end',
+    justifyContent: 'center',
+    alignItems: 'flex-end',
+    paddingRight: 1.5,
+  },
+  miniDoorKnob: {
+    width: 2,
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: '#FBBF24',
+  },
+  miniBaseStep: {
+    width: 42,
+    height: 3.5,
+    borderRadius: 2,
+    backgroundColor: '#D97706',
   },
   titleCol: {
-    gap: 1.5,
+    gap: 1,
   },
   brandTitle: {
-    fontSize: 22,
+    fontSize: 23,
     fontWeight: Typography.weights.extraBold,
     color: '#FFFFFF',
     letterSpacing: -0.4,
+    lineHeight: 26,
   },
   brandTitleOrange: {
-    color: '#FB923C',
+    color: '#F97316',
   },
   brandTagline: {
     fontSize: 11.5,
-    color: '#D1FAE5',
+    color: '#ECFDF5',
     fontWeight: Typography.weights.medium,
     letterSpacing: 0.1,
   },
@@ -133,8 +260,8 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   iconButton: {
-    width: 38,
-    height: 38,
+    width: 40,
+    height: 40,
     borderRadius: BorderRadius.full,
     alignItems: 'center',
     justifyContent: 'center',
@@ -148,20 +275,20 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 2,
     right: 2,
-    minWidth: 17,
-    height: 17,
-    borderRadius: 8.5,
-    paddingHorizontal: 3.5,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    paddingHorizontal: 4,
     backgroundColor: '#EF4444',
     borderWidth: 1.5,
-    borderColor: '#064E3B',
+    borderColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
   },
   notificationBadgeText: {
     color: Colors.textInverse,
-    fontSize: 9.5,
+    fontSize: 10,
     fontWeight: Typography.weights.extraBold,
-    lineHeight: 11,
+    lineHeight: 12,
   },
 });

@@ -1,7 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-
-import { Colors, Typography } from '@/constants/theme';
+import { StyleSheet, View } from 'react-native';
 
 interface DashboardMarketIllustrationProps {
   width?: number;
@@ -10,459 +8,534 @@ interface DashboardMarketIllustrationProps {
 }
 
 /**
- * DashboardMarketIllustration
+ * DashboardMarketIllustration (Target Reference 3D Sari-Sari Store House)
  *
- * Dedicated pure React Native marketplace illustration for the Dashboard Hero:
- * - Friendly local market stall / sari-sari storefront
- * - Hand-tilted "Small Store. Big Dreams." callout badge on the left
- * - Classic green-and-white striped awning with scalloped edge
- * - Tiered wooden shelves and crates filled with colorful fresh produce
- * - Side crate, lush green foliage plant leaves, and mini chalkboard
- * - Built with 100% pure React Native primitives (zero cropped screenshot artifacts, zero OS emojis)
+ * Pure React Native vector/geometric reconstruction of the charming front-facing
+ * Sari-Sari Store House from the Dashboard reference:
+ * - Warm golden-peach sun halo circle behind the store
+ * - Lush layered green trees and bushes on left and right
+ * - Terracotta roof ridge + 5-stripe orange-and-white overhanging awning with scalloped tips
+ * - Cream storefront facade with two paned teal windows (with wooden frames & sills)
+ * - Dark brown wooden center door with golden knob and stone entrance step
+ * - Soft elliptical ground shadow sitting naturally on the mint-sage canvas
  */
 export function DashboardMarketIllustration({
-  width = 154,
-  height = 140,
+  width = 162,
+  height = 138,
   compact = false,
 }: DashboardMarketIllustrationProps) {
-  if (compact) {
-    return (
-      <View
-        style={{ width: 64, height: 60, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}
-        accessible={false}
-        accessibilityElementsHidden={true}
-        importantForAccessibility="no-hide-descendants">
-        <View style={{ transform: [{ scale: 0.45 }], width: 154, height: 140, alignItems: 'flex-end', justifyContent: 'center' }}>
-          <View style={styles.stallWrapper}>
-            <View style={styles.awningCanopy}>
-              <View style={[styles.awningStripe, styles.stripeGreen]} />
-              <View style={[styles.awningStripe, styles.stripeWhite]} />
-              <View style={[styles.awningStripe, styles.stripeGreen]} />
-              <View style={[styles.awningStripe, styles.stripeWhite]} />
-              <View style={[styles.awningStripe, styles.stripeGreen]} />
-              <View style={[styles.awningStripe, styles.stripeWhite]} />
-              <View style={[styles.awningStripe, styles.stripeGreen]} />
-            </View>
-            <View style={styles.awningScallopRow}>
-              <View style={[styles.scallop, styles.stripeGreen]} />
-              <View style={[styles.scallop, styles.stripeWhite]} />
-              <View style={[styles.scallop, styles.stripeGreen]} />
-              <View style={[styles.scallop, styles.stripeWhite]} />
-              <View style={[styles.scallop, styles.stripeGreen]} />
-              <View style={[styles.scallop, styles.stripeWhite]} />
-              <View style={[styles.scallop, styles.stripeGreen]} />
-            </View>
-            <View style={styles.stallBody}>
-              <View style={styles.woodenPostLeft} />
-              <View style={styles.shelvesCenter}>
-                <View style={styles.woodenShelfTop}>
-                  <View style={styles.produceCrate}>
-                    <View style={[styles.produceDot, { backgroundColor: Colors.pastel.orange.iconBg }]} />
-                    <View style={[styles.produceDot, { backgroundColor: '#FBBF24' }]} />
-                  </View>
-                  <View style={styles.produceCrate}>
-                    <View style={[styles.produceDot, { backgroundColor: Colors.pastel.green.iconBg }]} />
-                    <View style={[styles.produceDot, { backgroundColor: '#34D399' }]} />
-                  </View>
-                </View>
-                <View style={styles.woodenShelfBottom}>
-                  <View style={styles.produceCrateWide}>
-                    <View style={[styles.produceDot, { backgroundColor: '#EF4444' }]} />
-                    <View style={[styles.produceDot, { backgroundColor: Colors.accentWarm }]} />
-                    <View style={[styles.produceDot, { backgroundColor: Colors.pastel.green.iconBg }]} />
-                  </View>
-                </View>
-                <View style={styles.counterBasePlank}>
-                  <View style={styles.plankGrain} />
+  const scaleFactor = compact ? 0.42 : 1;
+
+  const storeScene = (
+    <View style={styles.sceneCanvas}>
+      {/* 1. Soft Elliptical Ground Shadow */}
+      <View style={styles.groundShadow} />
+
+      {/* 2. Warm Golden-Peach Circular Sun Halo */}
+      <View style={styles.sunHaloOuter}>
+        <View style={styles.sunHaloInner} />
+      </View>
+
+      {/* 3. Upper-Right Floating Leaf Accents */}
+      <View style={styles.topRightLeaf1} />
+      <View style={styles.topRightLeaf2} />
+
+      {/* 4. Left Tree & Layered Bushes */}
+      <View style={styles.leftTreeGroup}>
+        <View style={styles.treeCrownBack} />
+        <View style={styles.treeCrownTop} />
+        <View style={styles.treeCrownLeft} />
+        <View style={styles.treeTrunk} />
+        <View style={styles.leftBushFront} />
+        <View style={styles.leftBushMini} />
+      </View>
+
+      {/* 5. Main Front-Facing Sari-Sari Store House */}
+      <View style={styles.houseContainer}>
+        {/* Terracotta Roof Ridge Cap */}
+        <View style={styles.roofRidgeCap}>
+          <View style={styles.roofRidgeHighlight} />
+        </View>
+
+        {/* Overhanging 5-Stripe Orange & White Awning */}
+        <View style={styles.awningWrapper}>
+          <View style={styles.awningSlantRow}>
+            <View style={[styles.awningStripe, styles.stripeOrange]} />
+            <View style={[styles.awningStripe, styles.stripeWhite]} />
+            <View style={[styles.awningStripe, styles.stripeOrange]} />
+            <View style={[styles.awningStripe, styles.stripeWhite]} />
+            <View style={[styles.awningStripe, styles.stripeOrange]} />
+          </View>
+
+          {/* Scalloped Awning Bottom Edge */}
+          <View style={styles.scallopRow}>
+            <View style={[styles.scallopCap, styles.scallopOrange]} />
+            <View style={[styles.scallopCap, styles.scallopWhite]} />
+            <View style={[styles.scallopCap, styles.scallopOrange]} />
+            <View style={[styles.scallopCap, styles.scallopWhite]} />
+            <View style={[styles.scallopCap, styles.scallopOrange]} />
+          </View>
+        </View>
+
+        {/* Cream Storefront Facade Body */}
+        <View style={styles.facadeBody}>
+          {/* Awning Drop Shadow on Upper Wall */}
+          <View style={styles.wallTopShadow} />
+
+          <View style={styles.facadeContentRow}>
+            {/* Left Paned Window */}
+            <View style={styles.windowUnit}>
+              <View style={styles.windowFrame}>
+                <View style={styles.windowGlass}>
+                  <View style={styles.windowDividerV} />
+                  <View style={styles.windowDividerH} />
+                  <View style={styles.windowReflection} />
                 </View>
               </View>
-              <View style={styles.woodenPostRight} />
+              <View style={styles.windowSill} />
             </View>
+
+            {/* Center Wooden Doorway */}
+            <View style={styles.doorUnit}>
+              <View style={styles.doorFrame}>
+                <View style={styles.doorInnerPanelTop} />
+                <View style={styles.doorKnob} />
+              </View>
+            </View>
+
+            {/* Right Paned Window */}
+            <View style={styles.windowUnit}>
+              <View style={styles.windowFrame}>
+                <View style={styles.windowGlass}>
+                  <View style={styles.windowDividerV} />
+                  <View style={styles.windowDividerH} />
+                  <View style={styles.windowReflection} />
+                </View>
+              </View>
+              <View style={styles.windowSill} />
+            </View>
+          </View>
+
+          {/* Terracotta Base Plinth + Center Stone Step */}
+          <View style={styles.foundationRow}>
+            <View style={styles.foundationBrickLeft} />
+            <View style={styles.doorStoneStep} />
+            <View style={styles.foundationBrickRight} />
           </View>
         </View>
       </View>
+
+      {/* 6. Right Foreground Lush Bushes */}
+      <View style={styles.rightBushGroup}>
+        <View style={styles.rightBushTall} />
+        <View style={styles.rightBushMid} />
+        <View style={styles.rightBushFront} />
+      </View>
+    </View>
+  );
+
+  if (compact) {
+    return (
+      <View
+        style={{
+          width: 68,
+          height: 60,
+          alignItems: 'center',
+          justifyContent: 'center',
+          overflow: 'hidden',
+        }}
+        accessible={false}
+        accessibilityElementsHidden={true}
+        importantForAccessibility="no-hide-descendants">
+        <View style={{ transform: [{ scale: scaleFactor }] }}>{storeScene}</View>
+      </View>
     );
   }
+
   return (
     <View
       style={[styles.container, { width, height }]}
       accessible={false}
       accessibilityElementsHidden={true}
       importantForAccessibility="no-hide-descendants">
-      {/* Soft warm circular backdrop glow */}
-      <View style={styles.backdropHalo} />
-
-      {/* Hand-tilted "Small Store. Big Dreams." Callout matching reference */}
-      <View style={styles.dreamsCallout}>
-        <Text style={styles.dreamsText}>Small</Text>
-        <Text style={styles.dreamsText}>Store.</Text>
-        <Text style={styles.dreamsText}>Big</Text>
-        <Text style={styles.dreamsText}>Dreams.</Text>
-        {/* Warm Amber Sparkle Rays */}
-        <View style={styles.sparkleRaysTop}>
-          <View style={styles.sparkleRayShort} />
-          <View style={styles.sparkleRayLong} />
-        </View>
-      </View>
-
-      {/* The Market Stall Structure */}
-      <View style={styles.stallWrapper}>
-        {/* Awning Roof Canopy (Green & White Stripes) */}
-        <View style={styles.awningCanopy}>
-          <View style={[styles.awningStripe, styles.stripeGreen]} />
-          <View style={[styles.awningStripe, styles.stripeWhite]} />
-          <View style={[styles.awningStripe, styles.stripeGreen]} />
-          <View style={[styles.awningStripe, styles.stripeWhite]} />
-          <View style={[styles.awningStripe, styles.stripeGreen]} />
-          <View style={[styles.awningStripe, styles.stripeWhite]} />
-          <View style={[styles.awningStripe, styles.stripeGreen]} />
-        </View>
-
-        {/* Scalloped Awning Edge */}
-        <View style={styles.awningScallopRow}>
-          <View style={[styles.scallop, styles.stripeGreen]} />
-          <View style={[styles.scallop, styles.stripeWhite]} />
-          <View style={[styles.scallop, styles.stripeGreen]} />
-          <View style={[styles.scallop, styles.stripeWhite]} />
-          <View style={[styles.scallop, styles.stripeGreen]} />
-          <View style={[styles.scallop, styles.stripeWhite]} />
-          <View style={[styles.scallop, styles.stripeGreen]} />
-        </View>
-
-        {/* Wooden Posts & Shelves Structure */}
-        <View style={styles.stallBody}>
-          {/* Left Wooden Support Post */}
-          <View style={styles.woodenPostLeft} />
-
-          {/* Shelves & Fruit Crates */}
-          <View style={styles.shelvesCenter}>
-            {/* Top Produce Shelf */}
-            <View style={styles.woodenShelfTop}>
-              {/* Crate 1: Fresh Oranges & Lemons */}
-              <View style={styles.produceCrate}>
-                <View style={[styles.produceDot, { backgroundColor: Colors.pastel.orange.iconBg }]} />
-                <View style={[styles.produceDot, { backgroundColor: '#FBBF24' }]} />
-                <View style={[styles.produceDot, { backgroundColor: Colors.pastel.orange.iconBg }]} />
-              </View>
-              {/* Crate 2: Crisp Green Apples & Calamansi */}
-              <View style={styles.produceCrate}>
-                <View style={[styles.produceDot, { backgroundColor: Colors.pastel.green.iconBg }]} />
-                <View style={[styles.produceDot, { backgroundColor: Colors.pastel.green.accent }]} />
-                <View style={[styles.produceDot, { backgroundColor: '#34D399' }]} />
-              </View>
-            </View>
-
-            {/* Bottom Produce Shelf */}
-            <View style={styles.woodenShelfBottom}>
-              {/* Crate 3: Fresh Red Tomatoes & Mangoes */}
-              <View style={styles.produceCrateWide}>
-                <View style={[styles.produceDot, { backgroundColor: '#EF4444' }]} />
-                <View style={[styles.produceDot, { backgroundColor: Colors.accentWarm }]} />
-                <View style={[styles.produceDot, { backgroundColor: '#EF4444' }]} />
-                <View style={[styles.produceDot, { backgroundColor: Colors.pastel.green.iconBg }]} />
-                <View style={[styles.produceDot, { backgroundColor: Colors.pastel.orange.iconBg }]} />
-              </View>
-            </View>
-
-            {/* Wooden Counter Base Plank */}
-            <View style={styles.counterBasePlank}>
-              <View style={styles.plankGrain} />
-            </View>
-          </View>
-
-          {/* Right Wooden Support Post */}
-          <View style={styles.woodenPostRight} />
-        </View>
-
-        {/* Lower Ground Details: Side Crate & Foliage Plant */}
-        <View style={styles.groundRow}>
-          {/* Plant Foliage (Leaves at bottom left) */}
-          <View style={styles.plantContainer}>
-            <View style={styles.leafMain} />
-            <View style={styles.leafSecondary} />
-            <View style={styles.leafTertiary} />
-          </View>
-
-          {/* Mini Chalkboard */}
-          <View style={styles.chalkboard}>
-            <View style={styles.chalkboardDot} />
-            <Text style={styles.chalkboardText}>Fresh Local</Text>
-          </View>
-
-          {/* Side Yellow Harvest Crate */}
-          <View style={styles.sideCrate}>
-            <View style={[styles.miniDot, { backgroundColor: Colors.pastel.green.iconBg }]} />
-            <View style={[styles.miniDot, { backgroundColor: Colors.accentWarm }]} />
-          </View>
-        </View>
-      </View>
+      {storeScene}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    alignItems: 'flex-end',
+    alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
   },
-  // Soft warm circular glow backdrop
-  backdropHalo: {
-    position: 'absolute',
-    width: 144,
-    height: 128,
-    backgroundColor: '#FEF9EC',
-    borderRadius: 72,
-    borderWidth: 1,
-    borderColor: '#FDE68A',
-    top: 6,
-    right: 0,
-    opacity: 0.9,
-  },
-  dreamsCallout: {
-    position: 'absolute',
-    left: -6,
-    top: 10,
-    zIndex: 10,
-    transform: [{ rotate: '-10deg' }],
+  sceneCanvas: {
+    width: 162,
+    height: 138,
     alignItems: 'center',
+    justifyContent: 'flex-end',
+    position: 'relative',
+    paddingBottom: 6,
   },
-  dreamsText: {
-    fontSize: 9.5,
-    fontWeight: Typography.weights.extraBold,
-    color: Colors.warningText,
-    lineHeight: 11,
-    letterSpacing: -0.2,
-  },
-  sparkleRaysTop: {
+  // 1. Ground Shadow
+  groundShadow: {
     position: 'absolute',
-    right: -8,
-    top: -2,
-    gap: 2,
+    bottom: 2,
+    width: 146,
+    height: 14,
+    borderRadius: 73,
+    backgroundColor: 'rgba(6, 78, 59, 0.18)',
+    zIndex: 1,
   },
-  sparkleRayShort: {
-    width: 5,
-    height: 2,
-    borderRadius: 1,
-    backgroundColor: Colors.accentWarm,
-    transform: [{ rotate: '-25deg' }],
+  // 2. Golden-Peach Sun Halo
+  sunHaloOuter: {
+    position: 'absolute',
+    top: 4,
+    right: 10,
+    width: 118,
+    height: 118,
+    borderRadius: 59,
+    backgroundColor: '#FDE68A',
+    borderWidth: 3,
+    borderColor: '#FCD34D',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1,
   },
-  sparkleRayLong: {
-    width: 6,
-    height: 2,
-    borderRadius: 1,
-    backgroundColor: Colors.accentWarm,
-    transform: [{ rotate: '15deg' }],
+  sunHaloInner: {
+    width: 104,
+    height: 104,
+    borderRadius: 52,
+    backgroundColor: '#FEF3C7',
+    opacity: 0.75,
   },
-  // Stall root wrapper
-  stallWrapper: {
-    width: 126,
+  // 3. Upper-Right Leaf Accents
+  topRightLeaf1: {
+    position: 'absolute',
+    top: 8,
+    right: 12,
+    width: 16,
+    height: 24,
+    borderRadius: 10,
+    backgroundColor: '#84CC16',
+    transform: [{ rotate: '28deg' }],
+    zIndex: 2,
+  },
+  topRightLeaf2: {
+    position: 'absolute',
+    top: 24,
+    right: 2,
+    width: 14,
+    height: 20,
+    borderRadius: 8,
+    backgroundColor: '#22C55E',
+    transform: [{ rotate: '52deg' }],
+    zIndex: 2,
+  },
+  // 4. Left Tree & Bushes
+  leftTreeGroup: {
+    position: 'absolute',
+    left: 2,
+    bottom: 8,
+    width: 54,
+    height: 92,
+    zIndex: 2,
+  },
+  treeCrownBack: {
+    position: 'absolute',
+    top: 4,
+    left: 18,
+    width: 32,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#4ADE80',
+  },
+  treeCrownTop: {
+    position: 'absolute',
+    top: 12,
+    left: 4,
+    width: 36,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#86EFAC',
+    borderWidth: 1,
+    borderColor: '#4ADE80',
+  },
+  treeCrownLeft: {
+    position: 'absolute',
+    top: 26,
+    left: 0,
+    width: 34,
+    height: 32,
+    borderRadius: 17,
+    backgroundColor: '#22C55E',
+  },
+  treeTrunk: {
+    position: 'absolute',
+    bottom: 12,
+    left: 19,
+    width: 7,
+    height: 26,
+    borderRadius: 3,
+    backgroundColor: '#B45309',
+    transform: [{ rotate: '-8deg' }],
+  },
+  leftBushFront: {
+    position: 'absolute',
+    bottom: 0,
+    left: 4,
+    width: 34,
+    height: 22,
+    borderRadius: 12,
+    backgroundColor: '#16A34A',
+  },
+  leftBushMini: {
+    position: 'absolute',
+    bottom: 0,
+    left: -2,
+    width: 20,
+    height: 15,
+    borderRadius: 8,
+    backgroundColor: '#22C55E',
+  },
+  // 5. Storefront House
+  houseContainer: {
+    width: 108,
     alignItems: 'center',
     zIndex: 4,
+    marginLeft: 6,
   },
-  // Awning Canopy
-  awningCanopy: {
+  roofRidgeCap: {
+    width: 82,
+    height: 8,
+    borderTopLeftRadius: 5,
+    borderTopRightRadius: 5,
+    backgroundColor: '#C2410C',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    paddingTop: 1.5,
+  },
+  roofRidgeHighlight: {
+    width: '90%',
+    height: 2.5,
+    borderRadius: 1.5,
+    backgroundColor: '#FB923C',
+  },
+  awningWrapper: {
+    width: 108,
+    alignItems: 'center',
+    zIndex: 5,
+  },
+  awningSlantRow: {
+    width: 106,
+    height: 26,
     flexDirection: 'row',
-    width: 122,
-    height: 23,
-    borderTopLeftRadius: 8,
-    borderTopRightRadius: 8,
+    borderTopLeftRadius: 6,
+    borderTopRightRadius: 6,
     overflow: 'hidden',
-    shadowColor: Colors.primaryDark,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 3,
-    elevation: 3,
+    borderWidth: 1,
+    borderBottomWidth: 0,
+    borderColor: '#C2410C',
   },
   awningStripe: {
     flex: 1,
     height: '100%',
   },
-  stripeGreen: {
-    backgroundColor: Colors.primary,
+  stripeOrange: {
+    backgroundColor: '#EA580C',
   },
   stripeWhite: {
-    backgroundColor: Colors.surface,
+    backgroundColor: '#FFFBEB',
   },
-  awningScallopRow: {
+  scallopRow: {
+    width: 106,
+    height: 9,
     flexDirection: 'row',
-    width: 122,
-    height: 7,
     marginTop: -1,
   },
-  scallop: {
+  scallopCap: {
     flex: 1,
-    height: 7,
-    borderBottomLeftRadius: 5,
-    borderBottomRightRadius: 5,
-  },
-  // Stall Body with Support Posts & Shelves
-  stallBody: {
-    flexDirection: 'row',
-    width: 116,
-    marginTop: 2,
-    alignItems: 'stretch',
-    justifyContent: 'space-between',
-  },
-  woodenPostLeft: {
-    width: 5.5,
-    backgroundColor: Colors.warningText,
-    borderRadius: 2,
-  },
-  woodenPostRight: {
-    width: 5.5,
-    backgroundColor: Colors.warningText,
-    borderRadius: 2,
-  },
-  shelvesCenter: {
-    flex: 1,
-    paddingHorizontal: 3,
-    gap: 3,
-  },
-  // Top Shelf
-  woodenShelfTop: {
-    flexDirection: 'row',
-    backgroundColor: '#B45309',
-    borderRadius: 4,
-    padding: 3,
-    gap: 3,
-    justifyContent: 'space-between',
-  },
-  produceCrate: {
-    flex: 1,
-    backgroundColor: '#FDE68A',
-    borderRadius: 3,
-    paddingVertical: 2,
-    paddingHorizontal: 2,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    borderWidth: 0.5,
-    borderColor: '#D97706',
-  },
-  produceDot: {
-    width: 9,
     height: 9,
-    borderRadius: 4.5,
+    borderBottomLeftRadius: 10,
+    borderBottomRightRadius: 10,
+    borderWidth: 1,
+    borderTopWidth: 0,
   },
-  // Bottom Shelf
-  woodenShelfBottom: {
-    backgroundColor: Colors.warningText,
-    borderRadius: 4,
-    padding: 3,
+  scallopOrange: {
+    backgroundColor: '#C2410C',
+    borderColor: '#9A3412',
   },
-  produceCrateWide: {
-    backgroundColor: '#FDE68A',
-    borderRadius: 3,
-    paddingVertical: 2,
-    paddingHorizontal: 4,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    borderWidth: 0.5,
+  scallopWhite: {
+    backgroundColor: '#E2E8F0',
+    borderColor: '#CBD5E1',
+  },
+  facadeBody: {
+    width: 92,
+    backgroundColor: '#FDEFD5',
+    borderLeftWidth: 1.5,
+    borderRightWidth: 1.5,
     borderColor: '#D97706',
+    alignItems: 'center',
+    marginTop: -2,
+    overflow: 'hidden',
   },
-  counterBasePlank: {
-    height: 6,
-    backgroundColor: '#78350F',
-    borderRadius: 2,
-    marginTop: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 4,
+  wallTopShadow: {
+    width: '100%',
+    height: 4,
+    backgroundColor: 'rgba(180, 83, 9, 0.18)',
   },
-  plankGrain: {
-    height: 1,
-    backgroundColor: Colors.warningText,
-    width: '80%',
-  },
-  // Ground details
-  groundRow: {
+  facadeContentRow: {
+    width: '100%',
     flexDirection: 'row',
-    width: 120,
     alignItems: 'flex-end',
     justifyContent: 'space-between',
-    marginTop: 3,
-    paddingHorizontal: 1,
+    paddingHorizontal: 6,
+    paddingTop: 5,
   },
-  // Plant Leaves
-  plantContainer: {
-    width: 26,
+  windowUnit: {
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  windowFrame: {
+    width: 22,
     height: 22,
+    borderRadius: 2.5,
+    backgroundColor: '#92400E',
+    padding: 2,
+  },
+  windowGlass: {
+    flex: 1,
+    backgroundColor: '#0D9488',
+    borderRadius: 1,
     position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
   },
-  leafMain: {
+  windowDividerV: {
     position: 'absolute',
-    bottom: 0,
-    left: 2,
-    width: 13,
-    height: 19,
-    backgroundColor: Colors.pastel.green.accent,
-    borderTopLeftRadius: 12,
-    borderBottomRightRadius: 12,
-    transform: [{ rotate: '-15deg' }],
+    width: 1.5,
+    height: '100%',
+    backgroundColor: '#5EEAD4',
+    opacity: 0.65,
   },
-  leafSecondary: {
+  windowDividerH: {
     position: 'absolute',
-    bottom: 2,
-    left: 9,
-    width: 11,
-    height: 16,
-    backgroundColor: Colors.pastel.green.iconBg,
-    borderTopRightRadius: 10,
-    borderBottomLeftRadius: 10,
+    width: '100%',
+    height: 1.5,
+    backgroundColor: '#5EEAD4',
+    opacity: 0.65,
+  },
+  windowReflection: {
+    position: 'absolute',
+    top: -2,
+    left: -2,
+    width: 10,
+    height: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.22)',
     transform: [{ rotate: '25deg' }],
   },
-  leafTertiary: {
-    position: 'absolute',
-    bottom: 0,
-    left: 5,
-    width: 10,
-    height: 13,
-    backgroundColor: '#34D399',
-    borderRadius: 6,
+  windowSill: {
+    width: 25,
+    height: 3.5,
+    borderRadius: 1.5,
+    backgroundColor: '#B45309',
+    marginTop: 1,
   },
-  // Chalkboard
-  chalkboard: {
-    flexDirection: 'row',
+  doorUnit: {
     alignItems: 'center',
-    gap: 3,
-    backgroundColor: Colors.primaryDark,
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: Colors.warningText,
+    justifyContent: 'flex-end',
   },
-  chalkboardDot: {
-    width: 4,
-    height: 4,
+  doorFrame: {
+    width: 24,
+    height: 34,
+    borderTopLeftRadius: 3,
+    borderTopRightRadius: 3,
+    backgroundColor: '#451A03',
+    borderWidth: 1.5,
+    borderBottomWidth: 0,
+    borderColor: '#78350F',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 4,
+    paddingBottom: 8,
+    position: 'relative',
+  },
+  doorInnerPanelTop: {
+    width: 14,
+    height: 12,
     borderRadius: 2,
-    backgroundColor: '#34D399',
+    backgroundColor: '#0F766E',
+    opacity: 0.65,
   },
-  chalkboardText: {
-    color: '#ECFDF5',
-    fontSize: 8.5,
-    fontWeight: Typography.weights.extraBold,
-    letterSpacing: 0.2,
+  doorKnob: {
+    position: 'absolute',
+    right: 3.5,
+    top: 17,
+    width: 3.5,
+    height: 3.5,
+    borderRadius: 2,
+    backgroundColor: '#FDE047',
   },
-  // Side Harvest Crate
-  sideCrate: {
-    width: 22,
-    height: 15,
-    backgroundColor: '#FBBF24',
-    borderRadius: 3,
-    borderWidth: 0.8,
-    borderColor: '#D97706',
+  foundationRow: {
+    width: '100%',
+    height: 7,
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    paddingHorizontal: 2,
+    alignItems: 'flex-end',
   },
-  miniDot: {
-    width: 6.5,
-    height: 6.5,
-    borderRadius: 3.5,
+  foundationBrickLeft: {
+    flex: 1,
+    height: 6,
+    backgroundColor: '#B45309',
+  },
+  doorStoneStep: {
+    width: 28,
+    height: 7,
+    borderTopLeftRadius: 2,
+    borderTopRightRadius: 2,
+    backgroundColor: '#A8A29E',
+    borderTopWidth: 1.5,
+    borderColor: '#E7E5E4',
+  },
+  foundationBrickRight: {
+    flex: 1,
+    height: 6,
+    backgroundColor: '#92400E',
+  },
+  // 6. Right Foreground Bushes
+  rightBushGroup: {
+    position: 'absolute',
+    right: 0,
+    bottom: 4,
+    width: 44,
+    height: 48,
+    zIndex: 6,
+  },
+  rightBushTall: {
+    position: 'absolute',
+    right: 6,
+    bottom: 14,
+    width: 24,
+    height: 28,
+    borderRadius: 13,
+    backgroundColor: '#4ADE80',
+  },
+  rightBushMid: {
+    position: 'absolute',
+    right: 0,
+    bottom: 6,
+    width: 28,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#22C55E',
+  },
+  rightBushFront: {
+    position: 'absolute',
+    right: 10,
+    bottom: 0,
+    width: 28,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#15803D',
   },
 });
-
-
