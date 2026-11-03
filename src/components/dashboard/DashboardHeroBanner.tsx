@@ -61,7 +61,7 @@ export function DashboardHeroBanner({
   const isNarrowPhone = windowWidth < 350;
 
   const firstName = getFriendlyFirstName(displayName);
-  const artworkSize = isNarrowPhone ? 104 : 118;
+  const artworkSize = isNarrowPhone ? 98 : 110;
 
   return (
     <View style={styles.greetingZone}>
