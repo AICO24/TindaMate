@@ -6,7 +6,7 @@ import {
   View,
 } from 'react-native';
 
-import { DashboardStoreArtwork } from './DashboardStoreArtwork';
+import { DashboardMarketIllustration } from './DashboardMarketIllustration';
 import {
   Spacing,
   Typography,
@@ -92,9 +92,12 @@ export function DashboardHeroBanner({
           </Text>
         </View>
 
-        {/* Right Column: Overlapping 3D Tindahan Artwork */}
+        {/* Right Column: Pure React Native Marketplace Illustration (Strategy 1) */}
         <View style={styles.artworkWrapper}>
-          <DashboardStoreArtwork size={artworkSize} />
+          <DashboardMarketIllustration
+            width={isNarrowPhone ? 134 : 152}
+            height={isNarrowPhone ? 120 : 136}
+          />
         </View>
       </View>
     </View>

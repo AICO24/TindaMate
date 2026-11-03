@@ -96,24 +96,24 @@ const styles = StyleSheet.create({
   brandRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    maxWidth: 250,
+    gap: 12,
+    maxWidth: 260,
   },
   emblemContainer: {
-    width: 46,
-    height: 36,
+    width: 52,
+    height: 38,
     alignItems: 'center',
     justifyContent: 'center',
   },
   emblemImage: {
-    width: 44,
-    height: 32,
+    width: 50,
+    height: 36,
   },
   titleCol: {
-    gap: 1,
+    gap: 1.5,
   },
   brandTitle: {
-    fontSize: 21,
+    fontSize: 22,
     fontWeight: Typography.weights.extraBold,
     color: '#FFFFFF',
     letterSpacing: -0.4,
@@ -122,7 +122,7 @@ const styles = StyleSheet.create({
     color: '#FB923C',
   },
   brandTagline: {
-    fontSize: 11,
+    fontSize: 11.5,
     color: '#D1FAE5',
     fontWeight: Typography.weights.medium,
     letterSpacing: 0.1,

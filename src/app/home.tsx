@@ -11,7 +11,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { router, useFocusEffect, useLocalSearchParams, usePathname } from 'expo-router';
 import * as Linking from 'expo-linking';
@@ -74,8 +74,11 @@ import { DashboardExpenseSummary } from '@/types/expense';
 export default function AuthenticatedDashboardScreen() {
   const pathname = usePathname();
   const routeTab = resolveActiveNavTab(pathname);
+  const insets = useSafeAreaInsets();
   const { width: windowWidth } = useWindowDimensions();
   const isNarrowPhone = windowWidth < 350;
+  const headerTopPadding = Math.max(insets.top, Platform.OS === 'ios' ? 44 : 24) + Spacing.one;
+  const headerCanopyHeight = headerTopPadding + 115;
   const params = useLocalSearchParams<{ guest?: string }>();
   const isGuestMode = params.guest === '1';
 
@@ -650,10 +653,10 @@ export default function AuthenticatedDashboardScreen() {
               progressBackgroundColor={Colors.surface}
             />
           }>
-          {/* 1. Deep Forest Green Curved Header Zone (Design 2.0 Reference Reconstruction) */}
-          <View style={styles.fullBleedHeroZone}>
+          {/* 1. Deep Forest Green Curved Header Zone with Safe-Area Clearance */}
+          <View style={[styles.fullBleedHeroZone, { paddingTop: headerTopPadding }]}>
             {/* Signature Multi-Layered Zigzag Wave Ribbon Background */}
-            <HeaderWaveBackground height={165} />
+            <HeaderWaveBackground height={headerCanopyHeight} />
 
             <View style={styles.heroInnerContainer}>
               {/* Header: Authentic TindaMate Storefront Logo + Notification Bell */}
