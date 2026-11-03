@@ -50,7 +50,7 @@ export const Colors = {
 
   // Background & Surface Colors (Design 2.0 Cool Slate & Crisp White)
   background: '#F4F6F8',      // Primary clean slate background
-  backgroundWarm: '#F8FAFC',  // Clean secondary slate backdrop (Replaces legacy cream #FCFAF2)
+  backgroundWarm: '#FBF8F1',  // Warm Tindahan Heritage Cream canvas (High-contrast card depth)
   backgroundAlt: '#F1F5F9',   // Subtle secondary slate surface
   surfaceSubtle: '#F8FAFC',   // Subtle container / image stage background
   surface: '#FFFFFF',         // Elevated crisp white card & input surface

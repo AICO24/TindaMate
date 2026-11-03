@@ -16,6 +16,7 @@ import { StatusBar } from 'expo-status-bar';
 import { router, useFocusEffect, useLocalSearchParams, usePathname } from 'expo-router';
 import * as Linking from 'expo-linking';
 import { User } from '@supabase/supabase-js';
+import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 
 import { TindaMateLoadingView } from '@/components/animated-icon';
 import {
@@ -654,7 +655,9 @@ export default function AuthenticatedDashboardScreen() {
             />
           }>
           {/* 1. Deep Forest Green Curved Header Zone with Safe-Area Clearance */}
-          <View style={[styles.fullBleedHeroZone, { paddingTop: headerTopPadding }]}>
+          <Animated.View
+            entering={FadeIn.duration(350)}
+            style={[styles.fullBleedHeroZone, { paddingTop: headerTopPadding }]}>
             {/* Signature Multi-Layered Zigzag Wave Ribbon Background */}
             <HeaderWaveBackground height={headerCanopyHeight} />
 
@@ -692,7 +695,7 @@ export default function AuthenticatedDashboardScreen() {
                 </Pressable>
               ) : null}
             </View>
-          </View>
+          </Animated.View>
 
           {/* 2. Continuous Open Canvas Body Content */}
           <View style={styles.bodyContentContainer}>
@@ -705,116 +708,134 @@ export default function AuthenticatedDashboardScreen() {
               />
             ) : null}
 
-            {/* 2A. Open Greeting + Overlapping 3D Storefront Illustration (NO Card Box) */}
-            <DashboardHeroBanner
-              displayName={displayName}
-              storeName="TindaMate Store"
-              onStorePress={() => setIsProfileModalVisible(true)}
-            />
+            {/* 2A. Open Greeting + Overlapping Marketplace Illustration */}
+            <Animated.View entering={FadeInDown.duration(400).delay(80)}>
+              <DashboardHeroBanner
+                displayName={displayName}
+                storeName="TindaMate Store"
+                onStorePress={() => setIsProfileModalVisible(true)}
+              />
+            </Animated.View>
 
             {/* 3. Main KPI Card: Today's Sales (Primary Visual Anchor with Orange & Emerald Waves) */}
-            <TodaySalesCard
-              amount={todaySalesSummary.totalAmount}
-              transactionCount={todaySalesSummary.transactionCount}
-              comparisonLabel={salesComparisonLabel}
-              isGuestMode={isGuestMode}
-              onPress={() => {
-                if (isGuestMode) {
-                  handleModuleClick("Today's Sales", 'Batch 4');
-                  return;
-                }
-                router.push('/sales/history');
-              }}
-            />
+            <Animated.View entering={FadeInDown.duration(420).delay(160).springify().damping(18)}>
+              <TodaySalesCard
+                amount={todaySalesSummary.totalAmount}
+                transactionCount={todaySalesSummary.transactionCount}
+                comparisonLabel={salesComparisonLabel}
+                isGuestMode={isGuestMode}
+                onPress={() => {
+                  if (isGuestMode) {
+                    handleModuleClick("Today's Sales", 'Batch 4');
+                    return;
+                  }
+                  router.push('/sales/history');
+                }}
+              />
+            </Animated.View>
 
             {/* 4. Supporting KPIs Row (3 Compact Tiles: Total Sales, Profit, Low Stock) */}
-            <DashboardKpiRow
-              totalSalesCount={
-                allStoreSales.length > 0
-                  ? allStoreSales.length
-                  : todaySalesSummary.transactionCount
-              }
-              profitDisplay={profitValueDisplay}
-              lowStockCount={lowStockCount}
-              isNarrow={isNarrowPhone}
-              onTotalSalesPress={() => {
-                if (isGuestMode) {
-                  handleModuleClick('Sales History', 'Batch 5');
-                  return;
+            <Animated.View entering={FadeInDown.duration(420).delay(240).springify().damping(18)}>
+              <DashboardKpiRow
+                totalSalesCount={
+                  allStoreSales.length > 0
+                    ? allStoreSales.length
+                    : todaySalesSummary.transactionCount
                 }
-                router.push('/sales/history');
-              }}
-              onProfitPress={() => {
-                if (isGuestMode) {
-                  handleModuleClick('Reports & Analytics', 'Batch 9');
-                  return;
-                }
-                router.push('/reports' as any);
-              }}
-              onLowStockPress={() => {
-                if (isGuestMode) {
-                  handleModuleClick('Inventory', 'Batch 3');
-                  return;
-                }
-                router.push('/products');
-              }}
-            />
+                profitDisplay={profitValueDisplay}
+                lowStockCount={lowStockCount}
+                isNarrow={isNarrowPhone}
+                onTotalSalesPress={() => {
+                  if (isGuestMode) {
+                    handleModuleClick('Sales History', 'Batch 5');
+                    return;
+                  }
+                  router.push('/sales/history');
+                }}
+                onProfitPress={() => {
+                  if (isGuestMode) {
+                    handleModuleClick('Reports & Analytics', 'Batch 9');
+                    return;
+                  }
+                  router.push('/reports' as any);
+                }}
+                onLowStockPress={() => {
+                  if (isGuestMode) {
+                    handleModuleClick('Inventory', 'Batch 3');
+                    return;
+                  }
+                  router.push('/products');
+                }}
+              />
+            </Animated.View>
 
             {/* 5. Sales Overview Section (Real Data Bar Chart with Tooltip Pointer) */}
-            <SalesOverviewCard
-              weeklyBars={weeklyBars}
-              maxWeeklyAmount={maxWeeklyAmount}
-              topYAxisValue={topYAxisValue}
-              midYAxisValue={midYAxisValue}
-              onPeriodPress={() => {
-                if (isGuestMode) {
-                  handleModuleClick('Reports', 'Batch 9');
-                  return;
-                }
-                router.push('/reports' as any);
-              }}
-            />
+            <Animated.View entering={FadeInDown.duration(420).delay(320)}>
+              <SalesOverviewCard
+                weeklyBars={weeklyBars}
+                maxWeeklyAmount={maxWeeklyAmount}
+                topYAxisValue={topYAxisValue}
+                midYAxisValue={midYAxisValue}
+                onPeriodPress={() => {
+                  if (isGuestMode) {
+                    handleModuleClick('Reports', 'Batch 9');
+                    return;
+                  }
+                  router.push('/reports' as any);
+                }}
+              />
+            </Animated.View>
 
             {/* 6. Operational Low-Stock Alert Banner (Conditional) */}
-            <LowStockAlert
-              lowStockCount={lowStockCount}
-              outOfStockCount={outOfStockCount}
-              onPress={() => router.push('/products')}
-            />
+            {isLowStockWarning ? (
+              <Animated.View entering={FadeInDown.duration(380).delay(380)}>
+                <LowStockAlert
+                  lowStockCount={lowStockCount}
+                  outOfStockCount={outOfStockCount}
+                  onPress={() => router.push('/products')}
+                />
+              </Animated.View>
+            ) : null}
 
             {/* 7. Recent Activity Section (Positioned in First Viewport matching Reference) */}
-            <RecentActivitySection
-              sales={recentSales}
-              isLoading={isCardLoading}
-              hasActivity={recentSales.length > 0}
-              activityCount={recentSales.length}
-              onViewAll={() => {
-                if (isGuestMode) {
-                  handleModuleClick('Recent Activity', 'Batch 5');
-                  return;
-                }
-                router.push('/sales/history');
-              }}
-              onSalePress={(sale) => {
-                if (isGuestMode) {
-                  handleModuleClick('Sale Details', 'Batch 5');
-                  return;
-                }
-                router.push({
-                  pathname: '/sales/[id]',
-                  params: { id: sale.id },
-                });
-              }}
-            />
+            <Animated.View entering={FadeInDown.duration(420).delay(440)}>
+              <RecentActivitySection
+                sales={recentSales}
+                isLoading={isCardLoading}
+                hasActivity={recentSales.length > 0}
+                activityCount={recentSales.length}
+                onViewAll={() => {
+                  if (isGuestMode) {
+                    handleModuleClick('Recent Activity', 'Batch 5');
+                    return;
+                  }
+                  router.push('/sales/history');
+                }}
+                onSalePress={(sale) => {
+                  if (isGuestMode) {
+                    handleModuleClick('Sale Details', 'Batch 5');
+                    return;
+                  }
+                  router.push({
+                    pathname: '/sales/[id]',
+                    params: { id: sale.id },
+                  });
+                }}
+              />
+            </Animated.View>
 
             {/* 8. Quick Actions Strip */}
-            <QuickActionsSection
-              actions={quickActions}
-              isNarrow={isNarrowPhone}
-            />
+            <Animated.View entering={FadeInDown.duration(420).delay(500)}>
+              <QuickActionsSection
+                actions={quickActions}
+                isNarrow={isNarrowPhone}
+              />
+            </Animated.View>
 
             {/* 9. Store Finances: Utang & Expenses (Scrolled Below-the-Fold Dual Summary) */}
-            <View style={styles.storeFinancesRow}>
+            <Animated.View
+              entering={FadeInDown.duration(420).delay(560)}
+              style={styles.storeFinancesRow}>
               <UtangOverviewCard
                 summary={utangSummary}
                 isLoading={isCardLoading}
@@ -843,7 +864,7 @@ export default function AuthenticatedDashboardScreen() {
                 }}
                 compact
               />
-            </View>
+            </Animated.View>
           </View>
         </ScrollView>
 
@@ -999,19 +1020,19 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#FBF8F1',
     alignItems: 'center',
     justifyContent: 'center',
     gap: Spacing.twoHalf,
   },
   mainContainer: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#FBF8F1',
     justifyContent: 'space-between',
   },
   scrollView: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#FBF8F1',
   },
   scrollContent: {
     paddingBottom: Spacing.five,

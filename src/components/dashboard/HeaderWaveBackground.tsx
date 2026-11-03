@@ -189,7 +189,7 @@ const styles = StyleSheet.create({
     height: 28,
     borderTopLeftRadius: 160,
     borderTopRightRadius: 220,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#FBF8F1',
     opacity: 0.8,
   },
 });
