@@ -465,113 +465,310 @@ export function WarningTriangleIcon({
 }
 
 /**
- * KPI Cart + Green Check Icon (Matches Reference "Total Sales" KPI Icon)
+ * KPI Solid Emerald Shopping Cart Icon (Matches Target Reference "Total Sales" KPI Icon)
  */
-export function KpiCartCheckIcon({ size = 24 }: { size?: number }) {
+export function KpiCartCheckIcon({ size = 26 }: { size?: number }) {
   return (
-    <View style={[styles.center, { width: size + 4, height: size }]}>
-      <CartVectorIcon size={size} color="#0284C7" />
-      <View
-        style={{
-          position: 'absolute',
-          top: 0,
-          right: 0,
-          width: 11,
-          height: 11,
-          borderRadius: 5.5,
-          backgroundColor: '#16A34A',
-          borderWidth: 1.2,
-          borderColor: '#FFFFFF',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}>
-        <Text style={{ color: '#FFFFFF', fontSize: 6.5, fontWeight: '800', lineHeight: 8 }}>✓</Text>
-      </View>
+    <View style={[styles.center, { width: size + 2, height: size }]}>
+      <CartVectorIcon size={size} color="#15803D" />
     </View>
   );
 }
 
 /**
- * KPI Profit Coin + Green Cash Bill Icon (Matches Reference "Profit" KPI Icon)
+ * KPI Stacked Golden Coins Icon (Matches Target Reference "Profit" KPI Icon)
  */
-export function KpiProfitCoinIcon({ size = 24 }: { size?: number }) {
+export function KpiProfitCoinIcon({ size = 26 }: { size?: number }) {
   return (
     <View style={[styles.center, { width: size + 6, height: size }]}>
-      {/* Green Cash Bill Behind/Bottom-Right */}
-      <View
-        style={{
-          position: 'absolute',
-          bottom: 1,
-          right: 0,
-          width: 16,
-          height: 11,
-          borderRadius: 2.5,
-          backgroundColor: '#16A34A',
-          borderWidth: 1,
-          borderColor: '#DCFCE7',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}>
-        <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: '#BBF7D0' }} />
+      {/* Main Stack of 3 Golden Coins on Left */}
+      <View style={{ position: 'absolute', left: 2, bottom: 2, alignItems: 'center' }}>
+        {/* Bottom Coin */}
+        <View
+          style={{
+            width: 17,
+            height: 6.5,
+            borderRadius: 4,
+            backgroundColor: '#D97706',
+            borderWidth: 1,
+            borderColor: '#B45309',
+            marginTop: -2,
+          }}
+        />
+        {/* Middle Coin */}
+        <View
+          style={{
+            position: 'absolute',
+            bottom: 4.5,
+            width: 17,
+            height: 6.5,
+            borderRadius: 4,
+            backgroundColor: '#F59E0B',
+            borderWidth: 1,
+            borderColor: '#D97706',
+          }}
+        />
+        {/* Top Coin with Golden Face */}
+        <View
+          style={{
+            position: 'absolute',
+            bottom: 9,
+            width: 17,
+            height: 8.5,
+            borderRadius: 5,
+            backgroundColor: '#FBBF24',
+            borderWidth: 1.2,
+            borderColor: '#D97706',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+          <View
+            style={{
+              width: 9,
+              height: 3.5,
+              borderRadius: 2,
+              backgroundColor: '#FDE68A',
+            }}
+          />
+        </View>
       </View>
-      {/* Gold Peso Coin Foreground Top-Left */}
+
+      {/* Secondary Smaller Coin on Right */}
       <View
         style={{
           position: 'absolute',
-          top: 0,
-          left: 1,
-          width: 18,
-          height: 18,
-          borderRadius: 9,
+          right: 1,
+          bottom: 1.5,
+          width: 12,
+          height: 8,
+          borderRadius: 4.5,
           backgroundColor: '#F59E0B',
-          borderWidth: 1.5,
-          borderColor: '#FDE68A',
+          borderWidth: 1.2,
+          borderColor: '#B45309',
           alignItems: 'center',
           justifyContent: 'center',
         }}>
-        <Text style={{ color: '#FFFFFF', fontSize: 10, fontWeight: '800', lineHeight: 12 }}>₱</Text>
+        <View
+          style={{
+            width: 6,
+            height: 3,
+            borderRadius: 1.5,
+            backgroundColor: '#FDE68A',
+          }}
+        />
       </View>
     </View>
   );
 }
 
 /**
- * KPI 3D Isometric Orange Box Icon (Matches Reference "Low Stock" KPI Icon)
+ * KPI 3D Isometric Orange Box Icon (Matches Target Reference "Low Stock" KPI Icon & Banner Box)
  */
-export function KpiLowStockBoxIcon({ size = 24 }: { size?: number }) {
+export function KpiLowStockBoxIcon({ size = 26 }: { size?: number }) {
+  const s = size / 26;
   return (
     <View style={[styles.center, { width: size, height: size }]}>
-      {/* Top Diamond Lid */}
+      {/* Top Isometric Diamond Face */}
       <View
         style={{
-          width: 16,
-          height: 8,
+          position: 'absolute',
+          top: 2 * s,
+          width: 15 * s,
+          height: 15 * s,
           backgroundColor: '#FB923C',
-          borderWidth: 1.2,
-          borderColor: '#C2410C',
-          borderRadius: 2,
-          transform: [{ skewX: '-22deg' }],
+          borderRadius: 2 * s,
+          alignItems: 'center',
+          justifyContent: 'center',
+          transform: [{ scaleY: 0.52 }, { rotate: '45deg' }],
+          zIndex: 3,
+        }}>
+        {/* Center White Tape Line across Top Flap */}
+        <View
+          style={{
+            width: '100%',
+            height: 2 * s,
+            backgroundColor: '#FFF7ED',
+            opacity: 0.9,
+          }}
+        />
+      </View>
+
+      {/* Bottom Left & Right Isometric Cube Faces */}
+      <View
+        style={{
+          flexDirection: 'row',
+          marginTop: 7 * s,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}>
+        {/* Left Cube Face */}
+        <View
+          style={{
+            width: 10.5 * s,
+            height: 12 * s,
+            backgroundColor: '#F97316',
+            borderBottomLeftRadius: 2.5 * s,
+            borderTopWidth: 1.4 * s,
+            borderRightWidth: 0.8 * s,
+            borderColor: '#FFFFFF',
+            transform: [{ skewY: '25deg' }],
+          }}
+        />
+        {/* Right Shaded Cube Face */}
+        <View
+          style={{
+            width: 10.5 * s,
+            height: 12 * s,
+            backgroundColor: '#EA580C',
+            borderBottomRightRadius: 2.5 * s,
+            borderTopWidth: 1.4 * s,
+            borderLeftWidth: 0.8 * s,
+            borderColor: '#FFFFFF',
+            transform: [{ skewY: '-25deg' }],
+          }}
+        />
+      </View>
+    </View>
+  );
+}
+
+/**
+ * Sales Overview 3-Bar Chart Header Icon (Matches Target Reference "Sales Overview" Title Icon)
+ */
+export function SalesOverviewChartHeaderIcon({
+  color = '#0D7A4D',
+  size = 18,
+}: IconProps) {
+  return (
+    <View
+      style={{
+        width: size,
+        height: size,
+        flexDirection: 'row',
+        alignItems: 'flex-end',
+        justifyContent: 'space-between',
+        paddingHorizontal: 1,
+        paddingBottom: 1,
+      }}>
+      <View
+        style={{
+          width: 4,
+          height: size * 0.46,
+          borderRadius: 1.5,
+          backgroundColor: color,
         }}
       />
-      {/* Front & Side Cube Faces */}
       <View
         style={{
-          width: 18,
-          height: 12,
-          backgroundColor: '#EA580C',
-          borderWidth: 1.2,
-          borderColor: '#9A3412',
-          borderTopWidth: 0,
-          borderBottomLeftRadius: 3,
-          borderBottomRightRadius: 3,
-          marginTop: -1,
-          flexDirection: 'row',
-          overflow: 'hidden',
+          width: 4,
+          height: size * 0.72,
+          borderRadius: 1.5,
+          backgroundColor: color,
+        }}
+      />
+      <View
+        style={{
+          width: 4,
+          height: size * 0.96,
+          borderRadius: 1.5,
+          backgroundColor: color,
+        }}
+      />
+    </View>
+  );
+}
+
+/**
+ * Recent Activity Circular Clock-Arrow History Icon (Matches Target Reference "Recent Activity" Title Icon)
+ */
+export function RecentActivityClockIcon({
+  color = '#0A5234',
+  size = 20,
+}: IconProps) {
+  return (
+    <View style={[styles.center, { width: size, height: size }]}>
+      {/* Circular Clock Rim */}
+      <View
+        style={{
+          width: size - 2,
+          height: size - 2,
+          borderRadius: (size - 2) / 2,
+          borderWidth: 2,
+          borderColor: color,
+          alignItems: 'center',
+          justifyContent: 'center',
         }}>
-        <View style={{ flex: 1, backgroundColor: '#F97316' }} />
-        <View style={{ width: 1.2, height: '100%', backgroundColor: '#9A3412' }} />
-        <View style={{ flex: 1, backgroundColor: '#EA580C' }} />
+        {/* Clock Hands (Vertical + Angled) */}
+        <View
+          style={{
+            width: 2,
+            height: 5,
+            backgroundColor: color,
+            borderRadius: 1,
+            marginTop: -2,
+          }}
+        />
+        <View
+          style={{
+            width: 4.5,
+            height: 2,
+            backgroundColor: color,
+            borderRadius: 1,
+            marginLeft: 2.5,
+            marginTop: -1,
+          }}
+        />
       </View>
+      {/* Counter-Clockwise Arrow Tick on Left */}
+      <View
+        style={{
+          position: 'absolute',
+          left: 0,
+          top: 3,
+          width: 5,
+          height: 5,
+          borderLeftWidth: 2,
+          borderBottomWidth: 2,
+          borderColor: color,
+          transform: [{ rotate: '15deg' }],
+        }}
+      />
+    </View>
+  );
+}
+
+/**
+ * User / Customer Payment Silhouette Vector Icon (Matches Target Reference Orange User Circle)
+ */
+export function UserPaymentVectorIcon({
+  color = '#D97706',
+  size = 16,
+}: IconProps) {
+  return (
+    <View style={[styles.center, { width: size, height: size }]}>
+      {/* Head Circle */}
+      <View
+        style={{
+          width: size * 0.44,
+          height: size * 0.44,
+          borderRadius: size * 0.22,
+          borderWidth: 1.8,
+          borderColor: color,
+          marginBottom: 1.5,
+        }}
+      />
+      {/* Shoulders Arch */}
+      <View
+        style={{
+          width: size * 0.78,
+          height: size * 0.36,
+          borderTopLeftRadius: size * 0.39,
+          borderTopRightRadius: size * 0.39,
+          borderWidth: 1.8,
+          borderBottomWidth: 0,
+          borderColor: color,
+        }}
+      />
     </View>
   );
 }
@@ -655,77 +852,137 @@ export function BellNotificationIcon({ color = Colors.textInverse, size = 20 }: 
  * Trend / Analytics Bar Chart Vector Icon with Upward Growth Arrow (Matches Reference Today's Sales Icon)
  */
 export function TrendChartVectorIcon({ color = Colors.textInverse, size = 28 }: IconProps) {
+  const barWidth = Math.max(4.5, Math.round(size * 0.17));
   return (
     <View style={[styles.center, { width: size, height: size }]}>
       {/* Diagonal Upward Trend Line + Arrowhead above bars */}
       <View
         style={{
           position: 'absolute',
-          top: 2,
-          left: 3,
-          width: size * 0.72,
-          height: 2.2,
+          top: size * 0.14,
+          left: size * 0.08,
+          width: size * 0.76,
+          height: 3,
           backgroundColor: color,
-          borderRadius: 1.1,
+          borderRadius: 1.5,
           transform: [{ rotate: '-28deg' }],
         }}
       />
       <View
         style={{
           position: 'absolute',
-          top: 0,
-          right: 3,
-          width: 6.5,
-          height: 6.5,
-          borderTopWidth: 2.2,
-          borderRightWidth: 2.2,
+          top: size * 0.03,
+          right: size * 0.08,
+          width: size * 0.26,
+          height: size * 0.26,
+          borderTopWidth: 3,
+          borderRightWidth: 3,
           borderColor: color,
+          borderTopRightRadius: 1.5,
         }}
       />
-      {/* 3 Rising Vertical Bars */}
+      {/* 3 Bold Rising Vertical Bars */}
       <View
         style={{
-          width: size * 0.82,
-          height: size * 0.65,
+          width: size * 0.84,
+          height: size * 0.62,
           flexDirection: 'row',
           alignItems: 'flex-end',
           justifyContent: 'space-between',
-          marginTop: size * 0.25,
+          marginTop: size * 0.28,
           paddingHorizontal: 2,
         }}>
-        <View style={{ width: 4.5, height: '42%', backgroundColor: color, borderRadius: 1.5 }} />
-        <View style={{ width: 4.5, height: '68%', backgroundColor: color, borderRadius: 1.5 }} />
-        <View style={{ width: 4.5, height: '100%', backgroundColor: color, borderRadius: 1.5 }} />
+        <View style={{ width: barWidth, height: '42%', backgroundColor: color, borderRadius: 2 }} />
+        <View style={{ width: barWidth, height: '70%', backgroundColor: color, borderRadius: 2 }} />
+        <View style={{ width: barWidth, height: '100%', backgroundColor: color, borderRadius: 2 }} />
       </View>
     </View>
   );
 }
 
 /**
- * Simple Shopping Cart Vector Icon
+ * Solid Filled Shopping Cart Vector Icon (Matches Target Reference Cart Icon)
  */
 export function CartVectorIcon({ color = Colors.textInverse, size = 20 }: IconProps) {
+  const s = size / 22;
   return (
-    <View style={[styles.center, { width: size, height: size }]}>
+    <View style={[styles.center, { width: size + 2, height: size }]}>
+      {/* Top-Left Push Handle */}
       <View
         style={{
-          width: size * 0.72,
-          height: size * 0.48,
-          borderWidth: 1.8,
-          borderColor: color,
-          borderRadius: 2.5,
-          marginTop: 1,
+          position: 'absolute',
+          top: 1.5 * s,
+          left: 0.5 * s,
+          width: 5.5 * s,
+          height: 2.4 * s,
+          borderRadius: 1.2 * s,
+          backgroundColor: color,
         }}
       />
+      {/* Angled Neck Stem */}
+      <View
+        style={{
+          position: 'absolute',
+          top: 2.5 * s,
+          left: 4.2 * s,
+          width: 2.4 * s,
+          height: 9 * s,
+          borderRadius: 1.2 * s,
+          backgroundColor: color,
+          transform: [{ rotate: '-14deg' }],
+        }}
+      />
+      {/* Solid Filled Tapered Basket Body */}
+      <View
+        style={{
+          width: 14.5 * s,
+          height: 8.5 * s,
+          backgroundColor: color,
+          borderTopLeftRadius: 1.5 * s,
+          borderTopRightRadius: 2.5 * s,
+          borderBottomLeftRadius: 3 * s,
+          borderBottomRightRadius: 3.5 * s,
+          marginLeft: 3.5 * s,
+          marginTop: 2.5 * s,
+          transform: [{ skewX: '-10deg' }],
+        }}
+      />
+      {/* Bottom Undercarriage Rail */}
+      <View
+        style={{
+          width: 12.5 * s,
+          height: 2 * s,
+          backgroundColor: color,
+          borderRadius: 1 * s,
+          marginLeft: 3 * s,
+          marginTop: 1.2 * s,
+        }}
+      />
+      {/* Two Cart Wheels */}
       <View
         style={{
           flexDirection: 'row',
-          width: size * 0.56,
+          width: 12 * s,
           justifyContent: 'space-between',
-          marginTop: 2,
+          marginLeft: 3 * s,
+          marginTop: 1 * s,
         }}>
-        <View style={{ width: 3.5, height: 3.5, borderRadius: 2, backgroundColor: color }} />
-        <View style={{ width: 3.5, height: 3.5, borderRadius: 2, backgroundColor: color }} />
+        <View
+          style={{
+            width: 3.8 * s,
+            height: 3.8 * s,
+            borderRadius: 2 * s,
+            backgroundColor: color,
+          }}
+        />
+        <View
+          style={{
+            width: 3.8 * s,
+            height: 3.8 * s,
+            borderRadius: 2 * s,
+            backgroundColor: color,
+          }}
+        />
       </View>
     </View>
   );
