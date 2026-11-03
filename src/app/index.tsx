@@ -17,7 +17,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 
-import { TindaMateLoadingView } from '@/components/animated-icon';
+import { isAppSplashActive, TindaMateLoadingView } from '@/components/animated-icon';
 import { StorefrontLogo } from '@/components/ui/StorefrontLogo';
 import { TindaMateButton } from '@/components/ui/TindaMateButton';
 import {
@@ -224,6 +224,9 @@ export default function WelcomeScreen() {
   };
 
   if (isCheckingSession) {
+    if (isAppSplashActive()) {
+      return <View style={styles.loadingContainer} />;
+    }
     return (
       <SafeAreaView style={styles.loadingContainer}>
         <TindaMateLoadingView />

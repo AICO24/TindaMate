@@ -18,7 +18,11 @@ import * as Linking from 'expo-linking';
 import { User } from '@supabase/supabase-js';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 
-import { TindaMateLoadingView } from '@/components/animated-icon';
+import {
+  isAppSplashActive,
+  subscribeToSplashCompletion,
+  TindaMateLoadingView,
+} from '@/components/animated-icon';
 import {
   DashboardBottomNav,
   NavTab,
@@ -115,6 +119,16 @@ export default function AuthenticatedDashboardScreen() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isProfileModalVisible, setIsProfileModalVisible] = useState(false);
   const [isLogoutModalVisible, setIsLogoutModalVisible] = useState(false);
+  const [isSplashActive, setIsSplashActive] = useState(() => isAppSplashActive());
+
+  useEffect(() => {
+    const unsubscribe = subscribeToSplashCompletion((active) => {
+      setIsSplashActive(active);
+    });
+    return () => {
+      unsubscribe();
+    };
+  }, []);
 
   /**
    * Fetches real store metrics from Supabase:
@@ -487,9 +501,18 @@ export default function AuthenticatedDashboardScreen() {
   };
 
   if (isLoading) {
+    if (isSplashActive) {
+      // Root AnimatedSplashOverlay is running the launch animation;
+      // keep screen quiet so no duplicate logo is rendered underneath.
+      return (
+        <SafeAreaView style={styles.loadingContainer}>
+          <StatusBar style="light" />
+        </SafeAreaView>
+      );
+    }
     return (
       <SafeAreaView style={styles.loadingContainer}>
-      <StatusBar style="light" />
+        <StatusBar style="light" />
         <TindaMateLoadingView message="Loading TindaMate Dashboard..." />
       </SafeAreaView>
     );
@@ -1020,19 +1043,19 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: '#FBF8F1',
+    backgroundColor: Colors.backgroundWarm,
     alignItems: 'center',
     justifyContent: 'center',
     gap: Spacing.twoHalf,
   },
   mainContainer: {
     flex: 1,
-    backgroundColor: '#FBF8F1',
+    backgroundColor: Colors.backgroundWarm,
     justifyContent: 'space-between',
   },
   scrollView: {
     flex: 1,
-    backgroundColor: '#FBF8F1',
+    backgroundColor: Colors.backgroundWarm,
   },
   scrollContent: {
     paddingBottom: Spacing.five,
