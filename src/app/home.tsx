@@ -27,14 +27,12 @@ import { DashboardErrorBanner } from '@/components/dashboard/DashboardErrorBanne
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { DashboardHeroBanner } from '@/components/dashboard/DashboardHeroBanner';
 import { HeaderWaveBackground } from '@/components/dashboard/HeaderWaveBackground';
-import {
-  KpiCartCheckIcon,
-  KpiLowStockBoxIcon,
-  KpiProfitCoinIcon,
-  TrendChartVectorIcon,
-  WarningTriangleIcon,
-} from '@/components/dashboard/DashboardNavIcons';
-import { QuickActionItem, QuickActionTile } from '@/components/dashboard/QuickActionTile';
+import { TodaySalesCard } from '@/components/dashboard/TodaySalesCard';
+import { DashboardKpiRow } from '@/components/dashboard/DashboardKpiRow';
+import { SalesOverviewCard } from '@/components/dashboard/SalesOverviewCard';
+import { LowStockAlert } from '@/components/dashboard/LowStockAlert';
+import { QuickActionsSection } from '@/components/dashboard/QuickActionsSection';
+import { QuickActionItem } from '@/components/dashboard/QuickActionTile';
 import { RecentActivitySection } from '@/components/dashboard/RecentActivitySection';
 import { UtangOverviewCard } from '@/components/dashboard/UtangOverviewCard';
 import { ExpenseOverviewCard } from '@/components/dashboard/ExpenseOverviewCard';
@@ -654,8 +652,8 @@ export default function AuthenticatedDashboardScreen() {
           }>
           {/* 1. Deep Forest Green Curved Header Zone (Design 2.0 Reference Reconstruction) */}
           <View style={styles.fullBleedHeroZone}>
-            {/* Signature Multi-Layered Wavy Ribbon Background (Forest, Emerald, Mint & Warm Orange) */}
-            <HeaderWaveBackground height={160} />
+            {/* Signature Multi-Layered Zigzag Wave Ribbon Background */}
+            <HeaderWaveBackground height={165} />
 
             <View style={styles.heroInnerContainer}>
               {/* Header: Authentic TindaMate Storefront Logo + Notification Bell */}
@@ -712,11 +710,11 @@ export default function AuthenticatedDashboardScreen() {
             />
 
             {/* 3. Main KPI Card: Today's Sales (Primary Visual Anchor with Orange & Emerald Waves) */}
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`Today's Sales: ${
-                isGuestMode ? '₱0.00' : formatPesoCurrency(todaySalesSummary.totalAmount)
-              }, ${todaySalesSummary.transactionCount} transactions today. Tap to view sales history.`}
+            <TodaySalesCard
+              amount={todaySalesSummary.totalAmount}
+              transactionCount={todaySalesSummary.transactionCount}
+              comparisonLabel={salesComparisonLabel}
+              isGuestMode={isGuestMode}
               onPress={() => {
                 if (isGuestMode) {
                   handleModuleClick("Today's Sales", 'Batch 4');
@@ -724,272 +722,62 @@ export default function AuthenticatedDashboardScreen() {
                 }
                 router.push('/sales/history');
               }}
-              style={({ pressed }) => [
-                styles.mainSalesKpiCard,
-                pressed && styles.cardPressed,
-              ]}>
-              {/* Signature Orange & Emerald Wave Swoop on Bottom-Right */}
-              <View style={styles.mainSalesOrangeWave} pointerEvents="none" />
-              <View style={styles.mainSalesEmeraldWave} pointerEvents="none" />
-              <View style={styles.mainSalesMintWave} pointerEvents="none" />
-
-              <View style={styles.mainSalesLeft}>
-                <View style={styles.mainSalesIconUnboxed}>
-                  <TrendChartVectorIcon size={30} color={Colors.textInverse} />
-                </View>
-                <View style={styles.mainSalesTextCol}>
-                  <Text style={styles.mainSalesLabel}>Today&apos;s Sales</Text>
-                  <Text
-                    style={styles.mainSalesAmount}
-                    numberOfLines={1}
-                    adjustsFontSizeToFit
-                    minimumFontScale={0.75}>
-                    {isGuestMode
-                      ? '₱0.00'
-                      : formatPesoCurrency(todaySalesSummary.totalAmount)}
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.mainSalesBadgePill}>
-                <Text style={styles.mainSalesBadgeText}>
-                  {salesComparisonLabel}
-                </Text>
-              </View>
-            </Pressable>
+            />
 
             {/* 4. Supporting KPIs Row (3 Compact Tiles: Total Sales, Profit, Low Stock) */}
-            <View
-              style={[
-                styles.secondaryKpiRow,
-                isNarrowPhone && styles.secondaryKpiRowNarrow,
-              ]}>
-              {/* Tile 1: Total Sales Count */}
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`Total Sales: ${allStoreSales.length > 0 ? allStoreSales.length : todaySalesSummary.transactionCount} transactions`}
-                onPress={() => {
-                  if (isGuestMode) {
-                    handleModuleClick('Sales History', 'Batch 5');
-                    return;
-                  }
-                  router.push('/sales/history');
-                }}
-                style={({ pressed }) => [
-                  styles.secondaryKpiCard,
-                  pressed && styles.cardPressed,
-                ]}>
-                <KpiCartCheckIcon size={22} />
-                <Text
-                  style={styles.secondaryKpiValue}
-                  numberOfLines={1}
-                  adjustsFontSizeToFit>
-                  {isGuestMode
-                    ? '0'
-                    : allStoreSales.length > 0
-                    ? allStoreSales.length
-                    : todaySalesSummary.transactionCount}
-                </Text>
-                <Text style={styles.secondaryKpiLabel} numberOfLines={1}>
-                  Total Sales
-                </Text>
-              </Pressable>
+            <DashboardKpiRow
+              totalSalesCount={
+                allStoreSales.length > 0
+                  ? allStoreSales.length
+                  : todaySalesSummary.transactionCount
+              }
+              profitDisplay={profitValueDisplay}
+              lowStockCount={lowStockCount}
+              isNarrow={isNarrowPhone}
+              onTotalSalesPress={() => {
+                if (isGuestMode) {
+                  handleModuleClick('Sales History', 'Batch 5');
+                  return;
+                }
+                router.push('/sales/history');
+              }}
+              onProfitPress={() => {
+                if (isGuestMode) {
+                  handleModuleClick('Reports & Analytics', 'Batch 9');
+                  return;
+                }
+                router.push('/reports' as any);
+              }}
+              onLowStockPress={() => {
+                if (isGuestMode) {
+                  handleModuleClick('Inventory', 'Batch 3');
+                  return;
+                }
+                router.push('/products');
+              }}
+            />
 
-              {/* Tile 2: Gross Profit */}
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`Gross Profit: ${profitValueDisplay}. Tap to open Reports.`}
-                onPress={() => {
-                  if (isGuestMode) {
-                    handleModuleClick('Reports & Analytics', 'Batch 9');
-                    return;
-                  }
-                  router.push('/reports' as any);
-                }}
-                style={({ pressed }) => [
-                  styles.secondaryKpiCard,
-                  pressed && styles.cardPressed,
-                ]}>
-                <KpiProfitCoinIcon size={22} />
-                <Text
-                  style={styles.secondaryKpiValue}
-                  numberOfLines={1}
-                  adjustsFontSizeToFit
-                  minimumFontScale={0.7}>
-                  {profitValueDisplay}
-                </Text>
-                <Text style={styles.secondaryKpiLabel} numberOfLines={1}>
-                  Profit
-                </Text>
-              </Pressable>
-
-              {/* Tile 3: Low Stock */}
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`Low Stock: ${isGuestMode ? '5 Items' : `${lowStockCount} ${lowStockCount === 1 ? 'Item' : 'Items'}`} items`}
-                onPress={() => {
-                  if (isGuestMode) {
-                    handleModuleClick('Inventory', 'Batch 3');
-                    return;
-                  }
-                  router.push('/products');
-                }}
-                style={({ pressed }) => [
-                  styles.secondaryKpiCard,
-                  pressed && styles.cardPressed,
-                ]}>
-                <KpiLowStockBoxIcon size={22} />
-                <Text
-                  style={styles.secondaryKpiValue}
-                  numberOfLines={1}>
-                  {lowStockCount}
-                </Text>
-                <Text style={styles.secondaryKpiLabel} numberOfLines={1}>
-                  Low Stock
-                </Text>
-              </Pressable>
-            </View>
-
-            {/* 5. Sales Overview Section (Flat Open Canvas Section — NO Outer Card Box) */}
-            <View style={styles.salesOverviewSection}>
-              <View style={styles.chartHeaderRow}>
-                <Text style={styles.chartTitle} accessibilityRole="header">
-                  Sales Overview
-                </Text>
-
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Open full Reports and Analytics"
-                  onPress={() => {
-                    if (isGuestMode) {
-                      handleModuleClick('Reports', 'Batch 9');
-                      return;
-                    }
-                    router.push('/reports' as any);
-                  }}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  style={({ pressed }) => [
-                    styles.plainFilterTrigger,
-                    pressed && styles.plainFilterPressed,
-                  ]}>
-                  <Text style={styles.plainFilterText}>This Week</Text>
-                  <Text style={styles.plainFilterChevron} importantForAccessibility="no">
-                    ⌄
-                  </Text>
-                </Pressable>
-              </View>
-
-              {/* Flat Bar Chart Plot Area */}
-              <View style={styles.chartPlotRow}>
-                {/* Faint Y-Axis Scale Numbers */}
-                <View style={styles.yAxisColumn} pointerEvents="none">
-                  <Text style={styles.yAxisLabel}>{topYAxisValue}</Text>
-                  <Text style={styles.yAxisLabel}>{midYAxisValue}</Text>
-                  <Text style={styles.yAxisLabel}>0</Text>
-                </View>
-
-                <View style={styles.chartBarsContainer}>
-                  {/* Subtle Horizontal Grid Lines */}
-                  <View style={styles.gridLinesOverlay} pointerEvents="none">
-                    <View style={styles.gridLine} />
-                    <View style={styles.gridLine} />
-                    <View style={styles.gridLine} />
-                  </View>
-
-                  <View style={styles.barsRow}>
-                    {weeklyBars.map((bar, idx) => {
-                      const heightPct =
-                        bar.amount > 0
-                          ? Math.max(18, Math.round((bar.amount / maxWeeklyAmount) * 100))
-                          : 12;
-                      return (
-                        <View key={`${bar.label}-${idx}`} style={styles.barColumn}>
-                          {bar.isToday ? (
-                            <View style={styles.barCalloutWrapper}>
-                              <View style={styles.barCalloutPill}>
-                                <Text style={styles.barCalloutText} numberOfLines={1}>
-                                  {bar.amount >= 1000
-                                    ? `₱${(bar.amount / 1000).toFixed(1)}k`
-                                    : `₱${Math.round(bar.amount)}`}
-                                </Text>
-                              </View>
-                              <View style={styles.barCalloutPointer} />
-                            </View>
-                          ) : (
-                            <View style={styles.barCalloutSpacer} />
-                          )}
-
-                          <View style={styles.barTrack}>
-                            <View
-                              style={[
-                                styles.barFill,
-                                { height: `${heightPct}%` },
-                                bar.isToday && styles.barFillToday,
-                                bar.amount === 0 && styles.barFillZero,
-                              ]}>
-                              {/* Inner soft mint gradient effect at bottom of bar */}
-                              {bar.amount > 0 && (
-                                <View style={styles.barGradientBottom} />
-                              )}
-                            </View>
-                          </View>
-
-                          <Text
-                            style={[
-                              styles.barDayLabel,
-                              bar.isToday && styles.barDayLabelToday,
-                            ]}>
-                            {bar.label}
-                          </Text>
-                        </View>
-                      );
-                    })}
-                  </View>
-                </View>
-              </View>
-            </View>
+            {/* 5. Sales Overview Section (Real Data Bar Chart with Tooltip Pointer) */}
+            <SalesOverviewCard
+              weeklyBars={weeklyBars}
+              maxWeeklyAmount={maxWeeklyAmount}
+              topYAxisValue={topYAxisValue}
+              midYAxisValue={midYAxisValue}
+              onPeriodPress={() => {
+                if (isGuestMode) {
+                  handleModuleClick('Reports', 'Batch 9');
+                  return;
+                }
+                router.push('/reports' as any);
+              }}
+            />
 
             {/* 6. Operational Low-Stock Alert Banner (Conditional) */}
-            {isLowStockWarning ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`${alertProductCount} products running low or out of stock. Tap to check inventory.`}
-                onPress={() => router.push('/products')}
-                style={({ pressed }) => [
-                  styles.alertBannerCard,
-                  pressed && styles.cardPressed,
-                ]}>
-                {/* Decorative warm wave accent on right matching reference */}
-                <View style={styles.alertWaveHighlight} pointerEvents="none" />
-
-                <WarningTriangleIcon size={28} bgColor="#EA580C" fgColor="#FFFFFF" />
-                <View style={styles.alertTextCol}>
-                  <Text style={styles.alertTitleText}>
-                    {lowStockCount > 0
-                      ? `${lowStockCount} ${
-                          lowStockCount === 1
-                            ? 'Product Running Low'
-                            : 'Products Running Low'
-                        }`
-                      : `${outOfStockCount} ${
-                          outOfStockCount === 1
-                            ? 'Product Out of Stock'
-                            : 'Products Out of Stock'
-                        }`}
-                  </Text>
-                  <Text style={styles.alertActionLink}>
-                    Check inventory →
-                  </Text>
-                </View>
-                {outOfStockCount > 0 && lowStockCount > 0 ? (
-                  <View style={styles.outOfStockMiniPill}>
-                    <Text style={styles.outOfStockMiniText}>
-                      +{outOfStockCount} out
-                    </Text>
-                  </View>
-                ) : null}
-              </Pressable>
-            ) : null}
+            <LowStockAlert
+              lowStockCount={lowStockCount}
+              outOfStockCount={outOfStockCount}
+              onPress={() => router.push('/products')}
+            />
 
             {/* 7. Recent Activity Section (Positioned in First Viewport matching Reference) */}
             <RecentActivitySection
@@ -1016,17 +804,11 @@ export default function AuthenticatedDashboardScreen() {
               }}
             />
 
-            {/* 8. Quick Actions (Scrolled Below-the-Fold Operational Strip) */}
-            <View
-              style={[
-                styles.quickActionsRow,
-                isNarrowPhone && styles.quickActionsRowNarrow,
-              ]}>
-              <QuickActionTile item={quickActions[0]} />
-              <QuickActionTile item={quickActions[1]} />
-              <QuickActionTile item={quickActions[2]} />
-              <QuickActionTile item={quickActions[3]} />
-            </View>
+            {/* 8. Quick Actions Strip */}
+            <QuickActionsSection
+              actions={quickActions}
+              isNarrow={isNarrowPhone}
+            />
 
             {/* 9. Store Finances: Utang & Expenses (Scrolled Below-the-Fold Dual Summary) */}
             <View style={styles.storeFinancesRow}>
@@ -1231,14 +1013,16 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: Spacing.five,
   },
-  // 1. Curved Deep Forest Green Header Zone with Layered Signature Wave Canopy
+  // 1. Curved Deep Forest Green Header Zone with Layered Signature Zigzag Wave Canopy
   fullBleedHeroZone: {
     backgroundColor: '#064E3B',
-    paddingTop: 2,
-    paddingBottom: 20,
-    minHeight: 110,
+    paddingTop: Spacing.half,
+    paddingBottom: 22,
+    minHeight: 120,
     position: 'relative',
     overflow: 'hidden',
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
   },
   heroInnerContainer: {
     width: '100%',
@@ -1247,378 +1031,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     zIndex: 5,
   },
-  // 2. Continuous Open Canvas Body Container
+  // 2. Continuous Open Canvas Body Container with Natural Visual Rhythm & Whitespace
   bodyContentContainer: {
     width: '100%',
     maxWidth: DashboardMaxContentWidth,
     alignSelf: 'center',
     paddingHorizontal: Spacing.three,
-    paddingTop: 2,
-    paddingBottom: Spacing.four,
-    gap: 11,
+    paddingTop: Spacing.one,
+    paddingBottom: Spacing.six,
+    gap: 18,
   },
   cardPressed: {
     opacity: 0.92,
     transform: [{ scale: 0.985 }],
   },
-  // 3. Today's Sales Primary Hero KPI Card (Rich Emerald with Signature Orange Wave Ribbon)
-  mainSalesKpiCard: {
-    backgroundColor: '#065F46',
-    borderRadius: 18,
-    paddingVertical: 13,
-    paddingHorizontal: Spacing.threeHalf,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: '#047857',
-    gap: Spacing.two,
-    position: 'relative',
-    overflow: 'hidden',
-    ...Shadows.sm,
-  },
-  // Signature Warm Orange Wave Swoop on Bottom-Right
-  mainSalesOrangeWave: {
-    position: 'absolute',
-    right: -14,
-    bottom: -18,
-    width: 140,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#F59E0B',
-    opacity: 0.92,
-    transform: [{ rotate: '-10deg' }],
-    zIndex: 1,
-  },
-  mainSalesEmeraldWave: {
-    position: 'absolute',
-    right: 22,
-    bottom: -22,
-    width: 130,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#10B981',
-    opacity: 0.65,
-    transform: [{ rotate: '-4deg' }],
-    zIndex: 1,
-  },
-  mainSalesMintWave: {
-    position: 'absolute',
-    right: -4,
-    bottom: 0,
-    width: 90,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: '#A7F3D0',
-    opacity: 0.45,
-    transform: [{ rotate: '-8deg' }],
-    zIndex: 1,
-  },
-  mainSalesLeft: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.twoHalf,
-    zIndex: 2,
-  },
-  mainSalesIconUnboxed: {
-    width: 34,
-    height: 34,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  mainSalesTextCol: {
-    flex: 1,
-    gap: 1,
-  },
-  mainSalesLabel: {
-    fontSize: 12.5,
-    fontWeight: Typography.weights.semiBold,
-    color: '#D1FAE5',
-  },
-  mainSalesAmount: {
-    fontSize: 27,
-    lineHeight: 32,
-    fontWeight: Typography.weights.extraBold,
-    color: Colors.textInverse,
-    letterSpacing: -0.6,
-    fontVariant: ['tabular-nums'],
-  },
-  mainSalesBadgePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(16, 185, 129, 0.34)',
-    borderWidth: 1,
-    borderColor: 'rgba(167, 243, 208, 0.42)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: BorderRadius.full,
-    zIndex: 2,
-  },
-  mainSalesBadgeText: {
-    color: '#ECFDF5',
-    fontSize: 11.5,
-    fontWeight: Typography.weights.extraBold,
-    fontVariant: ['tabular-nums'],
-  },
-  // 4. Supporting 3-Column KPIs Row (Compact Soft White Tiles)
-  secondaryKpiRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  secondaryKpiRowNarrow: {
-    gap: 6,
-  },
-  secondaryKpiCard: {
-    flex: 1,
-    backgroundColor: Colors.surface,
-    borderRadius: 15,
-    paddingVertical: 9,
-    paddingHorizontal: Spacing.one,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#F1F5F9',
-    gap: 2,
-    minHeight: 70,
-    ...Shadows.xs,
-  },
-  secondaryKpiValue: {
-    fontSize: 18,
-    lineHeight: 22,
-    fontWeight: Typography.weights.extraBold,
-    color: '#0F172A',
-    letterSpacing: -0.4,
-    fontVariant: ['tabular-nums'],
-    marginTop: 2,
-  },
-  secondaryKpiLabel: {
-    fontSize: 11.5,
-    fontWeight: Typography.weights.medium,
-    color: '#64748B',
-  },
-  // 5. Sales Overview Section (Flat Open Canvas Section — NO Outer Box Card)
-  salesOverviewSection: {
-    paddingTop: 2,
-    paddingHorizontal: 2,
-    gap: 6,
-  },
-  chartHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Spacing.two,
-  },
-  chartTitle: {
-    fontSize: 15.5,
-    fontWeight: Typography.weights.extraBold,
-    color: '#0F172A',
-    letterSpacing: -0.3,
-  },
-  plainFilterTrigger: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingVertical: 2,
-    paddingHorizontal: 2,
-  },
-  plainFilterPressed: {
-    opacity: 0.65,
-  },
-  plainFilterText: {
-    fontSize: 12.5,
-    fontWeight: Typography.weights.semiBold,
-    color: '#334155',
-  },
-  plainFilterChevron: {
-    fontSize: 13,
-    fontWeight: Typography.weights.bold,
-    color: '#475569',
-    marginTop: -2,
-  },
-  chartPlotRow: {
-    flexDirection: 'row',
-    alignItems: 'stretch',
-    height: 104,
-    gap: 6,
-  },
-  yAxisColumn: {
-    justifyContent: 'space-between',
-    paddingTop: 18,
-    paddingBottom: 18,
-    alignItems: 'flex-end',
-    width: 22,
-  },
-  yAxisLabel: {
-    fontSize: 9.5,
-    fontWeight: Typography.weights.medium,
-    color: '#CBD5E1',
-    fontVariant: ['tabular-nums'],
-  },
-  chartBarsContainer: {
-    flex: 1,
-    height: '100%',
-    position: 'relative',
-    justifyContent: 'flex-end',
-  },
-  gridLinesOverlay: {
-    position: 'absolute',
-    top: 22,
-    bottom: 20,
-    left: 0,
-    right: 0,
-    justifyContent: 'space-between',
-  },
-  gridLine: {
-    width: '100%',
-    height: 1,
-    backgroundColor: '#F1F5F9',
-  },
-  barsRow: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    gap: 4,
-  },
-  barColumn: {
-    flex: 1,
-    height: '100%',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    gap: 4,
-  },
-  barCalloutWrapper: {
-    alignItems: 'center',
-    marginBottom: -2,
-    zIndex: 5,
-  },
-  barCalloutPill: {
-    backgroundColor: '#064E3B',
-    paddingHorizontal: 7,
-    paddingVertical: 2.5,
-    borderRadius: BorderRadius.full,
-  },
-  barCalloutText: {
-    color: Colors.textInverse,
-    fontSize: 10,
-    fontWeight: Typography.weights.extraBold,
-    fontVariant: ['tabular-nums'],
-  },
-  barCalloutPointer: {
-    width: 0,
-    height: 0,
-    borderLeftWidth: 4,
-    borderRightWidth: 4,
-    borderTopWidth: 4,
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
-    borderTopColor: '#064E3B',
-  },
-  barCalloutSpacer: {
-    height: 20,
-  },
-  barTrack: {
-    flex: 1,
-    width: 22,
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-  },
-  barFill: {
-    width: 20,
-    borderTopLeftRadius: 6,
-    borderTopRightRadius: 6,
-    borderBottomLeftRadius: 3,
-    borderBottomRightRadius: 3,
-    backgroundColor: '#059669',
-    overflow: 'hidden',
-    justifyContent: 'flex-end',
-  },
-  barFillToday: {
-    backgroundColor: '#047857',
-    width: 22,
-  },
-  barFillZero: {
-    backgroundColor: '#E2E8F0',
-  },
-  barGradientBottom: {
-    width: '100%',
-    height: '42%',
-    backgroundColor: '#6EE7B7',
-    opacity: 0.45,
-  },
-  barDayLabel: {
-    fontSize: 11,
-    fontWeight: Typography.weights.medium,
-    color: '#64748B',
-  },
-  barDayLabelToday: {
-    color: '#0F172A',
-    fontWeight: Typography.weights.bold,
-  },
-  // 6. Operational Low-Stock Alert Banner (Warm Amber/Peach with Wave Highlight)
-  alertBannerCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFF7ED',
-    borderRadius: 15,
-    borderWidth: 1,
-    borderColor: '#FED7AA',
-    paddingVertical: 10,
-    paddingHorizontal: Spacing.three,
-    gap: Spacing.twoHalf,
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  alertWaveHighlight: {
-    position: 'absolute',
-    right: -20,
-    bottom: -18,
-    width: 130,
-    height: 54,
-    borderRadius: 30,
-    backgroundColor: '#FDE68A',
-    opacity: 0.48,
-    transform: [{ rotate: '-10deg' }],
-  },
-  alertTextCol: {
-    flex: 1,
-    gap: 1,
-    zIndex: 2,
-  },
-  alertTitleText: {
-    fontSize: 13.5,
-    fontWeight: Typography.weights.extraBold,
-    color: '#0F172A',
-  },
-  alertActionLink: {
-    fontSize: 12,
-    fontWeight: Typography.weights.bold,
-    color: '#C2410C',
-  },
-  outOfStockMiniPill: {
-    backgroundColor: Colors.errorLight,
-    borderColor: Colors.errorBorder,
-    borderWidth: 1,
-    paddingHorizontal: Spacing.two,
-    paddingVertical: 3,
-    borderRadius: BorderRadius.full,
-    zIndex: 2,
-  },
-  outOfStockMiniText: {
-    fontSize: 10,
-    fontWeight: Typography.weights.extraBold,
-    color: Colors.error,
-  },
-  quickActionsRow: {
-    flexDirection: 'row',
-    gap: Spacing.two,
-    justifyContent: 'space-between',
-    marginTop: 2,
-  },
-  quickActionsRowNarrow: {
-    gap: Spacing.one,
-  },
+  // 9. Store Finances Row (Utang & Expense dual cards)
   storeFinancesRow: {
     flexDirection: 'row',
     gap: Spacing.twoHalf,
