@@ -34,7 +34,28 @@ const TOTAL_FILL_AND_HOLD_MS =
 const TOTAL_DURATION_MS = TOTAL_FILL_AND_HOLD_MS + EXIT_DURATION_MS;
 const FAILSAFE_TIMEOUT_MS = 2600;
 
+/** Ensures the launch animation runs only once per cold application start */
 let hasShownInitialLaunchSplash = false;
+let isLaunchSplashActive = true;
+const splashCompletionListeners = new Set<(active: boolean) => void>();
+
+/** Returns whether the root cold launch animated splash overlay is currently active */
+export function isAppSplashActive(): boolean {
+  return isLaunchSplashActive;
+}
+
+/** Returns whether the initial launch splash has ever finished during this app session */
+export function hasAppSplashCompleted(): boolean {
+  return hasShownInitialLaunchSplash;
+}
+
+/** Subscribes to notification when the initial launch splash finishes fading out */
+export function subscribeToSplashCompletion(listener: (active: boolean) => void): () => void {
+  splashCompletionListeners.add(listener);
+  return () => {
+    splashCompletionListeners.delete(listener);
+  };
+}
 
 export function AnimatedSplashOverlay() {
   const [visible, setVisible] = useState(() => !hasShownInitialLaunchSplash);
@@ -53,8 +74,16 @@ export function AnimatedSplashOverlay() {
   const progressRatio = useSharedValue(0);
 
   const finishSplash = useCallback(() => {
+    isLaunchSplashActive = false;
     hasShownInitialLaunchSplash = true;
     setVisible(false);
+    splashCompletionListeners.forEach((listener) => {
+      try {
+        listener(false);
+      } catch {
+        // Safe guard against listener errors
+      }
+    });
   }, []);
 
   const startLaunchSequence = useCallback(() => {
@@ -202,15 +231,29 @@ export function AnimatedSplashOverlay() {
   );
 }
 
-interface TindaMateLoadingViewProps {
+export interface TindaMateLoadingViewProps {
+  /** Optional helper message shown below the filling progress bar */
   message?: string;
+  /** Compact mode for embedding inside cards or partial views without taking full screen */
+  compact?: boolean;
+  /** Custom background color */
+  backgroundColor?: string;
 }
 
-export function TindaMateLoadingView({ message }: TindaMateLoadingViewProps) {
+export function TindaMateLoadingView({
+  message,
+  compact = false,
+  backgroundColor,
+}: TindaMateLoadingViewProps) {
   const { width, height } = useWindowDimensions();
   const shortestSide = Math.min(width || 360, height || 640);
-  const logoSize = Math.round(Math.min(Math.max(shortestSide * 0.48, 156), 210));
-  const barWidth = Math.round(Math.min(Math.max(logoSize * 0.78, 140), 180));
+
+  const logoSize = compact
+    ? 68
+    : Math.round(Math.min(Math.max(shortestSide * 0.44, 144), 196));
+  const barWidth = compact
+    ? 104
+    : Math.round(Math.min(Math.max(logoSize * 0.78, 132), 170));
 
   const fillProgress = useSharedValue(0.08);
   const pulseScale = useSharedValue(1);
@@ -243,7 +286,7 @@ export function TindaMateLoadingView({ message }: TindaMateLoadingViewProps) {
     pulseScale.set(
       withRepeat(
         withSequence(
-          withTiming(1.02, {
+          withTiming(1.025, {
             duration: 650,
             easing: Easing.inOut(Easing.sin),
           }),
@@ -263,12 +306,18 @@ export function TindaMateLoadingView({ message }: TindaMateLoadingViewProps) {
   }));
 
   const barFillStyle = useAnimatedStyle(() => ({
-    width: Math.max(10, Math.round(fillProgress.get() * barWidth)),
+    width: Math.max(8, Math.round(fillProgress.get() * barWidth)),
   }));
 
   return (
-    <View style={styles.inAppLoadingContainer} accessibilityRole="progressbar">
-      <Animated.View style={[styles.logoContainer, { width: logoSize, height: logoSize }, logoStyle]}>
+    <View
+      style={[
+        compact ? styles.compactLoadingContainer : styles.inAppLoadingContainer,
+        backgroundColor ? { backgroundColor } : null,
+      ]}
+      accessibilityRole="progressbar">
+      <Animated.View
+        style={[styles.logoContainer, { width: logoSize, height: logoSize }, logoStyle]}>
         <Image
           source={TINDAMATE_LOGO}
           style={styles.logoImage}
@@ -278,13 +327,17 @@ export function TindaMateLoadingView({ message }: TindaMateLoadingViewProps) {
         />
       </Animated.View>
 
-      <View style={styles.progressSection}>
-        <View style={[styles.progressTrack, { width: barWidth }]}>
+      <View style={[styles.progressSection, compact ? { marginTop: 8, gap: 6 } : null]}>
+        <View style={[styles.progressTrack, { width: barWidth, height: compact ? 5 : 6 }]}>
           <Animated.View style={[styles.progressFill, barFillStyle]}>
-            <View style={styles.progressTipAccent} />
+            <View style={[styles.progressTipAccent, { width: compact ? 12 : 18 }]} />
           </Animated.View>
         </View>
-        {message ? <Text style={styles.loadingCaption}>{message}</Text> : null}
+        {message ? (
+          <Text style={[styles.loadingCaption, compact ? { fontSize: 12, marginTop: 2 } : null]}>
+            {message}
+          </Text>
+        ) : null}
       </View>
     </View>
   );
@@ -323,6 +376,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,
+  },
+  compactLoadingContainer: {
+    width: '100%',
+    paddingVertical: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   brandCluster: {
     alignItems: 'center',
