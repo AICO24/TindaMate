@@ -19,6 +19,7 @@ import {
   resolveActiveNavTab,
 } from '@/components/dashboard/DashboardBottomNav';
 import { DashboardErrorBanner } from '@/components/dashboard/DashboardErrorBanner';
+import { TindaMateLoadingView } from '@/components/animated-icon';
 import {
   CalendarFilterIcon,
   NavProductsIcon,
@@ -383,10 +384,10 @@ export default function ReportsScreen() {
 
             {isLoading ? (
               <View style={styles.loadingCard}>
-                <ActivityIndicator size="large" color={Colors.primaryDark} />
-                <Text style={styles.loadingText}>
-                  Calculating Store Reports...
-                </Text>
+                <TindaMateLoadingView
+                  compact
+                  message="Calculating Store Reports..."
+                />
               </View>
             ) : (
               <>

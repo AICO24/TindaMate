@@ -20,6 +20,7 @@ import { CreditTransactionCard } from '@/components/customers/CreditTransactionC
 import { PaymentSuccessModal } from '@/components/customers/PaymentSuccessModal';
 import { RecordPaymentModal } from '@/components/customers/RecordPaymentModal';
 import { DashboardErrorBanner } from '@/components/dashboard/DashboardErrorBanner';
+import { TindaMateLoadingView } from '@/components/animated-icon';
 import { ProductScreenHeader } from '@/components/products/ProductScreenHeader';
 import { TindaMateButton } from '@/components/ui/TindaMateButton';
 import {
@@ -318,10 +319,10 @@ export default function CustomerDetailsScreen() {
             {/* 1. Loading State */}
             {isLoading ? (
               <View style={styles.loadingCard}>
-                <ActivityIndicator size="large" color={Colors.primaryDark} />
-                <Text style={styles.loadingText}>
-                  Loading Customer Profile & Ledger...
-                </Text>
+                <TindaMateLoadingView
+                  compact
+                  message="Loading Customer Profile & Ledger..."
+                />
               </View>
             ) : !customer ? (
               /* 2. Error / Not Found State */

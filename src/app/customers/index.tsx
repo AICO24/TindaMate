@@ -22,6 +22,7 @@ import {
   resolveActiveNavTab,
 } from '@/components/dashboard/DashboardBottomNav';
 import { DashboardErrorBanner } from '@/components/dashboard/DashboardErrorBanner';
+import { TindaMateLoadingView } from '@/components/animated-icon';
 import { DashboardMarketIllustration } from '@/components/dashboard/DashboardMarketIllustration';
 import {
   DashboardBadgeVectorIcon,
@@ -305,11 +306,10 @@ export default function CustomersListScreen() {
             {/* Loading State */}
             {isInitialLoading ? (
               <View style={styles.stateCard}>
-                <ActivityIndicator size="large" color={Colors.primaryDark} />
-                <Text style={styles.stateTitle}>Loading Customers...</Text>
-                <Text style={styles.stateSubtitle}>
-                  Fetching your store customer profiles and credit balances.
-                </Text>
+                <TindaMateLoadingView
+                  compact
+                  message="Fetching customer records & utang..."
+                />
               </View>
             ) : customers.length === 0 ? (
               searchQuery.trim().length > 0 ? (

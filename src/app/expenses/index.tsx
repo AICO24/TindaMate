@@ -24,6 +24,7 @@ import {
   resolveActiveNavTab,
 } from '@/components/dashboard/DashboardBottomNav';
 import { DashboardErrorBanner } from '@/components/dashboard/DashboardErrorBanner';
+import { TindaMateLoadingView } from '@/components/animated-icon';
 import { DashboardBadgeVectorIcon } from '@/components/dashboard/DashboardNavIcons';
 import { DeleteExpenseConfirmModal } from '@/components/expenses/DeleteExpenseConfirmModal';
 import { ExpenseCard } from '@/components/expenses/ExpenseCard';
@@ -339,11 +340,10 @@ export default function ExpensesListScreen() {
             {/* 1. Loading State */}
             {isInitialLoading ? (
               <View style={styles.stateCard}>
-                <ActivityIndicator size="large" color={Colors.primaryDark} />
-                <Text style={styles.stateTitle}>Loading Expenses...</Text>
-                <Text style={styles.stateSubtitle}>
-                  Fetching your store expense records from Supabase.
-                </Text>
+                <TindaMateLoadingView
+                  compact
+                  message="Fetching expense records..."
+                />
               </View>
             ) : errorMessage && expenses.length === 0 ? (
               /* 2. Full Error State when initial fetch failed and list is empty */
