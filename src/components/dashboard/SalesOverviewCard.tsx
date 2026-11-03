@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     paddingHorizontal: 7,
     borderRadius: 8,
-    backgroundColor: '#EFE9DE',
+    backgroundColor: '#E5ECE7',
   },
   filterTriggerPressed: {
     opacity: 0.8,
