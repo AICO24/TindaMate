@@ -48,9 +48,9 @@ export const Colors = {
   accentLight: '#FFEDD5',     // Soft orange surface & icon badge tint
   accentBorder: '#FFE4CB',    // Soft orange border
 
-  // Background & Surface Colors (Design 2.0 Cool Slate & Crisp White)
+  // Background & Surface Colors (Design 2.0 Luxury Canvas & Crisp White Surfaces)
   background: '#F4F6F8',      // Primary clean slate background
-  backgroundWarm: '#FBF8F1',  // Warm Tindahan Heritage Cream canvas (High-contrast card depth)
+  backgroundWarm: '#F2F5F3',  // Sage Pearl / Alabaster Mist canvas (Luminous, elegant high-contrast card depth)
   backgroundAlt: '#F1F5F9',   // Subtle secondary slate surface
   surfaceSubtle: '#F8FAFC',   // Subtle container / image stage background
   surface: '#FFFFFF',         // Elevated crisp white card & input surface
