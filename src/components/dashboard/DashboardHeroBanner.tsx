@@ -1,18 +1,14 @@
 import React from 'react';
 import {
-  Pressable,
   StyleSheet,
   Text,
   useWindowDimensions,
   View,
 } from 'react-native';
 
-import { StorePillIcon } from './DashboardNavIcons';
-import { DashboardMarketIllustration } from '@/components/dashboard/DashboardMarketIllustration';
+import { DashboardStoreArtwork } from './DashboardStoreArtwork';
 import {
-  BorderRadius,
   Colors,
-  IconSizes,
   Shadows,
   Spacing,
   Typography,
@@ -25,20 +21,39 @@ interface DashboardHeroBannerProps {
 }
 
 /**
- * DashboardHeroBanner (Design 2.0 Showcase Alignment)
+ * Smart first-name extractor:
+ * Converts formal database names like "Gochaico, Manolo Jr. A." or "Juan Dela Cruz"
+ * into friendly store-owner greetings like "Manolo" or "Juan".
+ */
+export function getFriendlyFirstName(rawName?: string | null): string {
+  if (!rawName) return 'Partner';
+  const trimmed = rawName.trim();
+  // If formatted as "Lastname, Firstname ..." (common in PH legal/profile formats)
+  if (trimmed.includes(',')) {
+    const afterComma = trimmed.split(',')[1]?.trim();
+    if (afterComma) {
+      const firstWord = afterComma.split(' ')[0]?.trim();
+      if (firstWord) return firstWord;
+    }
+  }
+  // Otherwise take the first word
+  const firstWord = trimmed.split(' ')[0]?.trim();
+  return firstWord || trimmed;
+}
+
+/**
+ * DashboardHeroBanner (Exact Showcase Match)
  *
- * Visually matches Screen 1 of TindaMate POS App Showcase.png:
- * - Elevated white card container with rounded corners and subtle shadow
- * - Dynamic greeting ("Good morning," / "Good afternoon," / "Good evening,")
- * - Dynamic user name ("Manolo! 👋") in dark slate typography
- * - Friendly store overview supporting text ("Here's your store today")
- * - Compact store context pill [ 🏪 TindaMate Store › ]
- * - Authentic 3D sari-sari storefront illustration
+ * Visually matches media_1793685516173_46f6ff18.png and Screen 1 of Showcase:
+ * - Organic curved wave transition from deep green hero into white greeting card
+ * - Friendly dynamic greeting ("Good afternoon,")
+ * - Smart First Name display ("Manolo! 👋") with zero truncation or payroll formatting
+ * - "Here's your store today" subtitle
+ * - Authentic 3D-styled Filipino tindahan store artwork with striped awning, amber halo, and foliage
+ * - Pure React Native code (zero cropped screenshots, 100% responsive)
  */
 export function DashboardHeroBanner({
   displayName,
-  storeName = 'TindaMate Store',
-  onStorePress,
 }: DashboardHeroBannerProps) {
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -49,88 +64,48 @@ export function DashboardHeroBanner({
 
   const { width: windowWidth } = useWindowDimensions();
   const isNarrowPhone = windowWidth < 350;
-  const isSmallPhone = windowWidth < 380;
-  const isLargePhone = windowWidth >= 414;
 
-  const illustrationWidth = isNarrowPhone ? 116 : isSmallPhone ? 128 : isLargePhone ? 152 : 140;
-  const illustrationHeight = isNarrowPhone ? 104 : isSmallPhone ? 116 : isLargePhone ? 138 : 126;
-
-  const nameFontSize =
-    displayName.length > 22
-      ? isSmallPhone ? 17 : 19
-      : displayName.length > 14
-      ? isSmallPhone ? 19 : 21
-      : isSmallPhone ? 21 : 23;
-
-  const nameLineHeight = nameFontSize + 4;
+  const firstName = getFriendlyFirstName(displayName);
+  const artworkSize = isNarrowPhone ? 110 : 124;
 
   return (
-    <View style={[styles.card, isNarrowPhone && styles.cardNarrow]}>
-      <View style={styles.contentRow}>
-        {/* Left Side: Text Hierarchy & Store Badge (55-65% width) */}
-        <View style={styles.leftColumn}>
-          {/* 1. Greeting */}
-          <Text style={styles.greetingTitle} maxFontSizeMultiplier={1.3}>
-            {getGreeting()}
-          </Text>
+    <View style={styles.cardContainer}>
+      {/* Wave Layer 1: Subtle deep emerald accent curve peeking from top-left */}
+      <View style={styles.waveAccentBack} pointerEvents="none" />
 
-          {/* 2. User Name */}
-          <Text
-            style={[
-              styles.displayNameText,
-              { fontSize: nameFontSize, lineHeight: nameLineHeight },
-            ]}
-            numberOfLines={1}
-            maxFontSizeMultiplier={1.3}>
-            {displayName}! 👋
-          </Text>
+      {/* Wave Layer 2: Main organic curved white card surface */}
+      <View style={[styles.card, isNarrowPhone && styles.cardNarrow]}>
+        <View style={styles.contentRow}>
+          {/* Left Column: Greeting Hierarchy */}
+          <View style={styles.leftColumn}>
+            {/* 1. Time-of-day greeting */}
+            <Text style={styles.greetingTitle} maxFontSizeMultiplier={1.25}>
+              {getGreeting()}
+            </Text>
 
-          {/* 3. Supporting text */}
-          <Text
-            style={styles.greetingSubtext}
-            numberOfLines={1}
-            maxFontSizeMultiplier={1.3}>
-            Here&apos;s your store today
-          </Text>
-
-          {/* 4. Store Context Pill: [ StoreIcon TindaMate Store › ] */}
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Active store: ${storeName}`}
-            accessibilityHint="Opens store account and profile settings"
-            onPress={onStorePress}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            style={({ pressed }) => [
-              styles.storePill,
-              pressed && styles.storePillPressed,
-            ]}>
-            <View
-              style={styles.storeIconCircle}
-              accessible={false}
-              importantForAccessibility="no-hide-descendants">
-              <StorePillIcon size={IconSizes.xs} color={Colors.textInverse} />
-            </View>
+            {/* 2. Friendly First Name + Waving Hand Emoji */}
             <Text
-              style={[
-                styles.storePillText,
-                { maxWidth: isNarrowPhone ? 100 : 130 },
-              ]}
+              style={styles.displayNameText}
               numberOfLines={1}
-              maxFontSizeMultiplier={1.3}>
-              {storeName}
+              adjustsFontSizeToFit
+              minimumFontScale={0.85}
+              maxFontSizeMultiplier={1.25}>
+              {firstName}! 👋
             </Text>
-            <Text style={styles.storePillChevron} importantForAccessibility="no">
-              ›
-            </Text>
-          </Pressable>
-        </View>
 
-        {/* Right Side: Dedicated Marketplace Illustration */}
-        <View style={styles.illustrationWrapper}>
-          <DashboardMarketIllustration
-            width={illustrationWidth}
-            height={illustrationHeight}
-          />
+            {/* 3. Subtitle */}
+            <Text
+              style={styles.greetingSubtext}
+              numberOfLines={1}
+              maxFontSizeMultiplier={1.2}>
+              Here&apos;s your store today
+            </Text>
+          </View>
+
+          {/* Right Column: Authentic 3D Tindahan Artwork */}
+          <View style={styles.artworkWrapper}>
+            <DashboardStoreArtwork size={artworkSize} />
+          </View>
         </View>
       </View>
     </View>
@@ -138,19 +113,37 @@ export function DashboardHeroBanner({
 }
 
 const styles = StyleSheet.create({
+  cardContainer: {
+    width: '100%',
+    position: 'relative',
+    marginTop: Spacing.one,
+  },
+  // Organic green wave scoop peeking out on top-left matching reference
+  waveAccentBack: {
+    position: 'absolute',
+    top: -10,
+    left: 8,
+    width: '60%',
+    height: 24,
+    borderTopLeftRadius: 36,
+    borderTopRightRadius: 60,
+    backgroundColor: '#0D7A4D',
+    opacity: 0.38,
+    transform: [{ rotate: '-2deg' }],
+  },
   card: {
     backgroundColor: Colors.surface,
-    borderRadius: 20,
-    paddingVertical: Spacing.twoHalf,
-    paddingHorizontal: Spacing.threeHalf,
+    borderRadius: 24,
+    paddingVertical: 14,
+    paddingHorizontal: Spacing.four,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    marginTop: Spacing.two,
+    overflow: 'visible',
     ...Shadows.sm,
   },
   cardNarrow: {
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.twoHalf,
+    paddingVertical: 12,
+    paddingHorizontal: Spacing.three,
   },
   contentRow: {
     flexDirection: 'row',
@@ -159,68 +152,32 @@ const styles = StyleSheet.create({
   },
   leftColumn: {
     flex: 1.25,
-    gap: 2,
+    gap: 3,
     paddingRight: Spacing.two,
-    zIndex: 2,
     justifyContent: 'center',
   },
   greetingTitle: {
-    fontSize: Typography.sizes.caption,
+    fontSize: 14,
     fontWeight: Typography.weights.semiBold,
-    color: '#64748B',
+    color: '#475569',
+    letterSpacing: -0.1,
   },
   displayNameText: {
+    fontSize: 24,
+    lineHeight: 30,
     fontWeight: Typography.weights.extraBold,
     color: '#0F172A',
-    letterSpacing: -0.4,
-    marginBottom: 1,
+    letterSpacing: -0.5,
+    marginVertical: 1,
   },
   greetingSubtext: {
-    fontSize: Typography.sizes.caption,
+    fontSize: 13,
     color: '#94A3B8',
     fontWeight: Typography.weights.medium,
-    lineHeight: 16,
-    marginBottom: Spacing.two,
+    lineHeight: 18,
   },
-  storePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    backgroundColor: '#F8FAFC',
-    paddingLeft: Spacing.two,
-    paddingRight: Spacing.twoHalf,
-    paddingVertical: 3,
-    borderRadius: BorderRadius.full,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    gap: 5,
-  },
-  storePillPressed: {
-    backgroundColor: '#F1F5F9',
-    transform: [{ scale: 0.98 }],
-  },
-  storeIconCircle: {
-    width: 18,
-    height: 18,
-    borderRadius: BorderRadius.full,
-    backgroundColor: Colors.primary,
+  artworkWrapper: {
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  storePillText: {
-    fontSize: 11,
-    fontWeight: Typography.weights.bold,
-    color: '#0F172A',
-  },
-  storePillChevron: {
-    fontSize: Typography.sizes.sm,
-    fontWeight: Typography.weights.extraBold,
-    color: '#64748B',
-    marginTop: -1,
-  },
-  illustrationWrapper: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingLeft: Spacing.xxs,
   },
 });

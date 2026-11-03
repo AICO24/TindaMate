@@ -1,11 +1,11 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { BellNotificationIcon, ProfileAvatarIcon } from './DashboardNavIcons';
+import { BellNotificationIcon } from './DashboardNavIcons';
 import {
   BorderRadius,
   Colors,
-  IconSizes,
   Shadows,
   Spacing,
   Typography,
@@ -13,26 +13,34 @@ import {
 
 interface DashboardHeaderProps {
   userEmail?: string;
-  onProfilePress: () => void;
+  onProfilePress?: () => void;
   notificationCount?: number;
   onNotificationPress?: () => void;
 }
 
 /**
- * DashboardHeader (TindaMate Design 2.0)
+ * DashboardHeader (Exact Showcase Match)
  *
- * Prominent top store identity bar on deep forest green hero backdrop:
- * - Warm orange TindaMate shopping bag badge ("T") + bold white wordmark + tagline
- * - Notification bell indicator (displays low-stock alert badge count when > 0)
- * - Profile circle button
+ * Visually matches media_1793685516173_46f6ff18.png and Screen 1 of Showcase:
+ * - Dynamic safe-area top clearance ensuring zero collision with camera punch-holes or Dynamic Island
+ * - Left: Authentic orange TindaMate bag emblem ("T") + bold white wordmark + mint tagline
+ * - Center: Wide open space preventing camera notch overlap
+ * - Right: Pure notification bell with red badge (3 / alert count)
  */
 export function DashboardHeader({
-  onProfilePress,
   notificationCount = 0,
   onNotificationPress,
 }: DashboardHeaderProps) {
+  const insets = useSafeAreaInsets();
+  // Safe clearance guaranteed below Dynamic Island / camera punch-hole on all phones
+  const safeTopPadding = Math.max(insets.top, Platform.OS === 'android' ? 32 : 44) + 4;
+
   return (
-    <View style={styles.header}>
+    <View style={[styles.header, { paddingTop: safeTopPadding }]}>
+      {/* Decorative ambient leaf silhouettes in header background */}
+      <View style={styles.floatingLeafOne} pointerEvents="none" />
+      <View style={styles.floatingLeafTwo} pointerEvents="none" />
+
       {/* Left: Brand Bag Emblem + Wordmark + Tagline */}
       <View style={styles.brandRow}>
         <View
@@ -55,44 +63,29 @@ export function DashboardHeader({
         </View>
       </View>
 
-      {/* Right: Notification Bell + Profile Avatar */}
+      {/* Right: Single Notification Bell with Badge (Showcase 1:1) */}
       <View style={styles.rightActions}>
-        {onNotificationPress ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={
-              notificationCount > 0
-                ? `Store alerts, ${notificationCount} items low in stock`
-                : 'Store alerts and notifications'
-            }
-            onPress={onNotificationPress}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            style={({ pressed }) => [
-              styles.iconButton,
-              pressed && styles.iconButtonPressed,
-            ]}>
-            <BellNotificationIcon size={19} color={Colors.textInverse} />
-            {notificationCount > 0 ? (
-              <View style={styles.notificationBadge}>
-                <Text style={styles.notificationBadgeText}>
-                  {notificationCount > 9 ? '9+' : notificationCount}
-                </Text>
-              </View>
-            ) : null}
-          </Pressable>
-        ) : null}
-
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Open user profile and store settings"
-          accessibilityHint="Opens store account and profile modal"
-          onPress={onProfilePress}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityLabel={
+            notificationCount > 0
+              ? `Store alerts, ${notificationCount} items low in stock`
+              : 'Store alerts and notifications'
+          }
+          onPress={onNotificationPress}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           style={({ pressed }) => [
-            styles.avatarButton,
+            styles.iconButton,
             pressed && styles.iconButtonPressed,
           ]}>
-          <ProfileAvatarIcon size={IconSizes.md} color={Colors.primaryDark} />
+          <BellNotificationIcon size={20} color={Colors.textInverse} />
+          {notificationCount > 0 && (
+            <View style={styles.notificationBadge}>
+              <Text style={styles.notificationBadgeText}>
+                {notificationCount > 9 ? '9+' : notificationCount}
+              </Text>
+            </View>
+          )}
         </Pressable>
       </View>
     </View>
@@ -104,36 +97,60 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: Spacing.two,
-    paddingBottom: Spacing.three,
+    paddingBottom: Spacing.twoHalf,
+    position: 'relative',
+    overflow: 'visible',
+  },
+  // Ambient organic floating leaves matching showcase
+  floatingLeafOne: {
+    position: 'absolute',
+    top: 4,
+    right: 70,
+    width: 32,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: '#10B981',
+    opacity: 0.16,
+    transform: [{ rotate: '34deg' }],
+  },
+  floatingLeafTwo: {
+    position: 'absolute',
+    top: 14,
+    right: 110,
+    width: 22,
+    height: 36,
+    borderRadius: 11,
+    backgroundColor: '#34D399',
+    opacity: 0.12,
+    transform: [{ rotate: '-22deg' }],
   },
   brandRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.twoHalf,
-    flex: 1,
+    maxWidth: 220,
   },
   bagBadge: {
-    width: 40,
-    height: 42,
+    width: 42,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'flex-end',
   },
   bagHandle: {
-    width: 16,
-    height: 8,
-    borderTopLeftRadius: 8,
-    borderTopRightRadius: 8,
+    width: 18,
+    height: 9,
+    borderTopLeftRadius: 9,
+    borderTopRightRadius: 9,
     borderWidth: 2.5,
     borderBottomWidth: 0,
-    borderColor: Colors.accentWarm,
+    borderColor: '#34D399',
     marginBottom: -1,
   },
   bagBody: {
-    width: 36,
-    height: 32,
-    borderRadius: 9,
-    backgroundColor: Colors.accent,
+    width: 38,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: '#F97316',
     borderWidth: 1.5,
     borderColor: '#FDBA74',
     alignItems: 'center',
@@ -142,12 +159,11 @@ const styles = StyleSheet.create({
   },
   bagLetter: {
     color: Colors.textInverse,
-    fontSize: 18,
+    fontSize: 19,
     fontWeight: Typography.weights.extraBold,
     letterSpacing: -0.5,
   },
   titleCol: {
-    flex: 1,
     gap: 1,
   },
   brandTitle: {
@@ -167,29 +183,18 @@ const styles = StyleSheet.create({
   rightActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.two,
+    justifyContent: 'flex-end',
   },
   iconButton: {
-    width: 40,
-    height: 40,
+    width: 42,
+    height: 42,
     borderRadius: BorderRadius.full,
-    backgroundColor: 'rgba(255, 255, 255, 0.14)',
+    backgroundColor: 'rgba(255, 255, 255, 0.16)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.22)',
+    borderColor: 'rgba(255, 255, 255, 0.25)',
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
-  },
-  avatarButton: {
-    width: 40,
-    height: 40,
-    borderRadius: BorderRadius.full,
-    backgroundColor: Colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: '#A7F3D0',
-    ...Shadows.xs,
   },
   iconButtonPressed: {
     transform: [{ scale: 0.94 }],
@@ -197,15 +202,15 @@ const styles = StyleSheet.create({
   },
   notificationBadge: {
     position: 'absolute',
-    top: -3,
-    right: -3,
+    top: -2,
+    right: -2,
     minWidth: 18,
     height: 18,
     borderRadius: 9,
     paddingHorizontal: 4,
-    backgroundColor: Colors.accent,
+    backgroundColor: '#EF4444',
     borderWidth: 1.5,
-    borderColor: Colors.primaryDark,
+    borderColor: '#064E3B',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -215,4 +220,3 @@ const styles = StyleSheet.create({
     fontWeight: Typography.weights.extraBold,
   },
 });
-
