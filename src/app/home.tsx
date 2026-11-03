@@ -16,7 +16,7 @@ import { StatusBar } from 'expo-status-bar';
 import { router, useFocusEffect, useLocalSearchParams, usePathname } from 'expo-router';
 import * as Linking from 'expo-linking';
 import { User } from '@supabase/supabase-js';
-import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import {
   isAppSplashActive,
@@ -83,7 +83,7 @@ export default function AuthenticatedDashboardScreen() {
   const { width: windowWidth } = useWindowDimensions();
   const isNarrowPhone = windowWidth < 350;
   const headerTopPadding = Math.max(insets.top, Platform.OS === 'ios' ? 44 : 24) + Spacing.one;
-  const headerCanopyHeight = headerTopPadding + 115;
+  const headerCanopyHeight = headerTopPadding + 134;
   const params = useLocalSearchParams<{ guest?: string }>();
   const isGuestMode = params.guest === '1';
 
@@ -505,16 +505,16 @@ export default function AuthenticatedDashboardScreen() {
       // Root AnimatedSplashOverlay is running the launch animation;
       // keep screen quiet so no duplicate logo is rendered underneath.
       return (
-        <SafeAreaView style={styles.loadingContainer}>
+        <View style={styles.loadingContainer}>
           <StatusBar style="light" />
-        </SafeAreaView>
+        </View>
       );
     }
     return (
-      <SafeAreaView style={styles.loadingContainer}>
+      <View style={styles.loadingContainer}>
         <StatusBar style="light" />
         <TindaMateLoadingView message="Loading TindaMate Dashboard..." />
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -530,41 +530,83 @@ export default function AuthenticatedDashboardScreen() {
   const alertProductCount = lowStockCount + outOfStockCount;
   const isLowStockWarning = alertProductCount > 0;
 
-  // Compute last 7 days (Mon..Sun or rolling 7 days) sales bars from real store sales
+  // Compute Monday-to-Sunday (Mon..Sun) sales bars from real store sales
   const salesSource = allStoreSales.length > 0 ? allStoreSales : recentSales;
   const nowDate = new Date();
-  const weeklyBars: { label: string; amount: number; isToday: boolean }[] = [];
-  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const currentJsDay = nowDate.getDay(); // 0 = Sun, 1 = Mon, ..., 6 = Sat
+  const mondayOffset = currentJsDay === 0 ? -6 : 1 - currentJsDay;
+  const mondayDate = new Date(
+    nowDate.getFullYear(),
+    nowDate.getMonth(),
+    nowDate.getDate() + mondayOffset
+  );
 
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(
-      nowDate.getFullYear(),
-      nowDate.getMonth(),
-      nowDate.getDate() - i
-    );
-    const y = d.getFullYear();
-    const m = d.getMonth();
-    const dayNum = d.getDate();
-    let dayCentavos = 0;
+  const orderedWeekdays = [
+    { label: 'Mon', jsDay: 1, offset: 0 },
+    { label: 'Tue', jsDay: 2, offset: 1 },
+    { label: 'Wed', jsDay: 3, offset: 2 },
+    { label: 'Thu', jsDay: 4, offset: 3 },
+    { label: 'Fri', jsDay: 5, offset: 4 },
+    { label: 'Sat', jsDay: 6, offset: 5 },
+    { label: 'Sun', jsDay: 0, offset: 6 },
+  ];
 
-    for (const s of salesSource) {
-      const sd = new Date(s.created_at);
+  // 1. Sum sales within the current Monday..Sunday week
+  const currentWeekCentavos = [0, 0, 0, 0, 0, 0, 0];
+  // 2. Also track historical weekday totals in case current week has 0 sales yet
+  const historicalWeekdayCentavos = [0, 0, 0, 0, 0, 0, 0];
+
+  for (const s of salesSource) {
+    const sd = new Date(s.created_at);
+    if (Number.isNaN(sd.getTime())) continue;
+    const centavos = Math.round(s.total_amount * 100);
+    const saleJsDay = sd.getDay();
+    const bucketIdx = saleJsDay === 0 ? 6 : saleJsDay - 1;
+    historicalWeekdayCentavos[bucketIdx] += centavos;
+
+    for (let idx = 0; idx < 7; idx++) {
+      const targetDate = new Date(
+        mondayDate.getFullYear(),
+        mondayDate.getMonth(),
+        mondayDate.getDate() + idx
+      );
       if (
-        !Number.isNaN(sd.getTime()) &&
-        sd.getFullYear() === y &&
-        sd.getMonth() === m &&
-        sd.getDate() === dayNum
+        sd.getFullYear() === targetDate.getFullYear() &&
+        sd.getMonth() === targetDate.getMonth() &&
+        sd.getDate() === targetDate.getDate()
       ) {
-        dayCentavos += Math.round(s.total_amount * 100);
+        currentWeekCentavos[idx] += centavos;
       }
     }
-
-    weeklyBars.push({
-      label: dayNames[d.getDay()],
-      amount: Number((dayCentavos / 100).toFixed(2)),
-      isToday: i === 0,
-    });
   }
+
+  const hasCurrentWeekSales = currentWeekCentavos.some((c) => c > 0);
+  const activeCentavosBuckets = hasCurrentWeekSales
+    ? currentWeekCentavos
+    : historicalWeekdayCentavos;
+
+  const todayBucketIdx = currentJsDay === 0 ? 6 : currentJsDay - 1;
+  let highlightedIdx = todayBucketIdx;
+  if (
+    activeCentavosBuckets[todayBucketIdx] === 0 &&
+    activeCentavosBuckets.some((c) => c > 0)
+  ) {
+    // Highlight the highest/latest non-zero weekday bar so the callout pill shows real revenue
+    let maxVal = -1;
+    for (let idx = 0; idx < 7; idx++) {
+      if (activeCentavosBuckets[idx] >= maxVal && activeCentavosBuckets[idx] > 0) {
+        maxVal = activeCentavosBuckets[idx];
+        highlightedIdx = idx;
+      }
+    }
+  }
+
+  const weeklyBars: { label: string; amount: number; isToday: boolean }[] =
+    orderedWeekdays.map((wd, idx) => ({
+      label: wd.label,
+      amount: Number((activeCentavosBuckets[idx] / 100).toFixed(2)),
+      isToday: idx === highlightedIdx,
+    }));
 
   const maxWeeklyAmount = Math.max(
     ...weeklyBars.map((b) => b.amount),
@@ -573,15 +615,21 @@ export default function AuthenticatedDashboardScreen() {
   );
 
   // Compute real comparison badge text from weeklyBars (today vs yesterday)
-  const todayBarAmount = weeklyBars[weeklyBars.length - 1]?.amount ?? todaySalesSummary.totalAmount;
-  const yesterdayBarAmount = weeklyBars[weeklyBars.length - 2]?.amount ?? 0;
+  const todayBarAmount =
+    Number((currentWeekCentavos[todayBucketIdx] / 100).toFixed(2)) ||
+    todaySalesSummary.totalAmount;
+  const yesterdayBucketIdx = (todayBucketIdx + 6) % 7;
+  const yesterdayBarAmount = Number(
+    (currentWeekCentavos[yesterdayBucketIdx] / 100).toFixed(2)
+  );
   let salesComparisonLabel = `${todaySalesSummary.transactionCount} ${
     todaySalesSummary.transactionCount === 1 ? 'sale' : 'sales'
   }`;
   if (yesterdayBarAmount > 0 && todayBarAmount >= 0) {
     const pctDiff = ((todayBarAmount - yesterdayBarAmount) / yesterdayBarAmount) * 100;
     const arrow = pctDiff >= 0 ? '↑' : '↓';
-    salesComparisonLabel = `${arrow} ${Math.abs(pctDiff).toFixed(1)}%`;
+    const sign = pctDiff >= 0 ? '+' : '-';
+    salesComparisonLabel = `${arrow} ${sign}${Math.abs(pctDiff).toFixed(1)}%`;
   } else if (todayBarAmount > 0) {
     salesComparisonLabel = `↑ ${todaySalesSummary.transactionCount} ${
       todaySalesSummary.transactionCount === 1 ? 'sale' : 'sales'
@@ -660,7 +708,7 @@ export default function AuthenticatedDashboardScreen() {
   const activeNavTab: NavTab = isProfileModalVisible ? 'more' : routeTab;
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={styles.safeArea} edges={['left', 'right']}>
       <StatusBar style="light" />
       <View style={styles.mainContainer}>
         {/* Main Scrollable Dashboard Content */}
@@ -678,8 +726,7 @@ export default function AuthenticatedDashboardScreen() {
             />
           }>
           {/* 1. Deep Forest Green Curved Header Zone with Safe-Area Clearance */}
-          <Animated.View
-            entering={FadeIn.duration(350)}
+          <View
             style={[styles.fullBleedHeroZone, { paddingTop: headerTopPadding }]}>
             {/* Signature Multi-Layered Zigzag Wave Ribbon Background */}
             <HeaderWaveBackground height={headerCanopyHeight} />
@@ -718,7 +765,7 @@ export default function AuthenticatedDashboardScreen() {
                 </Pressable>
               ) : null}
             </View>
-          </Animated.View>
+          </View>
 
           {/* 2. Continuous Open Canvas Body Content */}
           <View style={styles.bodyContentContainer}>
@@ -1039,14 +1086,13 @@ export default function AuthenticatedDashboardScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: Colors.primaryDark,
+    backgroundColor: '#084B30',
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: Colors.backgroundWarm,
-    alignItems: 'center',
+    backgroundColor: '#FDF7EB',
+    alignItems: 'stretch',
     justifyContent: 'center',
-    gap: Spacing.twoHalf,
   },
   mainContainer: {
     flex: 1,
@@ -1060,16 +1106,14 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: Spacing.five,
   },
-  // 1. Curved Deep Forest Green Header Zone with Layered Signature Zigzag Wave Canopy
+  // 1. Curved Deep Forest-to-Emerald Header Zone with S-Wave Canopy
   fullBleedHeroZone: {
-    backgroundColor: '#064E3B',
+    backgroundColor: Colors.backgroundWarm,
     paddingTop: Spacing.half,
-    paddingBottom: 22,
-    minHeight: 120,
+    paddingBottom: 56,
+    minHeight: 148,
     position: 'relative',
     overflow: 'hidden',
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
   },
   heroInnerContainer: {
     width: '100%',
@@ -1084,9 +1128,11 @@ const styles = StyleSheet.create({
     maxWidth: DashboardMaxContentWidth,
     alignSelf: 'center',
     paddingHorizontal: Spacing.three,
-    paddingTop: Spacing.one,
+    marginTop: -38,
+    paddingTop: 2,
     paddingBottom: Spacing.six,
-    gap: 18,
+    gap: 11,
+    zIndex: 6,
   },
   cardPressed: {
     opacity: 0.92,
