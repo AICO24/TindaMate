@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import {
@@ -6,7 +6,7 @@ import {
   KpiLowStockBoxIcon,
   KpiProfitCoinIcon,
 } from './DashboardNavIcons';
-import { BorderRadius, Colors, Shadows, Spacing, Typography } from '@/constants/theme';
+import { Shadows, Spacing, Typography } from '@/constants/theme';
 
 interface DashboardKpiRowProps {
   totalSalesCount: number;
@@ -18,15 +18,70 @@ interface DashboardKpiRowProps {
   isNarrow?: boolean;
 }
 
+interface InteractiveKpiTileProps {
+  accessibilityLabel: string;
+  value: string | number;
+  label: string;
+  minimumFontScale?: number;
+  onPress?: () => void;
+  children: React.ReactNode;
+}
+
 /**
- * DashboardKpiRow (3 Compact Supporting KPI Cards)
+ * Individual KPI Tile with Crisp Black Corner/Border Line on Hover
+ */
+function InteractiveKpiTile({
+  accessibilityLabel,
+  value,
+  label,
+  minimumFontScale = 0.8,
+  onPress,
+  children,
+}: InteractiveKpiTileProps) {
+  const [isHovered, setIsHovered] = useState(false);
+
+  return (
+    <View style={styles.cardWrapper}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel}
+        onPress={onPress}
+        onHoverIn={() => setIsHovered(true)}
+        onHoverOut={() => setIsHovered(false)}
+        style={({ pressed }) => [
+          styles.card,
+          isHovered && styles.cardHovered,
+          pressed && styles.cardPressed,
+        ]}>
+        <View style={styles.iconContainer}>
+          {children}
+        </View>
+        <Text
+          style={styles.value}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={minimumFontScale}
+          maxFontSizeMultiplier={1.2}>
+          {value}
+        </Text>
+        <Text
+          style={styles.label}
+          numberOfLines={1}
+          maxFontSizeMultiplier={1.15}>
+          {label}
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
+
+/**
+ * DashboardKpiRow (Target Reference 3 Compact KPI Summary Cards + Black Corner Hover Line)
  *
- * Visually matches the 3-tile row in Design 2.0 reference showcase:
- * 1. Total Sales (Emerald cart/check icon)
- * 2. Profit (Warm golden coin icon)
- * 3. Low Stock (Amber alert box icon)
- *
- * Clean white surfaces, subtle borders, bold numbers, and responsive sizing.
+ * Visually matches the 3-tile KPI row in the Dashboard reference:
+ * 1. Total Sales (Solid Emerald Shopping Cart icon)
+ * 2. Profit (Stacked Golden Coins icon)
+ * 3. Low Stock (3D Isometric Orange Box icon)
  */
 export function DashboardKpiRow({
   totalSalesCount,
@@ -40,73 +95,32 @@ export function DashboardKpiRow({
   return (
     <View style={[styles.row, isNarrow && styles.rowNarrow]}>
       {/* Tile 1: Total Sales Count */}
-      <Pressable
-        accessibilityRole="button"
+      <InteractiveKpiTile
         accessibilityLabel={`Total Sales: ${totalSalesCount} transactions. Tap to view sales history.`}
-        onPress={onTotalSalesPress}
-        style={({ pressed }) => [
-          styles.card,
-          pressed && styles.cardPressed,
-        ]}>
-        <KpiCartCheckIcon size={22} />
-        <Text
-          style={styles.value}
-          numberOfLines={1}
-          adjustsFontSizeToFit
-          minimumFontScale={0.8}
-          maxFontSizeMultiplier={1.2}>
-          {totalSalesCount}
-        </Text>
-        <Text style={styles.label} numberOfLines={1} maxFontSizeMultiplier={1.15}>
-          Total Sales
-        </Text>
-      </Pressable>
+        value={totalSalesCount}
+        label="Total Sales"
+        onPress={onTotalSalesPress}>
+        <KpiCartCheckIcon size={25} />
+      </InteractiveKpiTile>
 
       {/* Tile 2: Gross Profit */}
-      <Pressable
-        accessibilityRole="button"
+      <InteractiveKpiTile
         accessibilityLabel={`Profit: ${profitDisplay}. Tap to open reports.`}
-        onPress={onProfitPress}
-        style={({ pressed }) => [
-          styles.card,
-          pressed && styles.cardPressed,
-        ]}>
-        <KpiProfitCoinIcon size={22} />
-        <Text
-          style={styles.value}
-          numberOfLines={1}
-          adjustsFontSizeToFit
-          minimumFontScale={0.7}
-          maxFontSizeMultiplier={1.2}>
-          {profitDisplay}
-        </Text>
-        <Text style={styles.label} numberOfLines={1} maxFontSizeMultiplier={1.15}>
-          Profit
-        </Text>
-      </Pressable>
+        value={profitDisplay}
+        label="Profit"
+        minimumFontScale={0.7}
+        onPress={onProfitPress}>
+        <KpiProfitCoinIcon size={25} />
+      </InteractiveKpiTile>
 
       {/* Tile 3: Low Stock Count */}
-      <Pressable
-        accessibilityRole="button"
+      <InteractiveKpiTile
         accessibilityLabel={`Low Stock: ${lowStockCount} items. Tap to check inventory.`}
-        onPress={onLowStockPress}
-        style={({ pressed }) => [
-          styles.card,
-          pressed && styles.cardPressed,
-        ]}>
-        <KpiLowStockBoxIcon size={22} />
-        <Text
-          style={[styles.value, lowStockCount > 0 && styles.valueWarning]}
-          numberOfLines={1}
-          adjustsFontSizeToFit
-          minimumFontScale={0.8}
-          maxFontSizeMultiplier={1.2}>
-          {lowStockCount}
-        </Text>
-        <Text style={styles.label} numberOfLines={1} maxFontSizeMultiplier={1.15}>
-          Low Stock
-        </Text>
-      </Pressable>
+        value={lowStockCount}
+        label="Low Stock"
+        onPress={onLowStockPress}>
+        <KpiLowStockBoxIcon size={25} />
+      </InteractiveKpiTile>
     </View>
   );
 }
@@ -121,38 +135,44 @@ const styles = StyleSheet.create({
   rowNarrow: {
     gap: 6,
   },
+  cardWrapper: {
+    flex: 1,
+  },
   card: {
     flex: 1,
     backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    paddingVertical: 12,
+    borderRadius: 16,
+    paddingVertical: 10,
     paddingHorizontal: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    minHeight: 88,
-    ...Shadows.xs,
+    gap: 3,
+    borderWidth: 1.5,
+    borderColor: '#EDF4EE',
+    minHeight: 82,
+    ...Shadows.sm,
+  },
+  cardHovered: {
+    borderColor: '#000000',
   },
   cardPressed: {
     opacity: 0.9,
-    transform: [{ scale: 0.97 }],
+  },
+  iconContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   value: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: Typography.weights.extraBold,
     color: '#0F172A',
-    letterSpacing: -0.3,
-    lineHeight: 22,
-  },
-  valueWarning: {
-    color: '#D97706',
+    letterSpacing: -0.4,
+    lineHeight: 24,
   },
   label: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: Typography.weights.medium,
-    color: '#64748B',
+    color: '#334155',
     letterSpacing: 0.1,
   },
 });

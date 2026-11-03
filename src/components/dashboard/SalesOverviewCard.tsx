@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { SalesOverviewChartHeaderIcon } from './DashboardNavIcons';
 import { Shadows, Spacing, Typography } from '@/constants/theme';
 
 export interface WeeklySalesBar {
@@ -12,36 +13,67 @@ export interface WeeklySalesBar {
 interface SalesOverviewCardProps {
   weeklyBars: WeeklySalesBar[];
   maxWeeklyAmount: number;
-  topYAxisValue: string;
-  midYAxisValue: string;
+  topYAxisValue?: string;
+  midYAxisValue?: string;
   onPeriodPress?: () => void;
 }
 
 /**
- * SalesOverviewCard (Interactive Real-Data Weekly Sales Bar Chart)
+ * Computes 4 clean Y-axis scale labels (e.g. ['3k', '2k', '1k', '0'])
+ * matching the 4-line grid in the Dashboard reference.
+ */
+function getFourStepYAxisLabels(maxAmount: number): [string, string, string, string] {
+  if (maxAmount <= 3000) {
+    return ['3k', '2k', '1k', '0'];
+  }
+  const stepK = Math.ceil(maxAmount / 3000);
+  return [`${stepK * 3}k`, `${stepK * 2}k`, `${stepK}k`, '0'];
+}
+
+/**
+ * SalesOverviewCard (Target Reference 1:1 Weekly Sales Bar Chart + Black Corner Hover Line)
  *
- * Renders real sales distribution across 7 rolling days:
- * - Clean title row with "Sales Overview" and "This Week ▾" period trigger
- * - Faint Y-axis reference numbers (e.g. 10k, 5k, 0)
- * - Horizontal baseline and midline grid guides
- * - True React Native vertical bars with rounded caps
- * - Active day emphasis with floating tooltip pill (e.g. ₱8.4k) and pointer arrow
- * - Day labels (Sun, Mon, Tue, Wed, Thu, Fri, Sat)
+ * Visually matches the Sales Overview card in the Dashboard reference:
+ * - Header Row: Green 3-bar chart icon + "Sales Overview" on left, "This Week ⌄" on right
+ * - 4 Y-axis scale numbers (3k, 2k, 1k, 0) + 4 horizontal reference grid lines
+ * - Monday-to-Sunday vertical bars with vibrant mint-to-emerald vertical gradient
+ * - Crisp black line outline on hover
  */
 export function SalesOverviewCard({
   weeklyBars,
   maxWeeklyAmount,
-  topYAxisValue,
-  midYAxisValue,
   onPeriodPress,
 }: SalesOverviewCardProps) {
+  const [isCardHovered, setIsCardHovered] = useState(false);
+  const [selectedBarIdx, setSelectedBarIdx] = useState<number | null>(null);
+
+  const [labelTop, labelUpperMid, labelLowerMid, labelZero] =
+    getFourStepYAxisLabels(maxWeeklyAmount);
+
+  const chartCeiling =
+    maxWeeklyAmount <= 3000
+      ? Math.max(maxWeeklyAmount, 1000)
+      : Math.ceil(maxWeeklyAmount / 3000) * 3000;
+
   return (
-    <View style={styles.sectionContainer}>
-      {/* Header Row: Title + Period Selector */}
+    <Pressable
+      onHoverIn={() => setIsCardHovered(true)}
+      onHoverOut={() => setIsCardHovered(false)}
+      style={[
+        styles.sectionContainer,
+        isCardHovered && styles.sectionContainerHovered,
+      ]}>
+      {/* Header Row: Icon + Title + Period Selector */}
       <View style={styles.headerRow}>
-        <Text style={styles.title} accessibilityRole="header" maxFontSizeMultiplier={1.2}>
-          Sales Overview
-        </Text>
+        <View style={styles.titleCluster}>
+          <SalesOverviewChartHeaderIcon size={18} color="#0D7A4D" />
+          <Text
+            style={styles.title}
+            accessibilityRole="header"
+            maxFontSizeMultiplier={1.2}>
+            Sales Overview
+          </Text>
+        </View>
 
         <Pressable
           accessibilityRole="button"
@@ -63,17 +95,18 @@ export function SalesOverviewCard({
 
       {/* Plot Area */}
       <View style={styles.plotRow}>
-        {/* Faint Y-Axis Scale Numbers */}
+        {/* 4-Step Y-Axis Scale Numbers (3k, 2k, 1k, 0) */}
         <View style={styles.yAxisColumn} pointerEvents="none">
-          <Text style={styles.yAxisLabel}>{topYAxisValue}</Text>
-          <Text style={styles.yAxisLabel}>{midYAxisValue}</Text>
-          <Text style={styles.yAxisLabel}>0</Text>
+          <Text style={styles.yAxisLabel}>{labelTop}</Text>
+          <Text style={styles.yAxisLabel}>{labelUpperMid}</Text>
+          <Text style={styles.yAxisLabel}>{labelLowerMid}</Text>
+          <Text style={styles.yAxisLabel}>{labelZero}</Text>
         </View>
 
-        {/* Bars Container */}
+        {/* Bars & 4 Horizontal Grid Lines */}
         <View style={styles.barsArea}>
-          {/* Subtle Horizontal Grid Guides */}
           <View style={styles.gridLinesOverlay} pointerEvents="none">
+            <View style={styles.gridLine} />
             <View style={styles.gridLine} />
             <View style={styles.gridLine} />
             <View style={styles.gridLine} />
@@ -81,39 +114,54 @@ export function SalesOverviewCard({
 
           <View style={styles.barsRow}>
             {weeklyBars.map((bar, idx) => {
-              const heightPct =
-                bar.amount > 0
-                  ? Math.max(18, Math.round((bar.amount / maxWeeklyAmount) * 100))
-                  : 12;
+              const rawRatio = bar.amount > 0 ? bar.amount / chartCeiling : 0;
+              const clampedRatio =
+                bar.amount > 0 ? Math.min(Math.max(rawRatio, 0.24), 1) : 0.14;
+              const barPixelHeight = Math.round(clampedRatio * 84);
+
+              const formattedCallout =
+                bar.amount >= 1000
+                  ? `₱${(bar.amount / 1000).toFixed(1)}k`
+                  : `₱${Math.round(bar.amount)}`;
+
+              const isHighlighted =
+                selectedBarIdx !== null ? selectedBarIdx === idx : bar.isToday;
 
               return (
-                <View key={`${bar.label}-${idx}`} style={styles.barColumn}>
-                  {/* Floating Tooltip Callout on Today's Bar */}
-                  {bar.isToday ? (
-                    <View style={styles.calloutWrapper}>
-                      <View style={styles.calloutPill}>
-                        <Text style={styles.calloutText} numberOfLines={1}>
-                          {bar.amount >= 1000
-                            ? `₱${(bar.amount / 1000).toFixed(1)}k`
-                            : `₱${Math.round(bar.amount)}`}
-                        </Text>
+                <Pressable
+                  key={`${bar.label}-${idx}`}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${bar.label} sales: ${formattedCallout}`}
+                  onPress={() =>
+                    setSelectedBarIdx((prev) => (prev === idx ? null : idx))
+                  }
+                  style={styles.barColumn}>
+                  {/* Bar + Directly Attached Floating Callout Bubble */}
+                  <View style={styles.barStackArea}>
+                    {isHighlighted ? (
+                      <View style={styles.calloutWrapper}>
+                        <View style={styles.calloutBubble}>
+                          <Text style={styles.calloutText} numberOfLines={1}>
+                            {formattedCallout}
+                          </Text>
+                        </View>
+                        <View style={styles.calloutPointer} />
                       </View>
-                      <View style={styles.calloutPointer} />
-                    </View>
-                  ) : (
-                    <View style={styles.calloutSpacer} />
-                  )}
+                    ) : null}
 
-                  {/* Vertical Bar Fill Track */}
-                  <View style={styles.barTrack}>
+                    {/* Vertical Bar with Mint-to-Emerald Gradient Layering */}
                     <View
                       style={[
                         styles.barFill,
-                        { height: `${heightPct}%` },
-                        bar.isToday && styles.barFillToday,
-                        bar.amount === 0 && styles.barFillZero,
+                        isHighlighted && styles.barFillToday,
+                        { height: barPixelHeight },
                       ]}>
-                      {bar.amount > 0 && <View style={styles.barGradientBottom} />}
+                      <View
+                        style={[
+                          styles.barGradientTop,
+                          isHighlighted && styles.barGradientTopToday,
+                        ]}
+                      />
                     </View>
                   </View>
 
@@ -121,182 +169,190 @@ export function SalesOverviewCard({
                   <Text
                     style={[
                       styles.dayLabel,
-                      bar.isToday && styles.dayLabelToday,
+                      isHighlighted && styles.dayLabelToday,
                     ]}
-                    maxFontSizeMultiplier={1.15}>
+                    numberOfLines={1}>
                     {bar.label}
                   </Text>
-                </View>
+                </Pressable>
               );
             })}
           </View>
         </View>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   sectionContainer: {
-    width: '100%',
-    paddingTop: Spacing.one,
-    paddingBottom: Spacing.two,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    paddingVertical: 13,
+    paddingHorizontal: Spacing.threeHalf,
+    borderWidth: 1.5,
+    borderColor: '#EDF4EE',
+    gap: 8,
+    ...Shadows.sm,
+  },
+  sectionContainerHovered: {
+    borderColor: '#000000',
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: Spacing.two,
+  },
+  titleCluster: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   title: {
     fontSize: 16.5,
-    fontWeight: Typography.weights.bold,
-    color: '#0F172A',
-    letterSpacing: -0.2,
+    fontWeight: Typography.weights.extraBold,
+    color: '#0A3D28',
+    letterSpacing: -0.3,
   },
   filterTrigger: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
+    gap: 4,
     paddingVertical: 3,
-    paddingHorizontal: 7,
-    borderRadius: 8,
-    backgroundColor: '#E5ECE7',
+    paddingHorizontal: 8,
+    borderRadius: 999,
   },
   filterTriggerPressed: {
-    opacity: 0.8,
+    opacity: 0.7,
   },
   filterText: {
-    fontSize: 12,
-    fontWeight: Typography.weights.semiBold,
-    color: '#475569',
+    fontSize: 13,
+    fontWeight: Typography.weights.medium,
+    color: '#1E293B',
   },
   filterChevron: {
-    fontSize: 11,
-    color: '#64748B',
-    marginTop: -2,
+    fontSize: 12,
+    color: '#334155',
+    marginTop: -3,
   },
   plotRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    height: 142,
+    height: 128,
     gap: 8,
   },
   yAxisColumn: {
-    width: 26,
-    height: 104,
+    width: 22,
+    height: 108,
     justifyContent: 'space-between',
     alignItems: 'flex-end',
-    paddingBottom: 22,
+    paddingBottom: 20,
   },
   yAxisLabel: {
-    fontSize: 10,
+    fontSize: 10.5,
     fontWeight: Typography.weights.medium,
-    color: '#94A3B8',
+    color: '#475569',
+    lineHeight: 13,
   },
   barsArea: {
     flex: 1,
-    height: 142,
+    height: 128,
     position: 'relative',
     justifyContent: 'flex-end',
   },
   gridLinesOverlay: {
     position: 'absolute',
-    top: 26,
+    top: 22,
     left: 0,
     right: 0,
-    bottom: 24,
+    bottom: 22,
     justifyContent: 'space-between',
   },
   gridLine: {
     height: 1,
     backgroundColor: '#E2E8F0',
-    opacity: 0.7,
+    opacity: 0.85,
   },
   barsRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     justifyContent: 'space-between',
-    height: 142,
+    height: 128,
     zIndex: 2,
   },
   barColumn: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'flex-end',
-    height: 142,
+    height: 128,
+  },
+  barStackArea: {
+    flex: 1,
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
   },
   calloutWrapper: {
     alignItems: 'center',
     marginBottom: 3,
-    zIndex: 5,
   },
-  calloutPill: {
-    backgroundColor: '#0F172A',
+  calloutBubble: {
+    backgroundColor: '#064E3B',
+    paddingHorizontal: 7,
     paddingVertical: 2.5,
-    paddingHorizontal: 6,
-    borderRadius: 6,
-    ...Shadows.sm,
+    borderRadius: 999,
   },
   calloutText: {
     color: '#FFFFFF',
     fontSize: 10,
-    fontWeight: Typography.weights.bold,
+    fontWeight: Typography.weights.extraBold,
   },
   calloutPointer: {
     width: 0,
     height: 0,
     borderLeftWidth: 4,
     borderRightWidth: 4,
-    borderTopWidth: 4,
+    borderTopWidth: 4.5,
     borderLeftColor: 'transparent',
     borderRightColor: 'transparent',
-    borderTopColor: '#0F172A',
-  },
-  calloutSpacer: {
-    height: 19,
-  },
-  barTrack: {
-    width: 22,
-    height: 94,
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    borderRadius: 7,
-    overflow: 'hidden',
+    borderTopColor: '#064E3B',
   },
   barFill: {
-    width: '100%',
-    backgroundColor: '#047857',
+    width: 24,
+    backgroundColor: '#0D9459',
     borderTopLeftRadius: 6,
     borderTopRightRadius: 6,
+    borderBottomLeftRadius: 3,
+    borderBottomRightRadius: 3,
     position: 'relative',
     overflow: 'hidden',
   },
   barFillToday: {
-    backgroundColor: '#059669',
+    backgroundColor: '#0B6B41',
   },
-  barFillZero: {
-    backgroundColor: '#E2E8F0',
-    opacity: 0.5,
-  },
-  barGradientBottom: {
+  barGradientTop: {
     position: 'absolute',
-    bottom: 0,
+    top: 0,
     left: 0,
     right: 0,
-    height: 14,
-    backgroundColor: '#34D399',
-    opacity: 0.35,
+    height: '58%',
+    backgroundColor: '#22C55E',
+    opacity: 0.72,
+    borderBottomLeftRadius: 10,
+    borderBottomRightRadius: 10,
+  },
+  barGradientTopToday: {
+    backgroundColor: '#15803D',
+    opacity: 0.78,
   },
   dayLabel: {
-    marginTop: 6,
-    fontSize: 10.5,
+    marginTop: 5,
+    fontSize: 11,
     fontWeight: Typography.weights.medium,
-    color: '#64748B',
+    color: '#334155',
   },
   dayLabelToday: {
-    color: '#064E3B',
+    color: '#0A3D28',
     fontWeight: Typography.weights.bold,
   },
 });
-
