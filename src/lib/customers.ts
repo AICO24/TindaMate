@@ -203,18 +203,12 @@ export async function fetchStoreCustomers(
 ): Promise<CustomerWithCredit[]> {
   const storeId = await getAuthenticatedStoreId();
 
-  // 1. Fetch customers
+  // 1. Fetch customers for the authenticated store
   let query = supabase
     .from('customers')
     .select('id, store_id, name, phone, notes, is_active, created_at, updated_at')
     .eq('store_id', storeId)
     .order('name', { ascending: true });
-
-  const cleanSearch = searchQuery?.trim() || '';
-  if (cleanSearch) {
-    // Search by name or phone
-    query = query.or(`name.ilike.%${cleanSearch}%,phone.ilike.%${cleanSearch}%`);
-  }
 
   if (filterTab === 'Active') {
     query = query.eq('is_active', true);
@@ -233,9 +227,21 @@ export async function fetchStoreCustomers(
     );
   }
 
-  const customers: Customer[] = (customerRows ?? []).map((row) =>
+  let customers: Customer[] = (customerRows ?? []).map((row) =>
     normalizeCustomerRow(row as Record<string, unknown>)
   );
+
+  // Safe search filter: sanitizes input and evaluates against store-scoped dataset in memory
+  // to prevent PostgREST `.or()` filter syntax injection (e.g., commas, parentheses, operators)
+  const cleanSearch = searchQuery?.trim().toLowerCase() || '';
+  if (cleanSearch) {
+    customers = customers.filter((c) => {
+      const nameMatch = c.name.toLowerCase().includes(cleanSearch);
+      const phoneMatch = c.phone ? c.phone.toLowerCase().includes(cleanSearch) : false;
+      const notesMatch = c.notes ? c.notes.toLowerCase().includes(cleanSearch) : false;
+      return nameMatch || phoneMatch || notesMatch;
+    });
+  }
 
   if (customers.length === 0) {
     return [];
@@ -746,8 +752,13 @@ export async function recordCustomerPayment(
 }
 
 /**
- * Consistency-guarded fallback when RPC function is not in schema cache.
- * Performs customer ownership verification, authoritative balance check, and immutable payment insertion.
+ * @deprecated [DEPRECATED FALLBACK - Batch 10A Review]
+ * Consistency-guarded client-side fallback used ONLY if the atomic `public.record_customer_payment`
+ * RPC (migration 20261027000000_batch8e_customer_payment_settlement.sql) is not yet deployed in Supabase.
+ *
+ * NOTE: This client-side fallback cannot acquire row-level `FOR UPDATE` database locks.
+ * It is retained solely for local/dev schema bootstrap compatibility and will be fully removed once
+ * Batch 8E is universally deployed.
  */
 async function recordCustomerPaymentFallback(params: {
   customerId: string;
