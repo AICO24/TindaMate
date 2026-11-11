@@ -131,7 +131,9 @@ export default function LoginScreen() {
       });
 
       if (error) {
-        console.warn('[Supabase SignIn Error]:', error.message);
+        if (__DEV__) {
+          console.warn('[Supabase SignIn Error]:', error.message);
+        }
         const friendlyMessage = mapAuthError(error.message);
         setAuthError(friendlyMessage);
         if (Platform.OS === 'web') {
