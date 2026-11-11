@@ -315,13 +315,6 @@ export async function fetchStoreExpenses(
     query = query.eq('category', categoryFilter);
   }
 
-  const cleanSearch = searchQuery?.trim() || '';
-  if (cleanSearch) {
-    query = query.or(
-      `title.ilike.%${cleanSearch}%,category.ilike.%${cleanSearch}%,notes.ilike.%${cleanSearch}%`
-    );
-  }
-
   const { data, error } = await query;
 
   if (error) {
@@ -333,9 +326,26 @@ export async function fetchStoreExpenses(
     );
   }
 
-  return (data ?? []).map((row) =>
+  let expenses: Expense[] = (data ?? []).map((row) =>
     normalizeExpenseRow(row as Record<string, unknown>)
   );
+
+  // Safe search filter: evaluates against store-scoped records in memory to prevent
+  // PostgREST `.or()` filter syntax injection (e.g. commas, parentheses, operators)
+  const cleanSearch = searchQuery?.trim().toLowerCase() || '';
+  if (cleanSearch) {
+    expenses = expenses.filter((item) => {
+      const titleMatch = item.title.toLowerCase().includes(cleanSearch);
+      const categoryMatch = item.category.toLowerCase().includes(cleanSearch);
+      const notesMatch = item.notes ? item.notes.toLowerCase().includes(cleanSearch) : false;
+      const amountMatch =
+        item.amount.toString().includes(cleanSearch) ||
+        item.amount.toFixed(2).includes(cleanSearch);
+      return titleMatch || categoryMatch || notesMatch || amountMatch;
+    });
+  }
+
+  return expenses;
 }
 
 /**
@@ -570,5 +580,188 @@ export async function fetchDashboardExpenseSummary(): Promise<DashboardExpenseSu
 
   return computeTodayExpenseSummary(normalizedRows, todayISO);
 }
+
+export interface PhilippineMonthRange {
+  /** 4-digit calendar year in Asia/Manila (e.g. 2026) */
+  year: number;
+  /** 1-based calendar month in Asia/Manila (1 to 12) */
+  month: number;
+  /** Start calendar date string in YYYY-MM-DD format (e.g. "2026-11-01") */
+  startDateDateOnly: string;
+  /** End calendar date string in YYYY-MM-DD format (e.g. "2026-11-30") */
+  endDateDateOnly: string;
+  /** ISO 8601 timestamp string representing midnight (00:00:00.000+08:00) in UTC */
+  startTimestampISO: string;
+  /** ISO 8601 timestamp string representing end of the month (23:59:59.999+08:00) in UTC */
+  endTimestampISO: string;
+}
+
+/**
+ * Returns the current calendar month boundaries strictly evaluated in the
+ * Philippine timezone (`Asia/Manila` / UTC+08:00, no DST):
+ * - `startDateDateOnly`: First day of month (YYYY-MM-01) for PostgreSQL `date` columns
+ * - `endDateDateOnly`: Last day of month (YYYY-MM-LD) for PostgreSQL `date` columns
+ * - `startTimestampISO`: 00:00:00.000+08:00 for PostgreSQL `timestamptz` columns
+ * - `endTimestampISO`: 23:59:59.999+08:00 for PostgreSQL `timestamptz` columns
+ */
+export function getCurrentPhilippineMonthRange(
+  referenceDate: Date = new Date()
+): PhilippineMonthRange {
+  let year: number;
+  let month: number;
+
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Manila',
+      year: 'numeric',
+      month: 'numeric',
+    }).formatToParts(referenceDate);
+
+    const yearPart = parts.find((p) => p.type === 'year')?.value;
+    const monthPart = parts.find((p) => p.type === 'month')?.value;
+
+    year = yearPart ? parseInt(yearPart, 10) : referenceDate.getFullYear();
+    month = monthPart ? parseInt(monthPart, 10) : referenceDate.getMonth() + 1;
+  } catch {
+    year = referenceDate.getFullYear();
+    month = referenceDate.getMonth() + 1;
+  }
+
+  // Safety fallback if parsing failed
+  if (!Number.isSafeInteger(year) || year < 2000 || year > 2100) {
+    year = referenceDate.getFullYear();
+  }
+  if (!Number.isSafeInteger(month) || month < 1 || month > 12) {
+    month = referenceDate.getMonth() + 1;
+  }
+
+  // Determine last day of the month (passing month index to Date.UTC with day 0)
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const mm = String(month).padStart(2, '0');
+  const ld = String(lastDay).padStart(2, '0');
+
+  const startDateDateOnly = `${year}-${mm}-01`;
+  const endDateDateOnly = `${year}-${mm}-${ld}`;
+
+  const startTimestampISO = new Date(
+    `${startDateDateOnly}T00:00:00.000+08:00`
+  ).toISOString();
+  const endTimestampISO = new Date(
+    `${endDateDateOnly}T23:59:59.999+08:00`
+  ).toISOString();
+
+  return {
+    year,
+    month,
+    startDateDateOnly,
+    endDateDateOnly,
+    startTimestampISO,
+    endTimestampISO,
+  };
+}
+
+/**
+ * Computes expense summary from a list of expenses within an inclusive date range,
+ * using safe integer centavos to avoid floating-point accumulation errors.
+ */
+export function computeExpenseSummaryFromList(
+  expenses: Pick<Expense, 'amount' | 'expense_date'>[],
+  startDate: string,
+  endDate: string
+): DashboardExpenseSummary {
+  let totalCentavos = 0;
+  let count = 0;
+
+  for (const item of expenses) {
+    const dateStr =
+      typeof item.expense_date === 'string'
+        ? item.expense_date.trim().slice(0, 10)
+        : '';
+    if (dateStr >= startDate && dateStr <= endDate) {
+      const rawAmount = Number(item.amount);
+      if (Number.isFinite(rawAmount) && rawAmount > 0) {
+        totalCentavos += Math.round(rawAmount * 100);
+        count += 1;
+      }
+    }
+  }
+
+  return {
+    totalExpenses: Number((totalCentavos / 100).toFixed(2)),
+    expenseCount: count,
+  };
+}
+
+/**
+ * Fetches the expense summary for the authenticated store within an inclusive
+ * date range (e.g., current calendar month):
+ * 1. Resolves store_id from the authenticated user session.
+ * 2. Queries `public.expenses` for records where `expense_date >= startDate` and `expense_date <= endDate`.
+ * 3. Handles pagination safely (chunks of 1,000 rows) to prevent silent truncation.
+ * 4. Calculates total amount and transaction count with integer-centavo monetary safety.
+ *
+ * Strictly scoped to `store_id = authenticated user ID` and protected by Supabase RLS.
+ */
+export async function fetchStoreExpenseSummaryForRange(
+  startDate: string,
+  endDate: string
+): Promise<DashboardExpenseSummary> {
+  const storeId = await getAuthenticatedStoreId();
+
+  const trimmedStart = startDate.trim();
+  const trimmedEnd = endDate.trim();
+
+  if (!trimmedStart || !trimmedEnd) {
+    throw new Error(
+      'Both start date and end date are required for expense range calculation.'
+    );
+  }
+
+  let totalCentavos = 0;
+  let count = 0;
+  const pageSize = 1000;
+  let offset = 0;
+  let hasMore = true;
+
+  while (hasMore) {
+    const { data, error } = await supabase
+      .from('expenses')
+      .select('amount')
+      .eq('store_id', storeId)
+      .gte('expense_date', trimmedStart)
+      .lte('expense_date', trimmedEnd)
+      .range(offset, offset + pageSize - 1);
+
+    if (error) {
+      throw new Error(
+        mapExpenseDatabaseError(
+          error,
+          'Could not load store expenses for the specified period.'
+        )
+      );
+    }
+
+    const rows = data ?? [];
+    for (const row of rows) {
+      const rawAmount = Number((row as Record<string, unknown>).amount ?? 0);
+      if (Number.isFinite(rawAmount) && rawAmount > 0) {
+        totalCentavos += Math.round(rawAmount * 100);
+        count += 1;
+      }
+    }
+
+    if (rows.length < pageSize) {
+      hasMore = false;
+    } else {
+      offset += pageSize;
+    }
+  }
+
+  return {
+    totalExpenses: Number((totalCentavos / 100).toFixed(2)),
+    expenseCount: count,
+  };
+}
+
 
 
