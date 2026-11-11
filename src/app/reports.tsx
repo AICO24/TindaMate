@@ -35,33 +35,30 @@ import {
   Typography,
 } from '@/constants/theme';
 import { fetchDashboardUtangSummary } from '@/lib/customers';
-import { fetchDashboardExpenseSummary } from '@/lib/expenses';
+import {
+  fetchStoreExpenseSummaryForRange,
+  getCurrentPhilippineMonthRange,
+} from '@/lib/expenses';
 import {
   computeStoreProductSummary,
   fetchStoreProducts,
   formatPesoCurrency,
 } from '@/lib/products';
 import { fetchStoreCOGSSummary } from '@/lib/profit';
-import { fetchStoreSales } from '@/lib/sales';
+import {
+  fetchStoreSales,
+  fetchStoreTopProductsForRange,
+} from '@/lib/sales';
 import { supabase } from '@/lib/supabase';
 import { DashboardUtangSummary } from '@/types/customer';
 import { DashboardExpenseSummary } from '@/types/expense';
 import { Product } from '@/types/product';
 import { COGSSummary } from '@/types/profit';
-import { Sale } from '@/types/sale';
+import { Sale, TopProductMetric } from '@/types/sale';
 
 type ReportTab = 'Sales' | 'Profit' | 'Inventory' | 'Utang';
 
 const REPORT_TABS: ReportTab[] = ['Sales', 'Profit', 'Inventory', 'Utang'];
-
-interface TopProductMetric {
-  id: string;
-  name: string;
-  imageUrl?: string | null;
-  revenue: number;
-  unitsSold: number;
-  sharePercent: number;
-}
 
 /**
  * TindaMate Reports & Analytics Screen (`/reports`) — Design 2.0
@@ -84,6 +81,7 @@ export default function ReportsScreen() {
     useState<DashboardUtangSummary | null>(null);
   const [expenseSummary, setExpenseSummary] =
     useState<DashboardExpenseSummary | null>(null);
+  const [topProducts, setTopProducts] = useState<TopProductMetric[]>([]);
 
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -102,20 +100,56 @@ export default function ReportsScreen() {
         return;
       }
 
-      const [salesData, productsData, cogsData, utangData, expenseData] =
-        await Promise.all([
-          fetchStoreSales(),
-          fetchStoreProducts(),
-          fetchStoreCOGSSummary().catch(() => null),
-          fetchDashboardUtangSummary().catch(() => null),
-          fetchDashboardExpenseSummary().catch(() => null),
-        ]);
+      const monthRange = getCurrentPhilippineMonthRange();
+
+      const [
+        salesData,
+        productsData,
+        cogsData,
+        utangData,
+        expenseData,
+        topProductsData,
+      ] = await Promise.all([
+        fetchStoreSales(),
+        fetchStoreProducts(),
+        fetchStoreCOGSSummary({
+          startDate: monthRange.startTimestampISO,
+          endDate: monthRange.endTimestampISO,
+        }),
+        fetchDashboardUtangSummary().catch(() => null),
+        fetchStoreExpenseSummaryForRange(
+          monthRange.startDateDateOnly,
+          monthRange.endDateDateOnly
+        ),
+        fetchStoreTopProductsForRange(
+          monthRange.startTimestampISO,
+          monthRange.endTimestampISO,
+          5
+        ),
+      ]);
+
+      // Enrich top products with real product image URLs
+      const productImageMap = new Map<string, string | null>();
+      productsData.forEach((p) => {
+        productImageMap.set(p.id, p.image_url);
+        productImageMap.set(p.name.toLowerCase(), p.image_url);
+      });
+
+      const enrichedTopProducts = topProductsData.map((item) => ({
+        ...item,
+        imageUrl:
+          item.imageUrl ||
+          productImageMap.get(item.id) ||
+          productImageMap.get(item.name.toLowerCase()) ||
+          null,
+      }));
 
       setSales(salesData);
       setProducts(productsData);
       setCogsSummary(cogsData);
       setUtangSummary(utangData);
       setExpenseSummary(expenseData);
+      setTopProducts(enrichedTopProducts);
     } catch (err: unknown) {
       const msg =
         err instanceof Error
@@ -171,10 +205,18 @@ export default function ReportsScreen() {
     [products]
   );
 
-  const grossProfit = cogsSummary?.grossProfit ?? 0;
+  const grossProfit = cogsSummary?.grossProfit ?? null;
   const totalCOGS = cogsSummary?.cogs ?? 0;
-  const totalExpenses = expenseSummary?.totalExpenses ?? 0;
-  const netStoreProfit = Number((grossProfit - totalExpenses).toFixed(2));
+  const totalExpenses = expenseSummary?.totalExpenses ?? null;
+
+  const netStoreProfit = useMemo<number | null>(() => {
+    if (grossProfit === null || totalExpenses === null) {
+      return null;
+    }
+    const grossCentavos = Math.round(grossProfit * 100);
+    const expenseCentavos = Math.round(totalExpenses * 100);
+    return Number(((grossCentavos - expenseCentavos) / 100).toFixed(2));
+  }, [grossProfit, totalExpenses]);
   const totalUtang = utangSummary?.totalOutstandingUtang ?? 0;
 
   // Compute 5-bar trend values from real sales
@@ -190,82 +232,16 @@ export default function ReportsScreen() {
     return buckets.map((v) => Math.max(0.24, Math.min(1, v / maxVal)));
   }, [sales]);
 
-  // Compute Top Products by revenue share from real sales
-  const topProducts = useMemo<TopProductMetric[]>(() => {
-    const productImageMap = new Map<string, string | null | undefined>();
-    products.forEach((p) => {
-      productImageMap.set(p.name.toLowerCase(), p.image_url);
-      productImageMap.set(p.id, p.image_url);
-    });
-
-    if (sales.length > 0) {
-      const map = new Map<
-        string,
-        { name: string; revenue: number; units: number; productId?: string }
-      >();
-
-      sales.forEach((s) => {
-        const key = s.product_id || s.product_name;
-        const prev = map.get(key) ?? {
-          name: s.product_name,
-          revenue: 0,
-          units: 0,
-          productId: s.product_id ?? undefined,
-        };
-        prev.revenue += Number(s.total_amount) || 0;
-        prev.units += Number(s.quantity) || 1;
-        map.set(key, prev);
-      });
-
-      const list = Array.from(map.entries())
-        .map(([key, val]) => ({
-          id: key,
-          name: val.name,
-          imageUrl:
-            (val.productId && productImageMap.get(val.productId)) ||
-            productImageMap.get(val.name.toLowerCase()) ||
-            null,
-          revenue: Number(val.revenue.toFixed(2)),
-          unitsSold: val.units,
-          sharePercent:
-            totalSalesAmount > 0
-              ? Math.max(
-                  1,
-                  Math.min(100, Math.round((val.revenue / totalSalesAmount) * 100))
-                )
-              : 0,
-        }))
-        .sort((a, b) => b.revenue - a.revenue)
-        .slice(0, 5);
-
-      return list;
-    }
-
-    // Fallback when store has products but 0 sales recorded yet: show top stocked products
-    const totalStock = products.reduce(
-      (acc, p) => acc + Math.max(0, p.stock_quantity),
-      0
-    );
-    return products.slice(0, 4).map((p) => ({
-      id: p.id,
-      name: p.name,
-      imageUrl: p.image_url,
-      revenue: Number((p.selling_price * p.stock_quantity).toFixed(2)),
-      unitsSold: p.stock_quantity,
-      sharePercent:
-        totalStock > 0
-          ? Math.max(5, Math.round((p.stock_quantity / totalStock) * 100))
-          : 25,
-    }));
-  }, [sales, products, totalSalesAmount]);
-
   // Dynamic Hero Metric based on active tab
   const heroMetric = useMemo(() => {
     if (selectedTab === 'Profit') {
       return {
-        amount: formatPesoCurrency(grossProfit),
+        amount: grossProfit !== null ? formatPesoCurrency(grossProfit) : '—',
         label: 'Gross Profit',
-        badge: `Net after expenses: ${formatPesoCurrency(netStoreProfit)}`,
+        badge:
+          netStoreProfit !== null
+            ? `Net after expenses: ${formatPesoCurrency(netStoreProfit)}`
+            : 'Net profit unavailable',
       };
     }
     if (selectedTab === 'Inventory') {
@@ -443,7 +419,7 @@ export default function ReportsScreen() {
 
                   {topProducts.length === 0 ? (
                     <Text style={styles.emptySubtext}>
-                      Add products and record sales to see your top performers.
+                      No product sales recorded for this period yet.
                     </Text>
                   ) : (
                     <View style={styles.topProductsList}>
@@ -523,12 +499,16 @@ export default function ReportsScreen() {
                   </View>
 
                   <View style={styles.breakdownTile}>
-                    <Text style={styles.breakdownLabel}>Month Expenses</Text>
+                    <Text style={styles.breakdownLabel}>This Month's Expenses</Text>
                     <Text style={styles.breakdownValue}>
-                      {formatPesoCurrency(totalExpenses)}
+                      {totalExpenses !== null
+                        ? formatPesoCurrency(totalExpenses)
+                        : '—'}
                     </Text>
                     <Text style={styles.breakdownCaption}>
-                      {expenseSummary?.expenseCount ?? 0} expense entries
+                      {expenseSummary
+                        ? `${expenseSummary.expenseCount} expense entries`
+                        : '—'}
                     </Text>
                   </View>
 
