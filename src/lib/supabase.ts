@@ -8,9 +8,7 @@ import { createClient } from '@supabase/supabase-js';
  * Reads public environment variables injected by Expo at build/runtime.
  * Uses the EXPO_PUBLIC_ prefix so Expo bundles them into the client application.
  */
-const rawUrl =
-  process.env.EXPO_PUBLIC_SUPABASE_URL ||
-  'https://dkzkajepfptysowwohrd.supabase.co';
+const rawUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
 
 // Sanitize URL: fix any accidental typos like trailing 'ww' or accidentally swapped 'ftp'
 const supabaseUrl = rawUrl
@@ -18,10 +16,11 @@ const supabaseUrl = rawUrl
   .replace(/\.coww$/i, '.co')
   .replace('dkzkajepftpysowwohrd', 'dkzkajepfptysowwohrd');
 
-const supabasePublishableKey =
+const supabasePublishableKey = (
   process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
   process.env.EXPO_PUBLIC_SUPABASE_KEY ||
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRremthamVwZnB0eXNvd3dvaHJkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIzOTY3MjQsImV4cCI6MjEwNzk3MjcyNH0.pqnlMGHQ9xaInzL1MvQOHH2H5Bxe_tJjXzj9LED91yA';
+  ''
+).trim();
 
 // Runtime validation: alert developer if required environment variables are missing
 if (!supabaseUrl) {
