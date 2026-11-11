@@ -62,6 +62,19 @@ export interface CartSummary {
 }
 
 /**
+ * Aggregated product performance metric used on the Reports screen.
+ * Tracks actual sold units, line revenue, and share of period sales.
+ */
+export interface TopProductMetric {
+  id: string;
+  name: string;
+  imageUrl?: string | null;
+  revenue: number;
+  unitsSold: number;
+  sharePercent: number;
+}
+
+/**
  * Normalized SaleItem domain entity returned to UI components.
  * Represents an individual product line item inside a sales transaction header.
  */
