@@ -19,6 +19,7 @@ import {
   SaleQuantityValidation,
   SaleTransactionDetails,
   TodaySalesSummary,
+  TopProductMetric,
 } from '@/types/sale';
 import {
   fetchStoreProductById,
@@ -691,12 +692,12 @@ export function mapSaleDatabaseError(error: unknown, fallback: string): string {
 }
 
 /**
- * Fallback consistency-guarded sale processor used only if the atomic
- * `public.record_product_sale` RPC has not yet been installed in Supabase.
+ * @deprecated [DEPRECATED FALLBACK - Batch 10A Review]
+ * Legacy client-side fallback used only if the legacy single-item `public.record_product_sale`
+ * RPC was not installed.
  *
- * Ensures:
- * - Sale is NEVER created without deducting stock.
- * - Stock is NEVER left deducted if creating the sale fails (compensating rollback).
+ * NOTE: Active POS operations use `recordCartSale` -> `public.record_cart_sale` (Batch 7+),
+ * which atomically handles multi-item line items, inventory locking, cost snapshotting, and utang.
  */
 async function recordProductSaleWithGuardedFallback(
   storeId: string,
@@ -825,13 +826,10 @@ async function recordProductSaleWithGuardedFallback(
 }
 
 /**
- * Confirms and records a completed product sale:
- * 1. Validates quantity > 0
- * 2. Verifies authenticated user/store session
- * 3. Re-fetches the product from Supabase to validate it still exists and belongs to the store
- * 4. Re-checks current stock to ensure sufficient stock remains
- * 5. Atomically creates the sale record (with historical `unit_price`) and deducts stock
- *    via `public.record_product_sale` (with safe rollback fallback if RPC is absent)
+ * @deprecated [DEPRECATED FUNCTION - Batch 10A Review]
+ * Legacy Batch 4 single-item sale processor. Retained for interface backwards compatibility.
+ * Current POS checkout in TindaMate exclusively uses `recordCartSale` (`public.record_cart_sale`),
+ * which snapshots line-item costs into `sale_items` and supports both cash and credit utang transactions.
  */
 export async function recordProductSale(
   productId: string,
@@ -1381,3 +1379,197 @@ export function groupSalesByDate(sales: Sale[]): DateGroupedSales[] {
     data: g.data,
   }));
 }
+
+/**
+ * Pure aggregation helper: computes ranked top products from an array of `SaleItem` rows:
+ * - Aggregates sold units and actual line revenue per product.
+ * - Multi-item carts are properly broken down per line item.
+ * - Computes percentage share of total qualifying revenue in integer centavos.
+ * - Ranks products by revenue descending (secondary sort by units sold, then name).
+ * - Never fabricates revenue from unsold inventory.
+ */
+export function computeTopProductsFromSaleItems(
+  items: Pick<
+    SaleItem,
+    'product_id' | 'product_name' | 'quantity' | 'subtotal' | 'unit_price'
+  >[],
+  limit: number = 5,
+  productImageMap?: Map<string, string | null>
+): TopProductMetric[] {
+  if (!items || items.length === 0) {
+    return [];
+  }
+
+  const map = new Map<
+    string,
+    {
+      productId: string;
+      name: string;
+      unitsSold: number;
+      revenueCentavos: number;
+    }
+  >();
+  let totalPeriodRevenueCentavos = 0;
+
+  for (const item of items) {
+    const rawQty = Number(item.quantity ?? 0);
+    const quantity =
+      Number.isFinite(rawQty) && rawQty > 0 ? Math.trunc(rawQty) : 0;
+    if (quantity <= 0) {
+      continue;
+    }
+
+    const subtotalRaw = Number(item.subtotal ?? 0);
+    const unitPriceRaw = Number(item.unit_price ?? 0);
+    const lineSubtotal =
+      Number.isFinite(subtotalRaw) && subtotalRaw > 0
+        ? subtotalRaw
+        : Number.isFinite(unitPriceRaw) && unitPriceRaw > 0
+          ? Number((unitPriceRaw * quantity).toFixed(2))
+          : 0;
+
+    const lineCentavos = Math.round(lineSubtotal * 100);
+    totalPeriodRevenueCentavos += lineCentavos;
+
+    const rawId =
+      typeof item.product_id === 'string' ? item.product_id.trim() : '';
+    const rawName =
+      typeof item.product_name === 'string' &&
+      item.product_name.trim().length > 0
+        ? item.product_name.trim()
+        : 'Store Product';
+
+    const key = rawId || rawName.toLowerCase();
+    const existing = map.get(key);
+
+    if (existing) {
+      existing.unitsSold += quantity;
+      existing.revenueCentavos += lineCentavos;
+    } else {
+      map.set(key, {
+        productId: rawId || key,
+        name: rawName,
+        unitsSold: quantity,
+        revenueCentavos: lineCentavos,
+      });
+    }
+  }
+
+  const ranked = Array.from(map.values())
+    .map((item) => {
+      const revenue = Number((item.revenueCentavos / 100).toFixed(2));
+      const sharePercent =
+        totalPeriodRevenueCentavos > 0
+          ? Math.max(
+              1,
+              Math.min(
+                100,
+                Math.round(
+                  (item.revenueCentavos / totalPeriodRevenueCentavos) * 100
+                )
+              )
+            )
+          : 0;
+
+      const imageUrl =
+        productImageMap?.get(item.productId) ||
+        productImageMap?.get(item.name.toLowerCase()) ||
+        null;
+
+      return {
+        id: item.productId,
+        name: item.name,
+        imageUrl,
+        revenue,
+        unitsSold: item.unitsSold,
+        sharePercent,
+      };
+    })
+    .sort((a, b) => {
+      if (b.revenue !== a.revenue) {
+        return b.revenue - a.revenue;
+      }
+      if (b.unitsSold !== a.unitsSold) {
+        return b.unitsSold - a.unitsSold;
+      }
+      return a.name.localeCompare(b.name);
+    })
+    .slice(0, limit);
+
+  return ranked;
+}
+
+/**
+ * Fetches store-scoped `public.sale_items` within an inclusive timestamp range,
+ * safely paginating through results and aggregating line items into ranked Top Products:
+ * 1. Enforces authenticated store ownership (`auth.uid() = store_id`).
+ * 2. Filters by `created_at` timestamp range (Asia/Manila boundaries).
+ * 3. Aggregates line-item quantities and historical revenues accurately.
+ * 4. Multi-item cart sales are properly distributed across their respective products.
+ * 5. Returns an empty array `[]` if no sales exist in the period (zero fabrication).
+ */
+export async function fetchStoreTopProductsForRange(
+  startDateISO: string,
+  endDateISO: string,
+  limit: number = 5,
+  productImageMap?: Map<string, string | null>
+): Promise<TopProductMetric[]> {
+  const storeId = await getAuthenticatedStoreId();
+
+  const trimmedStart = startDateISO.trim();
+  const trimmedEnd = endDateISO.trim();
+
+  if (!trimmedStart || !trimmedEnd) {
+    throw new Error(
+      'Both start date and end date are required for top products calculation.'
+    );
+  }
+
+  let offset = 0;
+  const pageSize = 1000;
+  let hasMore = true;
+  const allItems: Pick<
+    SaleItem,
+    'product_id' | 'product_name' | 'quantity' | 'subtotal' | 'unit_price'
+  >[] = [];
+
+  while (hasMore) {
+    const { data, error } = await supabase
+      .from('sale_items')
+      .select('product_id, product_name, quantity, subtotal, unit_price')
+      .eq('store_id', storeId)
+      .gte('created_at', trimmedStart)
+      .lte('created_at', trimmedEnd)
+      .range(offset, offset + pageSize - 1);
+
+    if (error) {
+      throw new Error(
+        mapSaleDatabaseError(
+          error,
+          'Could not load top products for the selected period.'
+        )
+      );
+    }
+
+    const rows = data ?? [];
+    for (const rawRow of rows) {
+      const row = rawRow as Record<string, unknown>;
+      allItems.push({
+        product_id: String(row.product_id ?? ''),
+        product_name: String(row.product_name ?? ''),
+        quantity: Number(row.quantity ?? 0),
+        subtotal: Number(row.subtotal ?? 0),
+        unit_price: Number(row.unit_price ?? 0),
+      });
+    }
+
+    if (rows.length < pageSize) {
+      hasMore = false;
+    } else {
+      offset += pageSize;
+    }
+  }
+
+  return computeTopProductsFromSaleItems(allItems, limit, productImageMap);
+}
+
