@@ -74,8 +74,13 @@ export default function MoreScreen() {
   >(null);
 
   const loadAccountInfo = useCallback(async () => {
-    const { data } = await supabase.auth.getSession();
-    const sessionUser = data?.session?.user ?? null;
+    const { data, error } = await supabase.auth.getSession();
+    if (error || !data?.session) {
+      router.replace('/');
+      return;
+    }
+
+    const sessionUser = data.session.user;
     setUser(sessionUser);
 
     if (sessionUser) {
