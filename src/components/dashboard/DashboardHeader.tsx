@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { BellNotificationIcon } from './DashboardNavIcons';
 import {
@@ -9,6 +9,8 @@ import {
   Typography,
 } from '@/constants/theme';
 
+const STORE_EMBLEM = require('@/assets/images/tindamate-emblem-clean.png');
+
 interface DashboardHeaderProps {
   userEmail?: string;
   onProfilePress?: () => void;
@@ -17,13 +19,10 @@ interface DashboardHeaderProps {
 }
 
 /**
- * MiniHeaderStoreIcon (Code-Driven 3D Storefront Emblem for Header)
+ * MiniHeaderStoreIcon
  *
- * Matches the charming orange-and-white striped storefront icon on the top-left
- * of the target Dashboard reference:
- * - 5 alternating orange & white awning stripes with scalloped bottom edge
- * - Cream store facade with two mint windows and a dark brown center door
- * - Little green bushes on both sides and warm ground base
+ * Renders the improved official TindaMate Storefront Emblem on the top-left
+ * of the Dashboard header.
  */
 function MiniHeaderStoreIcon() {
   return (
@@ -31,33 +30,12 @@ function MiniHeaderStoreIcon() {
       style={styles.storeIconWrap}
       accessible={false}
       importantForAccessibility="no-hide-descendants">
-      {/* Side Mini Bushes */}
-      <View style={styles.miniBushLeft} />
-      <View style={styles.miniBushRight} />
-
-      {/* Roof Ridge */}
-      <View style={styles.miniRoofRidge} />
-
-      {/* 5-Stripe Orange & White Awning */}
-      <View style={styles.miniAwningRow}>
-        <View style={[styles.miniStripe, styles.miniStripeOrange]} />
-        <View style={[styles.miniStripe, styles.miniStripeWhite]} />
-        <View style={[styles.miniStripe, styles.miniStripeOrange]} />
-        <View style={[styles.miniStripe, styles.miniStripeWhite]} />
-        <View style={[styles.miniStripe, styles.miniStripeOrange]} />
-      </View>
-
-      {/* Storefront Facade */}
-      <View style={styles.miniFacade}>
-        <View style={styles.miniWindow} />
-        <View style={styles.miniDoor}>
-          <View style={styles.miniDoorKnob} />
-        </View>
-        <View style={styles.miniWindow} />
-      </View>
-
-      {/* Base Step */}
-      <View style={styles.miniBaseStep} />
+      <Image
+        source={STORE_EMBLEM}
+        style={styles.storeEmblemImage}
+        resizeMode="contain"
+        accessibilityLabel="TindaMate Storefront Emblem"
+      />
     </View>
   );
 }
@@ -134,106 +112,16 @@ const styles = StyleSheet.create({
     gap: 11,
     maxWidth: 275,
   },
-  // Mini 3D Storefront Icon Styles
+  // Official Improved Storefront Emblem Styles
   storeIconWrap: {
-    width: 48,
-    height: 42,
+    width: 52,
+    height: 45,
     alignItems: 'center',
-    justifyContent: 'flex-end',
-    position: 'relative',
-    paddingBottom: 2,
-  },
-  miniBushLeft: {
-    position: 'absolute',
-    left: 1,
-    bottom: 3,
-    width: 11,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#22C55E',
-    borderWidth: 1,
-    borderColor: '#15803D',
-  },
-  miniBushRight: {
-    position: 'absolute',
-    right: 1,
-    bottom: 3,
-    width: 11,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#22C55E',
-    borderWidth: 1,
-    borderColor: '#15803D',
-  },
-  miniRoofRidge: {
-    width: 34,
-    height: 4,
-    borderTopLeftRadius: 3,
-    borderTopRightRadius: 3,
-    backgroundColor: '#EA580C',
-  },
-  miniAwningRow: {
-    flexDirection: 'row',
-    width: 40,
-    height: 12,
-    borderTopLeftRadius: 3,
-    borderTopRightRadius: 3,
-    overflow: 'hidden',
-  },
-  miniStripe: {
-    flex: 1,
-    height: '100%',
-    borderBottomLeftRadius: 4,
-    borderBottomRightRadius: 4,
-  },
-  miniStripeOrange: {
-    backgroundColor: '#F97316',
-  },
-  miniStripeWhite: {
-    backgroundColor: '#FFFBEB',
-  },
-  miniFacade: {
-    width: 34,
-    height: 18,
-    backgroundColor: '#FDE68A',
-    borderLeftWidth: 1,
-    borderRightWidth: 1,
-    borderColor: '#D97706',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-evenly',
-    paddingHorizontal: 2,
-  },
-  miniWindow: {
-    width: 7,
-    height: 8,
-    borderRadius: 1.5,
-    backgroundColor: '#14B8A6',
-    borderWidth: 1,
-    borderColor: '#92400E',
-  },
-  miniDoor: {
-    width: 8,
-    height: 14,
-    borderTopLeftRadius: 2,
-    borderTopRightRadius: 2,
-    backgroundColor: '#1E3A2F',
-    alignSelf: 'flex-end',
     justifyContent: 'center',
-    alignItems: 'flex-end',
-    paddingRight: 1.5,
   },
-  miniDoorKnob: {
-    width: 2,
-    height: 2,
-    borderRadius: 1,
-    backgroundColor: '#FBBF24',
-  },
-  miniBaseStep: {
-    width: 42,
-    height: 3.5,
-    borderRadius: 2,
-    backgroundColor: '#D97706',
+  storeEmblemImage: {
+    width: 52,
+    height: 45,
   },
   titleCol: {
     gap: 1,
