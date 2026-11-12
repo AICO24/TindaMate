@@ -35,6 +35,7 @@ import {
   Typography,
 } from '@/constants/theme';
 import { fetchDashboardUtangSummary } from '@/lib/customers';
+import { computeSalesBuckets } from '@/lib/chartBuckets';
 import {
   fetchStoreExpenseSummaryForRange,
   getReportingPeriodRange,
@@ -254,18 +255,28 @@ export default function ReportsScreen() {
   }, [grossProfit, totalExpenses]);
   const totalUtang = utangSummary?.totalOutstandingUtang ?? 0;
 
-  // Compute 5-bar trend values from real sales
+  const periodRange = useMemo(
+    () => getReportingPeriodRange(selectedPeriod),
+    [selectedPeriod]
+  );
+
+  // Compute period-aligned, PHT-aware chronological sales buckets
   const chartBars = useMemo(() => {
-    if (sales.length === 0) {
-      return [0.3, 0.45, 0.6, 0.78, 0.95];
-    }
-    const buckets = [0, 0, 0, 0, 0];
-    sales.forEach((sale, idx) => {
-      buckets[4 - (idx % 5)] += Number(sale.total_amount) || 0;
-    });
-    const maxVal = Math.max(...buckets, 1);
-    return buckets.map((v) => Math.max(0.24, Math.min(1, v / maxVal)));
-  }, [sales]);
+    return computeSalesBuckets(
+      sales,
+      selectedPeriod,
+      {
+        start: periodRange.startTimestampISO,
+        end: periodRange.endTimestampISO,
+      },
+      new Date()
+    );
+  }, [
+    sales,
+    selectedPeriod,
+    periodRange.startTimestampISO,
+    periodRange.endTimestampISO,
+  ]);
 
   // Dynamic Hero Metric based on active tab
   const periodLabel = useMemo(() => {
@@ -332,6 +343,17 @@ export default function ReportsScreen() {
     totalSalesAmount,
     sales.length,
   ]);
+
+  const isChartEmpty = chartBars.every((b) => b.amount === 0);
+  const maxBucketAmount = Math.max(...chartBars.map((b) => b.amount), 0);
+  const getBarHeight = (amount: number) =>
+    amount > 0 && maxBucketAmount > 0
+      ? Math.max(6, Math.round((amount / maxBucketAmount) * 76))
+      : 2; // zero baseline indicator, 2px
+
+  const barCount = chartBars.length;
+  const barWidth = barCount >= 7 ? 10 : barCount === 6 ? 11 : 14;
+  const barGap = barCount >= 7 ? 5 : barCount === 6 ? 6 : 8;
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
@@ -464,23 +486,55 @@ export default function ReportsScreen() {
                     </View>
                   </View>
 
-                  {/* 5-Bar Green Vertical Chart */}
-                  <View style={styles.barChartWrap}>
-                    {chartBars.map((ratio, idx) => (
-                      <View
-                        key={idx}
-                        style={[
-                          styles.verticalBar,
-                          {
-                            height: Math.round(ratio * 76),
-                            backgroundColor:
-                              idx === chartBars.length - 1
-                                ? Colors.primaryDark
-                                : Colors.primary,
-                          },
-                        ]}
-                      />
-                    ))}
+                  {/* Period-Aware Chronological Sales Trend Chart */}
+                  <View style={styles.chartCol}>
+                    <Text style={styles.chartSubtitle} numberOfLines={1}>
+                      Sales Trend
+                    </Text>
+                    <View style={[styles.barChartWrap, { gap: barGap }]}>
+                      {chartBars.map((bucket, idx) => {
+                        const barHeight = getBarHeight(bucket.amount);
+                        const isLastBar = idx === chartBars.length - 1;
+                        return (
+                          <View
+                            key={`${bucket.label}-${idx}`}
+                            style={styles.barItemCol}>
+                            <View style={styles.barStage}>
+                              <View
+                                style={[
+                                  styles.verticalBar,
+                                  {
+                                    width: barWidth,
+                                    height: barHeight,
+                                    backgroundColor: isLastBar
+                                      ? Colors.primaryDark
+                                      : Colors.primary,
+                                  },
+                                ]}
+                              />
+                            </View>
+                            <Text
+                              style={styles.barLabel}
+                              numberOfLines={1}
+                              adjustsFontSizeToFit
+                              minimumFontScale={0.75}>
+                              {bucket.label}
+                            </Text>
+                          </View>
+                        );
+                      })}
+                    </View>
+                    <View style={styles.captionSlot}>
+                      {isChartEmpty && (
+                        <Text
+                          style={styles.emptyChartCaption}
+                          numberOfLines={1}
+                          adjustsFontSizeToFit
+                          minimumFontScale={0.75}>
+                          No sales in this period
+                        </Text>
+                      )}
+                    </View>
                   </View>
                 </View>
 
@@ -776,16 +830,53 @@ const styles = StyleSheet.create({
     fontWeight: Typography.weights.extraBold,
     color: Colors.primaryDark,
   },
+  chartCol: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chartSubtitle: {
+    fontSize: Typography.sizes.xs,
+    fontWeight: Typography.weights.semiBold,
+    color: Colors.textSecondary,
+    marginBottom: Spacing.xs,
+    textAlign: 'center',
+  },
   barChartWrap: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    gap: 8,
-    height: 82,
-    paddingHorizontal: 6,
+    justifyContent: 'center',
+    height: 94,
+    paddingHorizontal: 2,
+  },
+  barItemCol: {
+    alignItems: 'center',
+  },
+  barStage: {
+    height: 76,
+    justifyContent: 'flex-end',
+    alignItems: 'center',
   },
   verticalBar: {
-    width: 14,
     borderRadius: 6,
+  },
+  barLabel: {
+    fontSize: 10,
+    fontWeight: Typography.weights.bold,
+    color: Colors.textSecondary,
+    marginTop: Spacing.xs,
+    textAlign: 'center',
+  },
+  captionSlot: {
+    height: 14,
+    marginTop: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyChartCaption: {
+    fontSize: 10,
+    fontWeight: Typography.weights.medium,
+    color: Colors.textSecondary,
+    textAlign: 'center',
   },
   // Top Products Section
   topProductsCard: {
