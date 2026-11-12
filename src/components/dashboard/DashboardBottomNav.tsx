@@ -1,12 +1,7 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from 'react-native-reanimated';
 
 import {
   NavCustomersIcon,
@@ -16,7 +11,6 @@ import {
   NavProductsIcon,
 } from './DashboardNavIcons';
 import {
-  BorderRadius,
   Colors,
   Shadows,
   Spacing,
@@ -60,9 +54,12 @@ export function resolveActiveNavTab(pathname: string): NavTab {
 }
 
 /**
- * Individual Animated Tab Item (Material 3 / Modern iOS Spring Pill & Icon Bounce)
+ * Individual Clean Nav Tab Button
+ * Style: Clean Rounded Floating Pill Navbar (Matching Image Option #3 Reels Squircle)
+ * - Zero hover spring/reanimated bounce animations for smooth, instant feel
+ * - Active state renders an attractive rounded squircle badge behind the active icon
  */
-function AnimatedNavTabButton({
+function NavTabButton({
   tab,
   isActive,
   onPress,
@@ -71,41 +68,7 @@ function AnimatedNavTabButton({
   isActive: boolean;
   onPress: () => void;
 }) {
-  const [isHovered, setIsHovered] = useState(false);
-  const iconScale = useSharedValue(1);
-  const iconTranslateY = useSharedValue(0);
-
-  const handleHoverIn = () => {
-    setIsHovered(true);
-    iconScale.set(withSpring(1.14, { damping: 14, stiffness: 240 }));
-    iconTranslateY.set(withSpring(-2.5, { damping: 14, stiffness: 240 }));
-  };
-
-  const handleHoverOut = () => {
-    setIsHovered(false);
-    iconScale.set(withSpring(1, { damping: 15, stiffness: 220 }));
-    iconTranslateY.set(withSpring(0, { damping: 15, stiffness: 220 }));
-  };
-
-  const handlePressIn = () => {
-    iconScale.set(withSpring(0.92, { damping: 15, stiffness: 260 }));
-  };
-
-  const handlePressOut = () => {
-    iconScale.set(
-      withSpring(isHovered ? 1.14 : 1, { damping: 14, stiffness: 240 })
-    );
-  };
-
-  const animatedIconStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateY: iconTranslateY.get() },
-      { scale: iconScale.get() },
-    ],
-  }));
-
-  const isHighlighted = isActive || isHovered;
-  const iconColor = isHighlighted ? '#15803D' : Colors.textMuted;
+  const iconColor = isActive ? '#FFFFFF' : '#475569';
 
   return (
     <Pressable
@@ -114,57 +77,43 @@ function AnimatedNavTabButton({
       accessibilityLabel={`${tab.label} tab${isActive ? ', selected' : ''}`}
       accessibilityHint={`Navigates to ${tab.label} screen`}
       onPress={onPress}
-      onHoverIn={handleHoverIn}
-      onHoverOut={handleHoverOut}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
       hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
-      style={styles.tabItem}>
-      <Animated.View
+      style={({ pressed }) => [
+        styles.tabItem,
+        pressed && styles.tabItemPressed,
+      ]}>
+      <View
         style={[
-          styles.iconWrapper,
-          isActive && styles.iconWrapperActive,
-          isHovered && !isActive && styles.iconWrapperHovered,
-          animatedIconStyle,
+          styles.iconSquircle,
+          isActive && styles.iconSquircleActive,
         ]}
         accessible={false}
         importantForAccessibility="no-hide-descendants">
         {tab.renderIcon(iconColor)}
-      </Animated.View>
+      </View>
 
       <Text
         style={[
           styles.tabLabel,
           isActive && styles.activeTabLabel,
-          isHovered && !isActive && styles.hoveredTabLabel,
         ]}
         numberOfLines={1}
         maxFontSizeMultiplier={1.2}>
         {tab.label}
       </Text>
-
-      {/* Active / Hover Horizontal Capsule Pill Indicator */}
-      <View
-        style={[
-          styles.indicatorBarBase,
-          isActive && styles.activeIndicatorBar,
-          isActive && isHovered && styles.activeIndicatorBarExpanded,
-          !isActive && isHovered && styles.hoverPreviewIndicatorBar,
-        ]}
-        importantForAccessibility="no"
-      />
     </Pressable>
   );
 }
 
 /**
- * DashboardBottomNav (Clean Rounded Navbar + Spring Micro-Interactions)
+ * DashboardBottomNav (Floating Rounded Capsule Navbar)
  *
- * Distinct 5-destination bottom navigation bar:
+ * Modeled after the minimalist floating pill dock:
+ * - Floating rounded capsule geometry (`borderRadius: 999`) with subtle drop shadow
+ * - No mouse hover jumps or bounce animations
  * - Left side: Home (1), Products (2)
- * - Center: Prominent floating circular TindaMate New Sale / POS CTA (3) rising above the bar
- * - Right side: Customers & Utang (4), More Hub (5)
- * - Zero stray background wave lines behind corners
+ * - Center: Floating circular POS action button
+ * - Right side: Customers (4), More (5)
  */
 export function DashboardBottomNav({
   activeTab,
@@ -175,51 +124,18 @@ export function DashboardBottomNav({
   const rawTab = activeTab ?? resolveActiveNavTab(pathname);
   const currentTab: NavTab = rawTab === 'utang' ? 'customers' : rawTab;
 
-  const [isPosHovered, setIsPosHovered] = useState(false);
-  const posScale = useSharedValue(1);
-  const posTranslateY = useSharedValue(0);
-
-  const handlePosHoverIn = () => {
-    setIsPosHovered(true);
-    posScale.set(withSpring(1.07, { damping: 14, stiffness: 230 }));
-    posTranslateY.set(withSpring(-3, { damping: 14, stiffness: 230 }));
-  };
-
-  const handlePosHoverOut = () => {
-    setIsPosHovered(false);
-    posScale.set(withSpring(1, { damping: 15, stiffness: 220 }));
-    posTranslateY.set(withSpring(0, { damping: 15, stiffness: 220 }));
-  };
-
-  const handlePosPressIn = () => {
-    posScale.set(withSpring(0.92, { damping: 15, stiffness: 260 }));
-  };
-
-  const handlePosPressOut = () => {
-    posScale.set(
-      withSpring(isPosHovered ? 1.07 : 1, { damping: 14, stiffness: 230 })
-    );
-  };
-
-  const animatedPosStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateY: posTranslateY.get() },
-      { scale: posScale.get() },
-    ],
-  }));
-
   const bottomInsetPadding = insets.bottom > 0 ? insets.bottom : Spacing.two;
 
   const leftTabs: TabConfig[] = [
     {
       key: 'home',
       label: 'Home',
-      renderIcon: (color) => <NavHomeIcon color={color} />,
+      renderIcon: (color) => <NavHomeIcon color={color} size={22} />,
     },
     {
       key: 'products',
       label: 'Products',
-      renderIcon: (color) => <NavProductsIcon color={color} />,
+      renderIcon: (color) => <NavProductsIcon color={color} size={22} />,
     },
   ];
 
@@ -227,26 +143,24 @@ export function DashboardBottomNav({
     {
       key: 'customers',
       label: 'Customers',
-      renderIcon: (color) => <NavCustomersIcon color={color} />,
+      renderIcon: (color) => <NavCustomersIcon color={color} size={22} />,
     },
     {
       key: 'more',
       label: 'More',
-      renderIcon: (color) => <NavMoreIcon color={color} />,
+      renderIcon: (color) => <NavMoreIcon color={color} size={22} />,
     },
   ];
 
   const isPosActive = currentTab === 'sales';
 
   return (
-    <View style={styles.outerWrapper}>
-      <View
-        style={[styles.navBar, { paddingBottom: bottomInsetPadding }]}
-        accessibilityRole="tablist">
+    <View style={[styles.outerWrapper, { paddingBottom: bottomInsetPadding }]}>
+      <View style={styles.floatingCapsuleDock} accessibilityRole="tablist">
         {/* Left Side: Home & Products */}
         <View style={styles.sideGroup}>
           {leftTabs.map((tab) => (
-            <AnimatedNavTabButton
+            <NavTabButton
               key={tab.key}
               tab={tab}
               isActive={currentTab === tab.key}
@@ -255,39 +169,27 @@ export function DashboardBottomNav({
           ))}
         </View>
 
-        {/* Center Slot Spacer + Floating Action Button (New Sale / POS) */}
+        {/* Center Slot Spacer + Center Action Button (New Sale / POS) */}
         <View style={styles.centerSlot}>
-          <Animated.View style={[styles.floatingCradle, animatedPosStyle]}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="New Sale POS Quick Action"
-              accessibilityHint="Opens the Point of Sale screen to record a new sale"
-              onPress={() => onTabPress('sales')}
-              onHoverIn={handlePosHoverIn}
-              onHoverOut={handlePosHoverOut}
-              onPressIn={handlePosPressIn}
-              onPressOut={handlePosPressOut}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              style={[
-                styles.floatingButton,
-                isPosActive && styles.floatingButtonActive,
-                isPosHovered && styles.floatingButtonHovered,
-              ]}>
-              <View
-                style={[
-                  styles.floatingInnerRing,
-                  isPosHovered && styles.floatingInnerRingHovered,
-                ]}>
-                <NavFloatingCenterIcon color={Colors.textInverse} size={28} />
-              </View>
-            </Pressable>
-          </Animated.View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="New Sale POS Quick Action"
+            accessibilityHint="Opens the Point of Sale screen to record a new sale"
+            onPress={() => onTabPress('sales')}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            style={({ pressed }) => [
+              styles.centerButton,
+              isPosActive && styles.centerButtonActive,
+              pressed && styles.centerButtonPressed,
+            ]}>
+            <NavFloatingCenterIcon color="#FFFFFF" size={24} />
+          </Pressable>
         </View>
 
         {/* Right Side: Customers & More */}
         <View style={styles.sideGroup}>
           {rightTabs.map((tab) => (
-            <AnimatedNavTabButton
+            <NavTabButton
               key={tab.key}
               tab={tab}
               isActive={currentTab === tab.key}
@@ -302,20 +204,31 @@ export function DashboardBottomNav({
 
 const styles = StyleSheet.create({
   outerWrapper: {
-    backgroundColor: Colors.backgroundWarm,
+    paddingHorizontal: Spacing.three,
+    paddingTop: Spacing.one,
+    backgroundColor: 'transparent',
     position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  navBar: {
+  floatingCapsuleDock: {
+    width: '100%',
+    maxWidth: 440,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: Colors.surface,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    paddingTop: Spacing.two,
-    paddingHorizontal: Spacing.two,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 999,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 8,
     zIndex: 10,
-    ...Shadows.bottomNav,
   },
   sideGroup: {
     flex: 1,
@@ -324,101 +237,61 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
   },
   centerSlot: {
-    width: 76,
+    width: 58,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  floatingCradle: {
-    marginTop: -28,
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    backgroundColor: Colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...Shadows.xs,
-  },
-  floatingButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: Colors.primaryDark,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...Shadows.floatingCenter,
-  },
-  floatingButtonActive: {
-    backgroundColor: Colors.primary,
-    borderWidth: 2,
-    borderColor: '#A7F3D0',
-  },
-  floatingButtonHovered: {
-    backgroundColor: '#0B6B41',
-    borderWidth: 2,
-    borderColor: '#6EE7B7',
-  },
-  floatingInnerRing: {
+  centerButton: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.16)',
+    backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: Colors.primaryDark,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 4,
   },
-  floatingInnerRingHovered: {
-    borderColor: 'rgba(167, 243, 208, 0.5)',
+  centerButtonActive: {
+    backgroundColor: Colors.primaryDark,
+    borderWidth: 2,
+    borderColor: '#A7F3D0',
+  },
+  centerButtonPressed: {
+    opacity: 0.88,
+    transform: [{ scale: 0.95 }],
   },
   tabItem: {
     alignItems: 'center',
     justifyContent: 'center',
     flex: 1,
-    gap: 2,
-    minHeight: 48,
+    paddingVertical: 2,
   },
-  iconWrapper: {
-    width: 44,
-    height: 28,
-    borderRadius: BorderRadius.full,
+  tabItemPressed: {
+    opacity: 0.75,
+  },
+  iconSquircle: {
+    width: 42,
+    height: 32,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: 'transparent',
   },
-  iconWrapperActive: {
-    backgroundColor: '#ECFDF5',
-  },
-  iconWrapperHovered: {
-    backgroundColor: 'rgba(22, 163, 74, 0.09)',
+  iconSquircleActive: {
+    backgroundColor: Colors.primary,
   },
   tabLabel: {
-    fontSize: Typography.sizes.caption,
-    fontWeight: Typography.weights.semiBold,
-    color: Colors.textMuted,
+    fontSize: 11,
+    fontWeight: Typography.weights.medium,
+    color: '#64748B',
+    marginTop: 2,
+    letterSpacing: 0.1,
   },
   activeTabLabel: {
-    color: '#0A5234',
-    fontWeight: Typography.weights.extraBold,
-  },
-  hoveredTabLabel: {
-    color: '#15803D',
+    color: Colors.primaryDark,
     fontWeight: Typography.weights.bold,
-  },
-  indicatorBarBase: {
-    width: 0,
-    height: 3,
-    borderRadius: 999,
-    backgroundColor: 'transparent',
-    marginTop: 1,
-  },
-  activeIndicatorBar: {
-    width: 28,
-    backgroundColor: '#15803D',
-  },
-  activeIndicatorBarExpanded: {
-    width: 36,
-    backgroundColor: '#16A34A',
-  },
-  hoverPreviewIndicatorBar: {
-    width: 16,
-    backgroundColor: '#86EFAC',
   },
 });
