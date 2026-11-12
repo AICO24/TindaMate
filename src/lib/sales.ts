@@ -26,6 +26,7 @@ import {
   getAuthenticatedStoreId,
   getProductStockStatus,
 } from '@/lib/products';
+import { getReportingPeriodRange } from '@/lib/expenses';
 import { supabase } from '@/lib/supabase';
 
 /**
@@ -1284,26 +1285,25 @@ export async function fetchDashboardSalesData(): Promise<DashboardSalesData> {
     normalizeSaleRow(row as Record<string, unknown>)
   );
 
-  // 2. Fetch sales from start of today in local time
-  const now = new Date();
-  const startOfToday = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate(),
-    0,
-    0,
-    0,
-    0
-  );
+  // 2. Fetch sales for today in Philippine Standard Time (Asia/Manila / UTC+08:00)
+  const todayRange = getReportingPeriodRange('today');
 
-  const { data: todayRows, error: todayError } = await supabase
+  let todayQuery = supabase
     .from('sales')
     .select(
       'id, store_id, product_id, product_name, unit, quantity, unit_price, total_amount, item_count, idempotency_key, payment_method, customer_id, customer_name, created_at'
     )
     .eq('store_id', storeId)
-    .gte('created_at', startOfToday.toISOString())
     .order('created_at', { ascending: false });
+
+  if (todayRange.startTimestampISO) {
+    todayQuery = todayQuery.gte('created_at', todayRange.startTimestampISO);
+  }
+  if (todayRange.endTimestampISO) {
+    todayQuery = todayQuery.lt('created_at', todayRange.endTimestampISO);
+  }
+
+  const { data: todayRows, error: todayError } = await todayQuery;
 
   if (todayError) {
     throw new Error(
