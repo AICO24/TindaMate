@@ -53,3 +53,23 @@ export interface COGSFilterParams {
   endDate?: string | Date | null;
 }
 
+/**
+ * Supported date filtering horizons on the Reports screen.
+ */
+export type ReportPeriod = 'today' | 'week' | 'month' | 'all';
+
+/**
+ * Normalized date boundary payload for a reporting period in Asia/Manila:
+ * - date-only boundaries for PostgreSQL `date` columns (inclusive)
+ * - timestamp ISO strings for PostgreSQL `timestamptz` columns (start-inclusive, end-exclusive)
+ * - null boundaries for All Time
+ */
+export interface ReportingPeriodRange {
+  period: ReportPeriod;
+  startDateDateOnly: string | null;
+  endDateDateOnly: string | null;
+  startTimestampISO: string | null;
+  endTimestampISO: string | null;
+}
+
+

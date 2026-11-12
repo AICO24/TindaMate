@@ -37,7 +37,7 @@ import {
 import { fetchDashboardUtangSummary } from '@/lib/customers';
 import {
   fetchStoreExpenseSummaryForRange,
-  getCurrentPhilippineMonthRange,
+  getReportingPeriodRange,
 } from '@/lib/expenses';
 import {
   computeStoreProductSummary,
@@ -53,12 +53,19 @@ import { supabase } from '@/lib/supabase';
 import { DashboardUtangSummary } from '@/types/customer';
 import { DashboardExpenseSummary } from '@/types/expense';
 import { Product } from '@/types/product';
-import { COGSSummary } from '@/types/profit';
+import { COGSSummary, ReportPeriod } from '@/types/profit';
 import { Sale, TopProductMetric } from '@/types/sale';
 
 type ReportTab = 'Sales' | 'Profit' | 'Inventory' | 'Utang';
 
 const REPORT_TABS: ReportTab[] = ['Sales', 'Profit', 'Inventory', 'Utang'];
+
+const REPORT_PERIODS: { key: ReportPeriod; label: string }[] = [
+  { key: 'today', label: 'Today' },
+  { key: 'week', label: 'This Week' },
+  { key: 'month', label: 'This Month' },
+  { key: 'all', label: 'All Time' },
+];
 
 /**
  * TindaMate Reports & Analytics Screen (`/reports`) — Design 2.0
@@ -73,6 +80,7 @@ export default function ReportsScreen() {
   const pathname = usePathname();
   const activeNavTab = resolveActiveNavTab(pathname);
 
+  const [selectedPeriod, setSelectedPeriod] = useState<ReportPeriod>('month');
   const [selectedTab, setSelectedTab] = useState<ReportTab>('Sales');
   const [sales, setSales] = useState<Sale[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -87,85 +95,112 @@ export default function ReportsScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const loadAnalytics = useCallback(async (showRefresh = false) => {
-    try {
-      if (showRefresh) {
-        setIsRefreshing(true);
+  const activeRequestIdRef = React.useRef(0);
+
+  const loadAnalytics = useCallback(
+    async (period: ReportPeriod = selectedPeriod, showRefresh = false) => {
+      const requestId = ++activeRequestIdRef.current;
+      try {
+        if (showRefresh) {
+          setIsRefreshing(true);
+        } else {
+          setIsLoading(true);
+        }
+        setErrorMessage(null);
+
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (!sessionData?.session) {
+          router.replace('/');
+          return;
+        }
+
+        const periodRange = getReportingPeriodRange(period);
+
+        const [
+          salesData,
+          productsData,
+          cogsData,
+          utangData,
+          expenseData,
+          topProductsData,
+        ] = await Promise.all([
+          fetchStoreSales(
+            periodRange.startTimestampISO,
+            periodRange.endTimestampISO
+          ),
+          fetchStoreProducts(),
+          fetchStoreCOGSSummary({
+            startDate: periodRange.startTimestampISO,
+            endDate: periodRange.endTimestampISO,
+          }),
+          fetchDashboardUtangSummary().catch(() => null),
+          fetchStoreExpenseSummaryForRange(
+            periodRange.startDateDateOnly,
+            periodRange.endDateDateOnly
+          ),
+          fetchStoreTopProductsForRange(
+            periodRange.startTimestampISO,
+            periodRange.endTimestampISO,
+            5
+          ),
+        ]);
+
+        // Guard against stale response if user switched periods rapidly
+        if (requestId !== activeRequestIdRef.current) {
+          return;
+        }
+
+        // Enrich top products with real product image URLs
+        const productImageMap = new Map<string, string | null>();
+        productsData.forEach((p) => {
+          productImageMap.set(p.id, p.image_url);
+          productImageMap.set(p.name.toLowerCase(), p.image_url);
+        });
+
+        const enrichedTopProducts = topProductsData.map((item) => ({
+          ...item,
+          imageUrl:
+            item.imageUrl ||
+            productImageMap.get(item.id) ||
+            productImageMap.get(item.name.toLowerCase()) ||
+            null,
+        }));
+
+        setSales(salesData);
+        setProducts(productsData);
+        setCogsSummary(cogsData);
+        setUtangSummary(utangData);
+        setExpenseSummary(expenseData);
+        setTopProducts(enrichedTopProducts);
+      } catch (err: unknown) {
+        if (requestId !== activeRequestIdRef.current) {
+          return;
+        }
+        const msg =
+          err instanceof Error
+            ? err.message
+            : 'Could not load store analytics. Please try again.';
+        setErrorMessage(msg);
+      } finally {
+        if (requestId === activeRequestIdRef.current) {
+          setIsLoading(false);
+          setIsRefreshing(false);
+        }
       }
-      setErrorMessage(null);
+    },
+    [selectedPeriod]
+  );
 
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (!sessionData?.session) {
-        router.replace('/');
-        return;
-      }
-
-      const monthRange = getCurrentPhilippineMonthRange();
-
-      const [
-        salesData,
-        productsData,
-        cogsData,
-        utangData,
-        expenseData,
-        topProductsData,
-      ] = await Promise.all([
-        fetchStoreSales(),
-        fetchStoreProducts(),
-        fetchStoreCOGSSummary({
-          startDate: monthRange.startTimestampISO,
-          endDate: monthRange.endTimestampISO,
-        }),
-        fetchDashboardUtangSummary().catch(() => null),
-        fetchStoreExpenseSummaryForRange(
-          monthRange.startDateDateOnly,
-          monthRange.endDateDateOnly
-        ),
-        fetchStoreTopProductsForRange(
-          monthRange.startTimestampISO,
-          monthRange.endTimestampISO,
-          5
-        ),
-      ]);
-
-      // Enrich top products with real product image URLs
-      const productImageMap = new Map<string, string | null>();
-      productsData.forEach((p) => {
-        productImageMap.set(p.id, p.image_url);
-        productImageMap.set(p.name.toLowerCase(), p.image_url);
-      });
-
-      const enrichedTopProducts = topProductsData.map((item) => ({
-        ...item,
-        imageUrl:
-          item.imageUrl ||
-          productImageMap.get(item.id) ||
-          productImageMap.get(item.name.toLowerCase()) ||
-          null,
-      }));
-
-      setSales(salesData);
-      setProducts(productsData);
-      setCogsSummary(cogsData);
-      setUtangSummary(utangData);
-      setExpenseSummary(expenseData);
-      setTopProducts(enrichedTopProducts);
-    } catch (err: unknown) {
-      const msg =
-        err instanceof Error
-          ? err.message
-          : 'Could not load store analytics. Please try again.';
-      setErrorMessage(msg);
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  }, []);
+  const handlePeriodChange = (period: ReportPeriod) => {
+    if (period === selectedPeriod) return;
+    setSelectedPeriod(period);
+    loadAnalytics(period, false);
+  };
 
   useFocusEffect(
     useCallback(() => {
-      loadAnalytics(false);
-    }, [loadAnalytics])
+      loadAnalytics(selectedPeriod, false);
+    }, [loadAnalytics, selectedPeriod])
   );
 
   const handleTabPress = (tab: NavTab) => {
@@ -233,11 +268,24 @@ export default function ReportsScreen() {
   }, [sales]);
 
   // Dynamic Hero Metric based on active tab
+  const periodLabel = useMemo(() => {
+    switch (selectedPeriod) {
+      case 'today':
+        return 'Today';
+      case 'week':
+        return 'This Week';
+      case 'month':
+        return 'This Month';
+      case 'all':
+        return 'All-Time';
+    }
+  }, [selectedPeriod]);
+
   const heroMetric = useMemo(() => {
     if (selectedTab === 'Profit') {
       return {
         amount: grossProfit !== null ? formatPesoCurrency(grossProfit) : '—',
-        label: 'Gross Profit',
+        label: `${periodLabel} Gross Profit`,
         badge:
           netStoreProfit !== null
             ? `Net after expenses: ${formatPesoCurrency(netStoreProfit)}`
@@ -266,13 +314,15 @@ export default function ReportsScreen() {
     }
     return {
       amount: formatPesoCurrency(totalSalesAmount),
-      label: 'Total Sales',
+      label: `${periodLabel} Sales`,
       badge: `↑ ${sales.length} ${
         sales.length === 1 ? 'transaction' : 'transactions'
       } recorded`,
     };
   }, [
     selectedTab,
+    selectedPeriod,
+    periodLabel,
     grossProfit,
     netStoreProfit,
     products,
@@ -317,13 +367,41 @@ export default function ReportsScreen() {
           refreshControl={
             <RefreshControl
               refreshing={isRefreshing}
-              onRefresh={() => loadAnalytics(true)}
+              onRefresh={() => loadAnalytics(selectedPeriod, true)}
               tintColor={Colors.primary}
               colors={[Colors.primary]}
               progressBackgroundColor={Colors.surface}
             />
           }>
           <View style={styles.bodyContainer}>
+            {/* Reporting Period Selector (Today, This Week, This Month, All Time) */}
+            <View style={styles.periodSelectorWrap}>
+              {REPORT_PERIODS.map((p) => {
+                const isSelected = selectedPeriod === p.key;
+                return (
+                  <Pressable
+                    key={p.key}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: isSelected }}
+                    accessibilityLabel={`Filter reports by ${p.label}`}
+                    onPress={() => handlePeriodChange(p.key)}
+                    style={[
+                      styles.periodSegmentBtn,
+                      isSelected && styles.periodSegmentBtnActive,
+                    ]}>
+                    <Text
+                      style={[
+                        styles.periodSegmentText,
+                        isSelected && styles.periodSegmentTextActive,
+                      ]}
+                      numberOfLines={1}>
+                      {p.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
             {/* Category Tabs: Sales, Profit, Inventory, Utang */}
             <ScrollView
               horizontal
@@ -353,7 +431,7 @@ export default function ReportsScreen() {
             {errorMessage ? (
               <DashboardErrorBanner
                 message={errorMessage}
-                onRetry={() => loadAnalytics(true)}
+                onRetry={() => loadAnalytics(selectedPeriod, true)}
                 onDismiss={() => setErrorMessage(null)}
               />
             ) : null}
@@ -479,12 +557,12 @@ export default function ReportsScreen() {
                 {/* Financial & Inventory Breakdown Grid */}
                 <View style={styles.breakdownGrid}>
                   <View style={styles.breakdownTile}>
-                    <Text style={styles.breakdownLabel}>Sales Revenue</Text>
+                    <Text style={styles.breakdownLabel}>{periodLabel} Sales</Text>
                     <Text style={styles.breakdownValue}>
                       {formatPesoCurrency(totalSalesAmount)}
                     </Text>
                     <Text style={styles.breakdownCaption}>
-                      {sales.length} total sales
+                      {sales.length} {sales.length === 1 ? 'sale' : 'total sales'}
                     </Text>
                   </View>
 
@@ -499,7 +577,7 @@ export default function ReportsScreen() {
                   </View>
 
                   <View style={styles.breakdownTile}>
-                    <Text style={styles.breakdownLabel}>This Month's Expenses</Text>
+                    <Text style={styles.breakdownLabel}>{periodLabel} Expenses</Text>
                     <Text style={styles.breakdownValue}>
                       {totalExpenses !== null
                         ? formatPesoCurrency(totalExpenses)
@@ -507,7 +585,11 @@ export default function ReportsScreen() {
                     </Text>
                     <Text style={styles.breakdownCaption}>
                       {expenseSummary
-                        ? `${expenseSummary.expenseCount} expense entries`
+                        ? `${expenseSummary.expenseCount} expense ${
+                            expenseSummary.expenseCount === 1
+                              ? 'entry'
+                              : 'entries'
+                          }`
                         : '—'}
                     </Text>
                   </View>
@@ -522,10 +604,7 @@ export default function ReportsScreen() {
                       {formatPesoCurrency(totalUtang)}
                     </Text>
                     <Text style={styles.breakdownCaption}>
-                      Today collected:{' '}
-                      {formatPesoCurrency(
-                        utangSummary?.todayPaymentsTotal ?? 0
-                      )}
+                      Current outstanding balance
                     </Text>
                   </View>
                 </View>
@@ -585,6 +664,34 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     paddingTop: Spacing.three,
     gap: Spacing.three,
+  },
+  periodSelectorWrap: {
+    flexDirection: 'row',
+    backgroundColor: Colors.surfaceSubtle,
+    borderRadius: BorderRadius.xl,
+    padding: 3,
+    borderWidth: 1,
+    borderColor: Colors.borderSubtle,
+  },
+  periodSegmentBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: BorderRadius.lg,
+  },
+  periodSegmentBtnActive: {
+    backgroundColor: Colors.surface,
+    ...Shadows.xs,
+  },
+  periodSegmentText: {
+    fontSize: 12,
+    fontWeight: Typography.weights.semiBold,
+    color: Colors.textSecondary,
+  },
+  periodSegmentTextActive: {
+    color: Colors.primaryDark,
+    fontWeight: Typography.weights.extraBold,
   },
   tabStrip: {
     flexDirection: 'row',

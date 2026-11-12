@@ -1040,18 +1040,34 @@ export async function recordCartSale(
 
 /**
  * Fetches recorded sales for the authenticated user's store, newest first.
- * Established as part of the Sales Foundation for upcoming Sales History & Summary features.
+ * Supports optional date range filtering for reporting periods (start-inclusive, end-exclusive).
+ * If dates are omitted or null, returns all-time sales.
  */
-export async function fetchStoreSales(): Promise<Sale[]> {
+export async function fetchStoreSales(
+  startDateISO?: string | null,
+  endDateISO?: string | null
+): Promise<Sale[]> {
   const storeId = await getAuthenticatedStoreId();
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('sales')
     .select(
       'id, store_id, product_id, product_name, unit, quantity, unit_price, total_amount, item_count, idempotency_key, payment_method, customer_id, customer_name, created_at'
     )
     .eq('store_id', storeId)
     .order('created_at', { ascending: false });
+
+  const trimmedStart = startDateISO?.trim() || null;
+  const trimmedEnd = endDateISO?.trim() || null;
+
+  if (trimmedStart) {
+    query = query.gte('created_at', trimmedStart);
+  }
+  if (trimmedEnd) {
+    query = query.lt('created_at', trimmedEnd);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     throw new Error(
@@ -1509,21 +1525,15 @@ export function computeTopProductsFromSaleItems(
  * 5. Returns an empty array `[]` if no sales exist in the period (zero fabrication).
  */
 export async function fetchStoreTopProductsForRange(
-  startDateISO: string,
-  endDateISO: string,
+  startDateISO?: string | null,
+  endDateISO?: string | null,
   limit: number = 5,
   productImageMap?: Map<string, string | null>
 ): Promise<TopProductMetric[]> {
   const storeId = await getAuthenticatedStoreId();
 
-  const trimmedStart = startDateISO.trim();
-  const trimmedEnd = endDateISO.trim();
-
-  if (!trimmedStart || !trimmedEnd) {
-    throw new Error(
-      'Both start date and end date are required for top products calculation.'
-    );
-  }
+  const trimmedStart = startDateISO?.trim() || null;
+  const trimmedEnd = endDateISO?.trim() || null;
 
   let offset = 0;
   const pageSize = 1000;
@@ -1534,13 +1544,19 @@ export async function fetchStoreTopProductsForRange(
   >[] = [];
 
   while (hasMore) {
-    const { data, error } = await supabase
+    let query = supabase
       .from('sale_items')
       .select('product_id, product_name, quantity, subtotal, unit_price')
-      .eq('store_id', storeId)
-      .gte('created_at', trimmedStart)
-      .lte('created_at', trimmedEnd)
-      .range(offset, offset + pageSize - 1);
+      .eq('store_id', storeId);
+
+    if (trimmedStart) {
+      query = query.gte('created_at', trimmedStart);
+    }
+    if (trimmedEnd) {
+      query = query.lt('created_at', trimmedEnd);
+    }
+
+    const { data, error } = await query.range(offset, offset + pageSize - 1);
 
     if (error) {
       throw new Error(

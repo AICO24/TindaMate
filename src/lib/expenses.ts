@@ -11,6 +11,7 @@ import {
   ExpenseFormValues,
   UpdateExpenseInput,
 } from '@/types/expense';
+import { ReportPeriod, ReportingPeriodRange } from '@/types/profit';
 
 /**
  * Returns today's date in local time formatted as YYYY-MM-DD.
@@ -597,6 +598,180 @@ export interface PhilippineMonthRange {
 }
 
 /**
+ * Returns the exact calendar-period boundaries evaluated in the Philippine
+ * timezone (`Asia/Manila` / UTC+08:00, no DST):
+ * - Today: 00:00:00 of current day to 00:00:00 of next day (start-inclusive, end-exclusive)
+ * - This Week: Monday 00:00:00 to following Monday 00:00:00 (start-inclusive, end-exclusive)
+ * - This Month: 1st of month 00:00:00 to 1st of next month 00:00:00 (start-inclusive, end-exclusive)
+ * - All Time: null boundaries (unbounded store-scoped query)
+ *
+ * For PostgreSQL `date` columns (e.g. `expense_date`), provides inclusive date-only boundaries.
+ * For PostgreSQL `timestamptz` columns, provides start-inclusive and end-exclusive ISO strings.
+ */
+export function getReportingPeriodRange(
+  period: ReportPeriod,
+  referenceDate: Date = new Date()
+): ReportingPeriodRange {
+  let year: number;
+  let month: number;
+  let day: number;
+  let weekday: string;
+
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Manila',
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+      weekday: 'short',
+    }).formatToParts(referenceDate);
+
+    const getPart = (type: Intl.DateTimeFormatPartTypes) =>
+      parts.find((p) => p.type === type)?.value;
+
+    year = parseInt(getPart('year') ?? '', 10);
+    month = parseInt(getPart('month') ?? '', 10);
+    day = parseInt(getPart('day') ?? '', 10);
+    weekday = getPart('weekday') ?? 'Mon';
+  } catch {
+    year = referenceDate.getFullYear();
+    month = referenceDate.getMonth() + 1;
+    day = referenceDate.getDate();
+    weekday = 'Mon';
+  }
+
+  // Safety fallback if parsing failed
+  if (!Number.isSafeInteger(year) || year < 2000 || year > 2100) {
+    year = referenceDate.getFullYear();
+  }
+  if (!Number.isSafeInteger(month) || month < 1 || month > 12) {
+    month = referenceDate.getMonth() + 1;
+  }
+  if (!Number.isSafeInteger(day) || day < 1 || day > 31) {
+    day = referenceDate.getDate();
+  }
+
+  const pad = (n: number) => String(n).padStart(2, '0');
+
+  if (period === 'today') {
+    const startDateDateOnly = `${year}-${pad(month)}-${pad(day)}`;
+    const nextDayDate = new Date(Date.UTC(year, month - 1, day + 1));
+    const nextYear = nextDayDate.getUTCFullYear();
+    const nextMonth = nextDayDate.getUTCMonth() + 1;
+    const nextDay = nextDayDate.getUTCDate();
+
+    // Inclusive for date-only columns
+    const endDateDateOnly = startDateDateOnly;
+
+    // Start-inclusive, end-exclusive for timestamptz
+    const startTimestampISO = new Date(
+      `${startDateDateOnly}T00:00:00.000+08:00`
+    ).toISOString();
+    const endTimestampISO = new Date(
+      `${nextYear}-${pad(nextMonth)}-${pad(nextDay)}T00:00:00.000+08:00`
+    ).toISOString();
+
+    return {
+      period,
+      startDateDateOnly,
+      endDateDateOnly,
+      startTimestampISO,
+      endTimestampISO,
+    };
+  }
+
+  if (period === 'week') {
+    // Map weekday in Asia/Manila: Mon=0, Tue=1, Wed=2, Thu=3, Fri=4, Sat=5, Sun=6
+    const weekdayMap: Record<string, number> = {
+      Mon: 0,
+      Tue: 1,
+      Wed: 2,
+      Thu: 3,
+      Fri: 4,
+      Sat: 5,
+      Sun: 6,
+    };
+    const dayOffsetFromMonday = weekdayMap[weekday] ?? 0;
+
+    // Current Monday (start of week)
+    const mondayDate = new Date(
+      Date.UTC(year, month - 1, day - dayOffsetFromMonday)
+    );
+    const monYear = mondayDate.getUTCFullYear();
+    const monMonth = mondayDate.getUTCMonth() + 1;
+    const monDay = mondayDate.getUTCDate();
+    const startDateDateOnly = `${monYear}-${pad(monMonth)}-${pad(monDay)}`;
+
+    // Current Sunday (inclusive end for date-only columns)
+    const sundayDate = new Date(
+      Date.UTC(year, month - 1, day - dayOffsetFromMonday + 6)
+    );
+    const sunYear = sundayDate.getUTCFullYear();
+    const sunMonth = sundayDate.getUTCMonth() + 1;
+    const sunDay = sundayDate.getUTCDate();
+    const endDateDateOnly = `${sunYear}-${pad(sunMonth)}-${pad(sunDay)}`;
+
+    // Next Monday (exclusive end for timestamp columns)
+    const nextMondayDate = new Date(
+      Date.UTC(year, month - 1, day - dayOffsetFromMonday + 7)
+    );
+    const nextMonYear = nextMondayDate.getUTCFullYear();
+    const nextMonMonth = nextMondayDate.getUTCMonth() + 1;
+    const nextMonDay = nextMondayDate.getUTCDate();
+
+    const startTimestampISO = new Date(
+      `${startDateDateOnly}T00:00:00.000+08:00`
+    ).toISOString();
+    const endTimestampISO = new Date(
+      `${nextMonYear}-${pad(nextMonMonth)}-${pad(nextMonDay)}T00:00:00.000+08:00`
+    ).toISOString();
+
+    return {
+      period,
+      startDateDateOnly,
+      endDateDateOnly,
+      startTimestampISO,
+      endTimestampISO,
+    };
+  }
+
+  if (period === 'month') {
+    const startDateDateOnly = `${year}-${pad(month)}-01`;
+    const lastDayOfMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+    const endDateDateOnly = `${year}-${pad(month)}-${pad(lastDayOfMonth)}`;
+
+    // Next month 1st (exclusive end for timestamp columns)
+    const nextMonthDate = new Date(Date.UTC(year, month, 1));
+    const nextMonthYear = nextMonthDate.getUTCFullYear();
+    const nextMonthMonth = nextMonthDate.getUTCMonth() + 1;
+
+    const startTimestampISO = new Date(
+      `${startDateDateOnly}T00:00:00.000+08:00`
+    ).toISOString();
+    const endTimestampISO = new Date(
+      `${nextMonthYear}-${pad(nextMonthMonth)}-01T00:00:00.000+08:00`
+    ).toISOString();
+
+    return {
+      period,
+      startDateDateOnly,
+      endDateDateOnly,
+      startTimestampISO,
+      endTimestampISO,
+    };
+  }
+
+  // 'all'
+  return {
+    period: 'all',
+    startDateDateOnly: null,
+    endDateDateOnly: null,
+    startTimestampISO: null,
+    endTimestampISO: null,
+  };
+}
+
+/**
  * Returns the current calendar month boundaries strictly evaluated in the
  * Philippine timezone (`Asia/Manila` / UTC+08:00, no DST):
  * - `startDateDateOnly`: First day of month (YYYY-MM-01) for PostgreSQL `date` columns
@@ -607,56 +782,15 @@ export interface PhilippineMonthRange {
 export function getCurrentPhilippineMonthRange(
   referenceDate: Date = new Date()
 ): PhilippineMonthRange {
-  let year: number;
-  let month: number;
-
-  try {
-    const parts = new Intl.DateTimeFormat('en-US', {
-      timeZone: 'Asia/Manila',
-      year: 'numeric',
-      month: 'numeric',
-    }).formatToParts(referenceDate);
-
-    const yearPart = parts.find((p) => p.type === 'year')?.value;
-    const monthPart = parts.find((p) => p.type === 'month')?.value;
-
-    year = yearPart ? parseInt(yearPart, 10) : referenceDate.getFullYear();
-    month = monthPart ? parseInt(monthPart, 10) : referenceDate.getMonth() + 1;
-  } catch {
-    year = referenceDate.getFullYear();
-    month = referenceDate.getMonth() + 1;
-  }
-
-  // Safety fallback if parsing failed
-  if (!Number.isSafeInteger(year) || year < 2000 || year > 2100) {
-    year = referenceDate.getFullYear();
-  }
-  if (!Number.isSafeInteger(month) || month < 1 || month > 12) {
-    month = referenceDate.getMonth() + 1;
-  }
-
-  // Determine last day of the month (passing month index to Date.UTC with day 0)
-  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
-  const mm = String(month).padStart(2, '0');
-  const ld = String(lastDay).padStart(2, '0');
-
-  const startDateDateOnly = `${year}-${mm}-01`;
-  const endDateDateOnly = `${year}-${mm}-${ld}`;
-
-  const startTimestampISO = new Date(
-    `${startDateDateOnly}T00:00:00.000+08:00`
-  ).toISOString();
-  const endTimestampISO = new Date(
-    `${endDateDateOnly}T23:59:59.999+08:00`
-  ).toISOString();
-
+  const range = getReportingPeriodRange('month', referenceDate);
+  const [yearStr, monthStr] = (range.startDateDateOnly ?? '2026-11-01').split('-');
   return {
-    year,
-    month,
-    startDateDateOnly,
-    endDateDateOnly,
-    startTimestampISO,
-    endTimestampISO,
+    year: parseInt(yearStr, 10),
+    month: parseInt(monthStr, 10),
+    startDateDateOnly: range.startDateDateOnly!,
+    endDateDateOnly: range.endDateDateOnly!,
+    startTimestampISO: range.startTimestampISO!,
+    endTimestampISO: range.endTimestampISO!,
   };
 }
 
@@ -666,8 +800,8 @@ export function getCurrentPhilippineMonthRange(
  */
 export function computeExpenseSummaryFromList(
   expenses: Pick<Expense, 'amount' | 'expense_date'>[],
-  startDate: string,
-  endDate: string
+  startDate?: string | null,
+  endDate?: string | null
 ): DashboardExpenseSummary {
   let totalCentavos = 0;
   let count = 0;
@@ -677,7 +811,9 @@ export function computeExpenseSummaryFromList(
       typeof item.expense_date === 'string'
         ? item.expense_date.trim().slice(0, 10)
         : '';
-    if (dateStr >= startDate && dateStr <= endDate) {
+    const afterStart = !startDate || dateStr >= startDate;
+    const beforeEnd = !endDate || dateStr <= endDate;
+    if (afterStart && beforeEnd) {
       const rawAmount = Number(item.amount);
       if (Number.isFinite(rawAmount) && rawAmount > 0) {
         totalCentavos += Math.round(rawAmount * 100);
@@ -693,29 +829,23 @@ export function computeExpenseSummaryFromList(
 }
 
 /**
- * Fetches the expense summary for the authenticated store within an inclusive
- * date range (e.g., current calendar month):
+ * Fetches the expense summary for the authenticated store within an optional
+ * date range (or all-time if dates are omitted/null):
  * 1. Resolves store_id from the authenticated user session.
- * 2. Queries `public.expenses` for records where `expense_date >= startDate` and `expense_date <= endDate`.
+ * 2. Queries `public.expenses` for records matching the date boundary filters.
  * 3. Handles pagination safely (chunks of 1,000 rows) to prevent silent truncation.
  * 4. Calculates total amount and transaction count with integer-centavo monetary safety.
  *
  * Strictly scoped to `store_id = authenticated user ID` and protected by Supabase RLS.
  */
 export async function fetchStoreExpenseSummaryForRange(
-  startDate: string,
-  endDate: string
+  startDate?: string | null,
+  endDate?: string | null
 ): Promise<DashboardExpenseSummary> {
   const storeId = await getAuthenticatedStoreId();
 
-  const trimmedStart = startDate.trim();
-  const trimmedEnd = endDate.trim();
-
-  if (!trimmedStart || !trimmedEnd) {
-    throw new Error(
-      'Both start date and end date are required for expense range calculation.'
-    );
-  }
+  const trimmedStart = startDate?.trim() || null;
+  const trimmedEnd = endDate?.trim() || null;
 
   let totalCentavos = 0;
   let count = 0;
@@ -724,13 +854,19 @@ export async function fetchStoreExpenseSummaryForRange(
   let hasMore = true;
 
   while (hasMore) {
-    const { data, error } = await supabase
+    let query = supabase
       .from('expenses')
       .select('amount')
-      .eq('store_id', storeId)
-      .gte('expense_date', trimmedStart)
-      .lte('expense_date', trimmedEnd)
-      .range(offset, offset + pageSize - 1);
+      .eq('store_id', storeId);
+
+    if (trimmedStart) {
+      query = query.gte('expense_date', trimmedStart);
+    }
+    if (trimmedEnd) {
+      query = query.lte('expense_date', trimmedEnd);
+    }
+
+    const { data, error } = await query.range(offset, offset + pageSize - 1);
 
     if (error) {
       throw new Error(
