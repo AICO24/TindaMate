@@ -74,8 +74,8 @@ export function AnimatedSplashOverlay() {
   const emblemHeight = Math.round(78 * scaleFactor);
   const emblemWidth = Math.round(emblemHeight * 1.168);
 
-  const wordmarkTargetWidth = Math.round(206 * scaleFactor);
-  const wordmarkGap = Math.round(12 * scaleFactor);
+  const wordmarkTargetWidth = Math.round(180 * scaleFactor);
+  const wordmarkGap = Math.round(6 * scaleFactor);
   const titleFontSize = Math.round(33 * scaleFactor);
   const titleLineHeight = Math.round(37 * scaleFactor);
   const taglineFontSize = Math.max(11, Math.round(12.5 * scaleFactor));
@@ -314,7 +314,7 @@ export function AnimatedSplashOverlay() {
                   styles.wordmarkTitle,
                   { fontSize: titleFontSize, lineHeight: titleLineHeight },
                 ]}>
-                <Text style={styles.wordmarkGreen}>Tinda</Text>
+                <Text style={styles.wordmarkGreen}>inda</Text>
                 <Text style={styles.wordmarkOrange}>Mate</Text>
               </Text>
               <Text

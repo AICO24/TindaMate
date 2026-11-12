@@ -24,10 +24,10 @@ const TRACK_BACKGROUND = '#E6DEC8';
 const CAPTION_COLOR = '#475569';
 
 /**
- * Timing constants (ms) — Option 2 Icon-to-Wordmark Unfold Sequence (~4.8s total):
+ * Timing constants (ms) — Option 1 Monogram "T" Replacement Unfold Sequence (~4.8s total):
  * 1. 0ms - 1,350ms: Standalone "T" Storefront Emblem pops in and holds at center
- * 2. 1,350ms - 2,650ms: Emblem glides left while "TindaMate" wordmark unfolds to the right
- * 3. 2,650ms - 4,210ms: Progress bar finishes filling to 100% and holds the full lockup
+ * 2. 1,350ms - 2,650ms: Emblem glides left while "inda" (Green) + "Mate" (Orange) unfolds directly beside the "T"
+ * 3. 2,650ms - 4,210ms: Progress bar finishes filling to 100% and holds the full [T-Storefront]indaMate lockup
  * 4. 4,210ms - 4,810ms: Smooth overlay fade-out into the active screen
  */
 const ICON_POP_DURATION_MS = 850;
@@ -81,9 +81,9 @@ export function AnimatedSplashOverlay() {
   const emblemHeight = Math.round(78 * scaleFactor);
   const emblemWidth = Math.round(emblemHeight * 1.168);
 
-  // Unfolding wordmark container target width + gap
-  const wordmarkTargetWidth = Math.round(206 * scaleFactor);
-  const wordmarkGap = Math.round(12 * scaleFactor);
+  // Option 1: The "T" emblem serves as the capital "T", so the unfolding text is "indaMate"
+  const wordmarkTargetWidth = Math.round(180 * scaleFactor);
+  const wordmarkGap = Math.round(6 * scaleFactor);
   const titleFontSize = Math.round(33 * scaleFactor);
   const titleLineHeight = Math.round(37 * scaleFactor);
   const taglineFontSize = Math.max(11, Math.round(12.5 * scaleFactor));
@@ -303,7 +303,7 @@ export function AnimatedSplashOverlay() {
       onLayout={startLaunchSequence}
       style={[styles.splashOverlay, overlayAnimatedStyle]}>
       <View style={styles.brandCluster}>
-        {/* Horizontal Icon-to-Wordmark Lockup: [T-Storefront Emblem] -> [T-Storefront Emblem] TindaMate */}
+        {/* Option 1 Monogram Replacement: [T-Storefront Emblem] -> [T-Storefront Emblem]indaMate */}
         <View style={styles.lockupRow}>
           <Animated.View
             style={[
@@ -335,7 +335,7 @@ export function AnimatedSplashOverlay() {
                   styles.wordmarkTitle,
                   { fontSize: titleFontSize, lineHeight: titleLineHeight },
                 ]}>
-                <Text style={styles.wordmarkGreen}>Tinda</Text>
+                <Text style={styles.wordmarkGreen}>inda</Text>
                 <Text style={styles.wordmarkOrange}>Mate</Text>
               </Text>
               <Text
