@@ -12,27 +12,38 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-const TINDAMATE_LOGO = require('@/assets/images/tindamate-logo.png');
+const TINDAMATE_EMBLEM = require('@/assets/images/tindamate-emblem-clean.png');
 
 /** Official TindaMate warm cream brand background matching the logo asset and native splash */
 const BRAND_CREAM_BACKGROUND = '#FDF7EB';
+const BRAND_DARK_GREEN = '#064E3B';
 const BRAND_GREEN = '#0D7A4D';
-const BRAND_ORANGE = '#EA580C';
+const BRAND_ORANGE = '#F97316';
+const BRAND_ORANGE_DEEP = '#EA580C';
 const TRACK_BACKGROUND = '#E6DEC8';
 const CAPTION_COLOR = '#475569';
 
-/** Timing constants (ms) — ~1.9s total visual launch experience with 0% -> 100% bar fill */
-const ENTRANCE_DURATION_MS = 500;
-const FILL_STAGE_1_MS = 420;
-const FILL_STAGE_2_MS = 520;
-const FILL_STAGE_3_MS = 380;
-const HOLD_FULL_MS = 150;
-const EXIT_DURATION_MS = 360;
+/**
+ * Timing constants (ms) — Option 2 Icon-to-Wordmark Unfold Sequence (~4.8s total):
+ * 1. 0ms - 1,350ms: Standalone "T" Storefront Emblem pops in and holds at center
+ * 2. 1,350ms - 2,650ms: Emblem glides left while "TindaMate" wordmark unfolds to the right
+ * 3. 2,650ms - 4,210ms: Progress bar finishes filling to 100% and holds the full lockup
+ * 4. 4,210ms - 4,810ms: Smooth overlay fade-out into the active screen
+ */
+const ICON_POP_DURATION_MS = 850;
+const ICON_HOLD_BEFORE_UNFOLD_MS = 500;
+const UNFOLD_DELAY_MS = ICON_POP_DURATION_MS + ICON_HOLD_BEFORE_UNFOLD_MS;
+const UNFOLD_DURATION_MS = 1300;
+const FILL_STAGE_1_MS = 1100;
+const FILL_STAGE_2_MS = 1350;
+const FILL_STAGE_3_MS = 950;
+const HOLD_FULL_MS = 650;
+const EXIT_DURATION_MS = 600;
 
 const TOTAL_FILL_AND_HOLD_MS =
-  120 + FILL_STAGE_1_MS + FILL_STAGE_2_MS + FILL_STAGE_3_MS + HOLD_FULL_MS;
+  160 + FILL_STAGE_1_MS + FILL_STAGE_2_MS + FILL_STAGE_3_MS + HOLD_FULL_MS;
 const TOTAL_DURATION_MS = TOTAL_FILL_AND_HOLD_MS + EXIT_DURATION_MS;
-const FAILSAFE_TIMEOUT_MS = 2600;
+const FAILSAFE_TIMEOUT_MS = 5600;
 
 /** Ensures the launch animation runs only once per cold application start */
 let hasShownInitialLaunchSplash = false;
@@ -64,13 +75,31 @@ export function AnimatedSplashOverlay() {
 
   const { width, height } = useWindowDimensions();
   const shortestSide = Math.min(width || 360, height || 640);
-  const logoSize = Math.round(Math.min(Math.max(shortestSide * 0.56, 180), 248));
-  const barWidth = Math.round(Math.min(Math.max(logoSize * 0.76, 148), 192));
+  const scaleFactor = Math.min(Math.max(shortestSide / 375, 0.88), 1.12);
+
+  // Emblem dimensions (862:738 aspect ratio = 1.168)
+  const emblemHeight = Math.round(78 * scaleFactor);
+  const emblemWidth = Math.round(emblemHeight * 1.168);
+
+  // Unfolding wordmark container target width + gap
+  const wordmarkTargetWidth = Math.round(206 * scaleFactor);
+  const wordmarkGap = Math.round(12 * scaleFactor);
+  const titleFontSize = Math.round(33 * scaleFactor);
+  const titleLineHeight = Math.round(37 * scaleFactor);
+  const taglineFontSize = Math.max(11, Math.round(12.5 * scaleFactor));
+
+  const barWidth = Math.round(Math.min(Math.max((emblemWidth + wordmarkTargetWidth) * 0.72, 168), 228));
 
   const overlayOpacity = useSharedValue(1);
-  const logoOpacity = useSharedValue(0);
-  const logoScale = useSharedValue(0.88);
-  const logoTranslateY = useSharedValue(10);
+  const iconOpacity = useSharedValue(0);
+  const iconScale = useSharedValue(0.76);
+  const iconTranslateY = useSharedValue(10);
+
+  // Unfold shared values (0 = icon centered alone, 1 = full [Emblem] TindaMate lockup)
+  const unfoldProgress = useSharedValue(0);
+  const wordmarkOpacity = useSharedValue(0);
+  const wordmarkTranslateX = useSharedValue(-20);
+
   const progressRatio = useSharedValue(0);
 
   const finishSplash = useCallback(() => {
@@ -96,44 +125,86 @@ export function AnimatedSplashOverlay() {
       // Ignore if native splash was already hidden
     });
 
-    // Logo entrance: smooth fade-in, scale-up, and subtle upward lift
-    logoOpacity.set(
+    // Stage 1: Standalone "T" Storefront Emblem pops in and holds at the center
+    iconOpacity.set(
       withTiming(1, {
-        duration: 420,
+        duration: 560,
         easing: Easing.out(Easing.cubic),
       })
     );
 
-    logoTranslateY.set(
+    iconTranslateY.set(
       withTiming(0, {
-        duration: ENTRANCE_DURATION_MS,
+        duration: ICON_POP_DURATION_MS,
         easing: Easing.out(Easing.cubic),
       })
     );
 
-    logoScale.set(
+    iconScale.set(
       withSequence(
-        withTiming(1, {
-          duration: ENTRANCE_DURATION_MS,
-          easing: Easing.out(Easing.cubic),
+        // Pop in slightly larger while standalone at center
+        withTiming(1.14, {
+          duration: ICON_POP_DURATION_MS,
+          easing: Easing.out(Easing.back(1.35)),
         }),
-        withTiming(1.012, {
-          duration: TOTAL_FILL_AND_HOLD_MS - ENTRANCE_DURATION_MS,
+        // Brief gentle hold while standalone in center before unfolding
+        withTiming(1.11, {
+          duration: ICON_HOLD_BEFORE_UNFOLD_MS,
           easing: Easing.inOut(Easing.sin),
         }),
-        withTiming(1.03, {
-          duration: EXIT_DURATION_MS,
-          easing: Easing.inOut(Easing.quad),
+        // Settle to 1.0 as the wordmark unfolds beside it
+        withTiming(1, {
+          duration: UNFOLD_DURATION_MS,
+          easing: Easing.inOut(Easing.cubic),
+        }),
+        // Subtle exit scale lift
+        withDelay(
+          Math.max(0, TOTAL_FILL_AND_HOLD_MS - UNFOLD_DELAY_MS - UNFOLD_DURATION_MS),
+          withTiming(1.03, {
+            duration: EXIT_DURATION_MS,
+            easing: Easing.inOut(Easing.quad),
+          })
+        )
+      )
+    );
+
+    // Stage 2: Unfold "TindaMate" wordmark + tagline to the right of the "T" Emblem
+    unfoldProgress.set(
+      withDelay(
+        UNFOLD_DELAY_MS,
+        withTiming(1, {
+          duration: UNFOLD_DURATION_MS,
+          easing: Easing.inOut(Easing.cubic),
         })
       )
     );
 
-    // Progressive filling line ("napupuno na guhit"): 0% -> 46% -> 84% -> 100%
+    wordmarkOpacity.set(
+      withDelay(
+        UNFOLD_DELAY_MS + 140,
+        withTiming(1, {
+          duration: UNFOLD_DURATION_MS - 140,
+          easing: Easing.out(Easing.cubic),
+        })
+      )
+    );
+
+    wordmarkTranslateX.set(
+      withDelay(
+        UNFOLD_DELAY_MS + 80,
+        withTiming(0, {
+          duration: UNFOLD_DURATION_MS - 80,
+          easing: Easing.out(Easing.cubic),
+        })
+      )
+    );
+
+    // Stage 3: Progressive filling line ("napupuno na guhit"): 0% -> 38% -> 84% -> 100%
     progressRatio.set(
       withDelay(
-        120,
+        160,
         withSequence(
-          withTiming(0.46, {
+          withTiming(0.38, {
             duration: FILL_STAGE_1_MS,
             easing: Easing.out(Easing.cubic),
           }),
@@ -149,7 +220,7 @@ export function AnimatedSplashOverlay() {
       )
     );
 
-    // Smooth fade-out after the bar reaches 100%
+    // Stage 4: Smooth fade-out after the lockup reveal and progress bar complete
     overlayOpacity.set(
       withDelay(
         TOTAL_FILL_AND_HOLD_MS,
@@ -159,7 +230,16 @@ export function AnimatedSplashOverlay() {
         })
       )
     );
-  }, [logoOpacity, logoScale, logoTranslateY, overlayOpacity, progressRatio]);
+  }, [
+    iconOpacity,
+    iconScale,
+    iconTranslateY,
+    overlayOpacity,
+    progressRatio,
+    unfoldProgress,
+    wordmarkOpacity,
+    wordmarkTranslateX,
+  ]);
 
   useEffect(() => {
     if (!visible) {
@@ -191,12 +271,22 @@ export function AnimatedSplashOverlay() {
     opacity: overlayOpacity.get(),
   }));
 
-  const logoAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: logoOpacity.get(),
+  const iconAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: iconOpacity.get(),
     transform: [
-      { translateY: logoTranslateY.get() },
-      { scale: logoScale.get() },
+      { translateY: iconTranslateY.get() },
+      { scale: iconScale.get() },
     ],
+  }));
+
+  const wordmarkClipAnimatedStyle = useAnimatedStyle(() => ({
+    width: Math.round(unfoldProgress.get() * wordmarkTargetWidth),
+    marginLeft: Math.round(unfoldProgress.get() * wordmarkGap),
+    opacity: wordmarkOpacity.get(),
+  }));
+
+  const wordmarkInnerAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: wordmarkTranslateX.get() }],
   }));
 
   const progressFillAnimatedStyle = useAnimatedStyle(() => ({
@@ -212,17 +302,49 @@ export function AnimatedSplashOverlay() {
       pointerEvents={isExiting ? 'none' : 'auto'}
       onLayout={startLaunchSequence}
       style={[styles.splashOverlay, overlayAnimatedStyle]}>
-      <Animated.View style={[styles.brandCluster, logoAnimatedStyle]}>
-        <View style={[styles.logoContainer, { width: logoSize, height: logoSize }]}>
-          <Image
-            source={TINDAMATE_LOGO}
-            style={styles.logoImage}
-            contentFit="contain"
-            priority="high"
-            cachePolicy="memory-disk"
-            onLoad={startLaunchSequence}
-            accessibilityLabel="TindaMate official logo"
-          />
+      <View style={styles.brandCluster}>
+        {/* Horizontal Icon-to-Wordmark Lockup: [T-Storefront Emblem] -> [T-Storefront Emblem] TindaMate */}
+        <View style={styles.lockupRow}>
+          <Animated.View
+            style={[
+              styles.emblemBox,
+              { width: emblemWidth, height: emblemHeight },
+              iconAnimatedStyle,
+            ]}>
+            <Image
+              source={TINDAMATE_EMBLEM}
+              style={styles.logoImage}
+              contentFit="contain"
+              priority="high"
+              cachePolicy="memory-disk"
+              onLoad={startLaunchSequence}
+              accessibilityLabel="TindaMate Storefront Emblem"
+            />
+          </Animated.View>
+
+          <Animated.View style={[styles.wordmarkClipBox, wordmarkClipAnimatedStyle]}>
+            <Animated.View
+              style={[
+                styles.wordmarkInnerBox,
+                { width: wordmarkTargetWidth },
+                wordmarkInnerAnimatedStyle,
+              ]}>
+              <Text
+                numberOfLines={1}
+                style={[
+                  styles.wordmarkTitle,
+                  { fontSize: titleFontSize, lineHeight: titleLineHeight },
+                ]}>
+                <Text style={styles.wordmarkGreen}>Tinda</Text>
+                <Text style={styles.wordmarkOrange}>Mate</Text>
+              </Text>
+              <Text
+                numberOfLines={1}
+                style={[styles.wordmarkTagline, { fontSize: taglineFontSize }]}>
+                Your Digital Tindahan Assistant
+              </Text>
+            </Animated.View>
+          </Animated.View>
         </View>
 
         {/* Filling Progress Line ("Napupuno na Guhit") */}
@@ -233,7 +355,7 @@ export function AnimatedSplashOverlay() {
             </Animated.View>
           </View>
         </View>
-      </Animated.View>
+      </View>
     </Animated.View>
   );
 }
@@ -249,8 +371,8 @@ export interface TindaMateLoadingViewProps {
 
 /**
  * Reusable TindaMate Branded Loading Screen
- * Displays the official TindaMate logo with a smooth, continuously filling progress line
- * for in-app loading states (e.g., session check, screen transitions, or dashboard data initialization).
+ * Displays the official improved TindaMate Storefront Emblem with a smooth,
+ * continuously filling progress line for in-app loading states.
  */
 export function TindaMateLoadingView({
   message,
@@ -260,12 +382,13 @@ export function TindaMateLoadingView({
   const { width, height } = useWindowDimensions();
   const shortestSide = Math.min(width || 360, height || 640);
 
-  const logoSize = compact
-    ? 68
-    : Math.round(Math.min(Math.max(shortestSide * 0.44, 144), 196));
+  const logoHeight = compact
+    ? 64
+    : Math.round(Math.min(Math.max(shortestSide * 0.28, 96), 132));
+  const logoWidth = Math.round(logoHeight * 1.168);
   const barWidth = compact
     ? 104
-    : Math.round(Math.min(Math.max(logoSize * 0.78, 132), 170));
+    : Math.round(Math.min(Math.max(logoWidth * 1.15, 136), 176));
 
   const fillProgress = useSharedValue(0.08);
   const pulseScale = useSharedValue(1);
@@ -298,7 +421,7 @@ export function TindaMateLoadingView({
     pulseScale.set(
       withRepeat(
         withSequence(
-          withTiming(1.025, {
+          withTiming(1.03, {
             duration: 650,
             easing: Easing.inOut(Easing.sin),
           }),
@@ -329,9 +452,13 @@ export function TindaMateLoadingView({
       ]}
       accessibilityRole="progressbar">
       <Animated.View
-        style={[styles.logoContainer, { width: logoSize, height: logoSize }, logoStyle]}>
+        style={[
+          styles.logoContainer,
+          { width: logoWidth, height: logoHeight },
+          logoStyle,
+        ]}>
         <Image
-          source={TINDAMATE_LOGO}
+          source={TINDAMATE_EMBLEM}
           style={styles.logoImage}
           contentFit="contain"
           priority="high"
@@ -363,7 +490,7 @@ export function AnimatedIcon() {
       <View style={styles.imageContainer}>
         <Image
           style={styles.image}
-          source={TINDAMATE_LOGO}
+          source={TINDAMATE_EMBLEM}
           contentFit="contain"
           accessibilityLabel="TindaMate logo"
         />
@@ -396,6 +523,40 @@ const styles = StyleSheet.create({
   brandCluster: {
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+  lockupRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emblemBox: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  wordmarkClipBox: {
+    overflow: 'hidden',
+    justifyContent: 'center',
+  },
+  wordmarkInnerBox: {
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+  },
+  wordmarkTitle: {
+    fontWeight: '800',
+    letterSpacing: -0.7,
+  },
+  wordmarkGreen: {
+    color: BRAND_DARK_GREEN,
+  },
+  wordmarkOrange: {
+    color: BRAND_ORANGE,
+  },
+  wordmarkTagline: {
+    fontWeight: '600',
+    color: CAPTION_COLOR,
+    marginTop: 2,
+    letterSpacing: 0.1,
   },
   logoContainer: {
     alignItems: 'center',
@@ -406,7 +567,7 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   progressSection: {
-    marginTop: 14,
+    marginTop: 22,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
@@ -431,7 +592,7 @@ const styles = StyleSheet.create({
     width: 18,
     height: '100%',
     borderRadius: 999,
-    backgroundColor: BRAND_ORANGE,
+    backgroundColor: BRAND_ORANGE_DEEP,
   },
   loadingCaption: {
     fontSize: 13,
