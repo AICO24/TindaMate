@@ -54,7 +54,12 @@ import {
 import { fetchStoreProductSummary, formatPesoCurrency } from '@/lib/products';
 import { fetchDashboardSalesData, fetchStoreSales } from '@/lib/sales';
 import { fetchDashboardUtangSummary } from '@/lib/customers';
-import { fetchDashboardExpenseSummary } from '@/lib/expenses';
+import {
+  fetchDashboardExpenseSummary,
+  getReportingPeriodRange,
+} from '@/lib/expenses';
+import { computeSalesBuckets } from '@/lib/chartBuckets';
+import { getPHTParts } from '@/lib/pht';
 import { fetchStoreCOGSSummary } from '@/lib/profit';
 import { parseAndApplyOAuthTokens } from '@/lib/oauth';
 import { supabase } from '@/lib/supabase';
@@ -177,13 +182,18 @@ export default function AuthenticatedDashboardScreen() {
         0
       );
 
+      const weekRange = getReportingPeriodRange('week');
+
       const [productRes, salesRes, utangRes, expenseRes, allSalesRes, cogsRes] =
         await Promise.allSettled([
           fetchStoreProductSummary(),
           fetchDashboardSalesData(),
           fetchDashboardUtangSummary(),
           fetchDashboardExpenseSummary(),
-          fetchStoreSales(),
+          fetchStoreSales(
+            weekRange.startTimestampISO,
+            weekRange.endTimestampISO
+          ),
           fetchStoreCOGSSummary({ startDate: startOfToday }),
         ]);
 
@@ -530,82 +540,27 @@ export default function AuthenticatedDashboardScreen() {
   const alertProductCount = lowStockCount + outOfStockCount;
   const isLowStockWarning = alertProductCount > 0;
 
-  // Compute Monday-to-Sunday (Mon..Sun) sales bars from real store sales
-  const salesSource = allStoreSales.length > 0 ? allStoreSales : recentSales;
-  const nowDate = new Date();
-  const currentJsDay = nowDate.getDay(); // 0 = Sun, 1 = Mon, ..., 6 = Sat
-  const mondayOffset = currentJsDay === 0 ? -6 : 1 - currentJsDay;
-  const mondayDate = new Date(
-    nowDate.getFullYear(),
-    nowDate.getMonth(),
-    nowDate.getDate() + mondayOffset
+  // Compute Monday-to-Sunday (Mon..Sun) sales bars strictly in Philippine Standard Time
+  const weekRange = getReportingPeriodRange('week');
+  const weeklyBuckets = computeSalesBuckets(
+    allStoreSales,
+    'week',
+    {
+      start: weekRange.startTimestampISO,
+      end: weekRange.endTimestampISO,
+    },
+    new Date()
   );
 
-  const orderedWeekdays = [
-    { label: 'Mon', jsDay: 1, offset: 0 },
-    { label: 'Tue', jsDay: 2, offset: 1 },
-    { label: 'Wed', jsDay: 3, offset: 2 },
-    { label: 'Thu', jsDay: 4, offset: 3 },
-    { label: 'Fri', jsDay: 5, offset: 4 },
-    { label: 'Sat', jsDay: 6, offset: 5 },
-    { label: 'Sun', jsDay: 0, offset: 6 },
-  ];
-
-  // 1. Sum sales within the current Monday..Sunday week
-  const currentWeekCentavos = [0, 0, 0, 0, 0, 0, 0];
-  // 2. Also track historical weekday totals in case current week has 0 sales yet
-  const historicalWeekdayCentavos = [0, 0, 0, 0, 0, 0, 0];
-
-  for (const s of salesSource) {
-    const sd = new Date(s.created_at);
-    if (Number.isNaN(sd.getTime())) continue;
-    const centavos = Math.round(s.total_amount * 100);
-    const saleJsDay = sd.getDay();
-    const bucketIdx = saleJsDay === 0 ? 6 : saleJsDay - 1;
-    historicalWeekdayCentavos[bucketIdx] += centavos;
-
-    for (let idx = 0; idx < 7; idx++) {
-      const targetDate = new Date(
-        mondayDate.getFullYear(),
-        mondayDate.getMonth(),
-        mondayDate.getDate() + idx
-      );
-      if (
-        sd.getFullYear() === targetDate.getFullYear() &&
-        sd.getMonth() === targetDate.getMonth() &&
-        sd.getDate() === targetDate.getDate()
-      ) {
-        currentWeekCentavos[idx] += centavos;
-      }
-    }
-  }
-
-  const hasCurrentWeekSales = currentWeekCentavos.some((c) => c > 0);
-  const activeCentavosBuckets = hasCurrentWeekSales
-    ? currentWeekCentavos
-    : historicalWeekdayCentavos;
-
-  const todayBucketIdx = currentJsDay === 0 ? 6 : currentJsDay - 1;
-  let highlightedIdx = todayBucketIdx;
-  if (
-    activeCentavosBuckets[todayBucketIdx] === 0 &&
-    activeCentavosBuckets.some((c) => c > 0)
-  ) {
-    // Highlight the highest/latest non-zero weekday bar so the callout pill shows real revenue
-    let maxVal = -1;
-    for (let idx = 0; idx < 7; idx++) {
-      if (activeCentavosBuckets[idx] >= maxVal && activeCentavosBuckets[idx] > 0) {
-        maxVal = activeCentavosBuckets[idx];
-        highlightedIdx = idx;
-      }
-    }
-  }
+  const phtParts = getPHTParts(new Date());
+  // dowSun: 0 = Sun, 1 = Mon, ..., 6 = Sat -> Mon=0 .. Sat=5, Sun=6
+  const todayBucketIdx = phtParts.dowSun === 0 ? 6 : phtParts.dowSun - 1;
 
   const weeklyBars: { label: string; amount: number; isToday: boolean }[] =
-    orderedWeekdays.map((wd, idx) => ({
-      label: wd.label,
-      amount: Number((activeCentavosBuckets[idx] / 100).toFixed(2)),
-      isToday: idx === highlightedIdx,
+    weeklyBuckets.map((bucket, idx) => ({
+      label: bucket.label,
+      amount: bucket.amount,
+      isToday: idx === todayBucketIdx,
     }));
 
   const maxWeeklyAmount = Math.max(
@@ -616,12 +571,9 @@ export default function AuthenticatedDashboardScreen() {
 
   // Compute real comparison badge text from weeklyBars (today vs yesterday)
   const todayBarAmount =
-    Number((currentWeekCentavos[todayBucketIdx] / 100).toFixed(2)) ||
-    todaySalesSummary.totalAmount;
+    weeklyBars[todayBucketIdx]?.amount ?? todaySalesSummary.totalAmount;
   const yesterdayBucketIdx = (todayBucketIdx + 6) % 7;
-  const yesterdayBarAmount = Number(
-    (currentWeekCentavos[yesterdayBucketIdx] / 100).toFixed(2)
-  );
+  const yesterdayBarAmount = weeklyBars[yesterdayBucketIdx]?.amount ?? 0;
   let salesComparisonLabel = `${todaySalesSummary.transactionCount} ${
     todaySalesSummary.transactionCount === 1 ? 'sale' : 'sales'
   }`;

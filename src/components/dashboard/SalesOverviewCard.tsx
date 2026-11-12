@@ -114,10 +114,13 @@ export function SalesOverviewCard({
 
           <View style={styles.barsRow}>
             {weeklyBars.map((bar, idx) => {
-              const rawRatio = bar.amount > 0 ? bar.amount / chartCeiling : 0;
-              const clampedRatio =
-                bar.amount > 0 ? Math.min(Math.max(rawRatio, 0.24), 1) : 0.14;
-              const barPixelHeight = Math.round(clampedRatio * 84);
+              const isZero = bar.amount <= 0;
+              const barPixelHeight = isZero
+                ? 2
+                : Math.min(
+                    84,
+                    Math.max(6, Math.round((bar.amount / chartCeiling) * 84))
+                  );
 
               const formattedCallout =
                 bar.amount >= 1000
@@ -156,12 +159,14 @@ export function SalesOverviewCard({
                         isHighlighted && styles.barFillToday,
                         { height: barPixelHeight },
                       ]}>
-                      <View
-                        style={[
-                          styles.barGradientTop,
-                          isHighlighted && styles.barGradientTopToday,
-                        ]}
-                      />
+                      {!isZero && (
+                        <View
+                          style={[
+                            styles.barGradientTop,
+                            isHighlighted && styles.barGradientTopToday,
+                          ]}
+                        />
+                      )}
                     </View>
                   </View>
 
