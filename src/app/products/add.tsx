@@ -54,8 +54,11 @@ export default function AddProductScreen() {
 
       await createStoreProduct(validated);
 
-      // Navigate to Products list so the vendor immediately sees the newly added product
-      router.replace('/products');
+      // Navigate to Products list so the vendor immediately sees the newly added product and confirmation banner
+      router.replace({
+        pathname: '/products',
+        params: { status: 'created' },
+      } as any);
     } catch (err: unknown) {
       const msg =
         err instanceof Error
