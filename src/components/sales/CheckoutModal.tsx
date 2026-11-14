@@ -14,6 +14,14 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import {
+  CartVectorIcon,
+  NavCustomersIcon,
+  NavUtangIcon,
+  SearchVectorIcon,
+  WarningTriangleIcon,
+} from '@/components/dashboard/DashboardNavIcons';
+import { CheckIcon, UserIcon } from '@/components/ui/AuthIcons';
 import { TindaMateButton } from '@/components/ui/TindaMateButton';
 import {
   BorderRadius,
@@ -53,18 +61,21 @@ export interface CheckoutModalProps {
   ) => void;
 }
 
+const DEFAULT_CUSTOMER_DISPLAY_LIMIT = 5;
+
 /**
- * CheckoutModal
+ * CheckoutModal (Batch S-2)
  *
- * Implements Batch 7B-3: Checkout UI + Amount Tendered + Atomic RPC Integration
- * - Complete order summary review (items, quantities, unit prices, subtotals, total)
- * - Safe numeric input for customer Amount Tendered (supports Philippine Peso decimals)
- * - Integer centavo arithmetic for safe, deterministic change calculation
- * - Dynamic quick payment options (Exact amount, ₱20, ₱50, ₱100, ₱200, ₱500, ₱1,000)
- * - Real-time payment states: Empty, Invalid, Insufficient (shortfall needed), Exact (₱0.00), Overpaid (Change)
- * - Interactive submission state ("Recording Sale...") with duplicate tap lock
- * - Actionable submission error reporting with inline retry support
- * - Keyboard-adaptive mobile layout preserving full scrollability and touch access
+ * Mobile POS checkout interface:
+ * 1. Compact deep-green header with close action
+ * 2. Prominent Transaction Total card (tabular-nums)
+ * 3. Clear Cash vs Utang payment method selector
+ * 4. Cash tendered input + quick tender chips + sukli card OR Utang customer selector
+ * 5. Collapsible Order Summary preserving full line-item breakdown
+ * 6. Sticky primary confirmation CTA + Back to Cart action
+ *
+ * Preserves 100% of existing `validatePaymentAmount`, `getQuickPaymentOptions`,
+ * `fetchStoreCustomers`, and `onConfirmSale` transaction logic.
  */
 export function CheckoutModal({
   visible,
@@ -85,21 +96,30 @@ export function CheckoutModal({
   // Local payment input state for Cash
   const [amountTenderedInput, setAmountTenderedInput] = useState('');
 
+  // Collapsible order summary state
+  const [isOrderSummaryExpanded, setIsOrderSummaryExpanded] = useState(false);
+
   // Active customer state for Utang
   const [customers, setCustomers] = useState<CustomerWithCredit[]>([]);
   const [isLoadingCustomers, setIsLoadingCustomers] = useState(false);
   const [customerSearchQuery, setCustomerSearchQuery] = useState('');
-  const [selectedCustomer, setSelectedCustomer] = useState<CustomerWithCredit | null>(null);
-  const [customerLoadError, setCustomerLoadError] = useState<string | null>(null);
+  const [selectedCustomer, setSelectedCustomer] =
+    useState<CustomerWithCredit | null>(null);
+  const [customerLoadError, setCustomerLoadError] = useState<string | null>(
+    null
+  );
+  const [showAllCustomers, setShowAllCustomers] = useState(false);
 
   // Reset payment input and utang state whenever modal visibility changes
   useEffect(() => {
     if (visible) {
       setAmountTenderedInput('');
       setPaymentMethod('cash');
+      setIsOrderSummaryExpanded(false);
       setCustomerSearchQuery('');
       setSelectedCustomer(null);
       setCustomerLoadError(null);
+      setShowAllCustomers(false);
     }
   }, [visible]);
 
@@ -111,7 +131,9 @@ export function CheckoutModal({
       const list = await fetchStoreCustomers('', 'Active');
       setCustomers(list);
     } catch {
-      setCustomerLoadError('Could not load active customers. Please check your connection.');
+      setCustomerLoadError(
+        'Could not load active customers. Please check your connection.'
+      );
     } finally {
       setIsLoadingCustomers(false);
     }
@@ -121,7 +143,7 @@ export function CheckoutModal({
     if (visible && paymentMethod === 'credit' && customers.length === 0) {
       loadActiveCustomers();
     }
-  }, [visible, paymentMethod]);
+  }, [visible, paymentMethod, customers.length]);
 
   // Derived filtered customers for Utang selector
   const filteredCustomers = customers.filter((c) => {
@@ -134,6 +156,10 @@ export function CheckoutModal({
     return nameMatch || phoneMatch;
   });
 
+  const visibleCustomers = showAllCustomers
+    ? filteredCustomers
+    : filteredCustomers.slice(0, DEFAULT_CUSTOMER_DISPLAY_LIMIT);
+
   // Derived payment validation and change calculation (for cash)
   const paymentValidation = validatePaymentAmount(
     amountTenderedInput,
@@ -145,7 +171,6 @@ export function CheckoutModal({
 
   const handleQuickPaymentPress = (amount: number) => {
     onClearError?.();
-    // If integer, display without trailing .00; if has cents, keep exact
     const formatted =
       amount % 1 === 0 ? amount.toString() : amount.toFixed(2);
     setAmountTenderedInput(formatted);
@@ -198,19 +223,28 @@ export function CheckoutModal({
       transparent={false}
       statusBarTranslucent={true}
       onRequestClose={isSubmitting ? undefined : onClose}>
-      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right', 'bottom']}>
+      <SafeAreaView
+        style={styles.safeArea}
+        edges={['top', 'left', 'right', 'bottom']}>
         <KeyboardAvoidingView
           style={styles.container}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          {/* Header Bar */}
+          {/* Deep Green POS Header Bar */}
           <View style={styles.header}>
-            <View style={styles.headerTitleWrap}>
-              <Text style={styles.headerTitle} accessibilityRole="header">
-                POS Checkout
-              </Text>
-              <Text style={styles.headerSubtitle}>
-                Review items and enter customer payment
-              </Text>
+            <View style={styles.headerLeft}>
+              <View style={styles.headerIconBadge}>
+                <CartVectorIcon color={Colors.textInverse} size={18} />
+              </View>
+              <View style={styles.headerTitleWrap}>
+                <Text style={styles.headerTitle} accessibilityRole="header">
+                  POS Checkout
+                </Text>
+                <Text style={styles.headerSubtitle} numberOfLines={1}>
+                  {cartSummary.totalItems}{' '}
+                  {cartSummary.totalItems === 1 ? 'item' : 'items'} • Review &
+                  confirm payment
+                </Text>
+              </View>
             </View>
             <Pressable
               style={({ pressed }) => [
@@ -230,118 +264,148 @@ export function CheckoutModal({
           {/* Scrollable Checkout Content */}
           <ScrollView
             style={styles.scrollView}
-            contentContainerStyle={styles.scrollContent}
+            contentContainerStyle={[
+              styles.scrollContent,
+              isNarrow && styles.scrollContentNarrow,
+            ]}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}>
-            {/* Total Amount Hero Card */}
+            {/* 1. Prominent Total Amount Due Card */}
             <View style={styles.totalHeroCard}>
               <View style={styles.totalHeroTop}>
                 <View style={styles.totalBadge}>
                   <Text style={styles.totalBadgeText}>TOTAL AMOUNT DUE</Text>
                 </View>
                 <Text style={styles.totalCountText}>
-                  {cartSummary.totalItems}{' '}
-                  {cartSummary.totalItems === 1 ? 'item' : 'items'} (
                   {cartSummary.distinctCount}{' '}
-                  {cartSummary.distinctCount === 1 ? 'product' : 'products'})
+                  {cartSummary.distinctCount === 1 ? 'product' : 'products'} ·{' '}
+                  {cartSummary.totalItems}{' '}
+                  {cartSummary.totalItems === 1 ? 'unit' : 'units'}
                 </Text>
               </View>
               <Text
-                style={styles.totalHeroAmount}
+                style={[
+                  styles.totalHeroAmount,
+                  isNarrow && styles.totalHeroAmountNarrow,
+                ]}
                 adjustsFontSizeToFit
-                minimumFontScale={0.8}
+                minimumFontScale={0.75}
                 numberOfLines={1}>
                 {formatPesoCurrency(cartSummary.totalAmount)}
               </Text>
             </View>
 
-            {/* Order Items Breakdown */}
-            <View style={styles.cardSection}>
-              <View style={styles.sectionHeaderRow}>
-                <Text style={styles.sectionHeading}>Order Summary</Text>
-                <Text style={styles.sectionItemCount}>
-                  {cartItems.length} {cartItems.length === 1 ? 'line item' : 'line items'}
-                </Text>
-              </View>
-
-              <View style={styles.itemsListContainer}>
-                {cartItems.map((item, index) => (
-                  <View
-                    key={item.productId}
-                    style={[
-                      styles.orderItemRow,
-                      index < cartItems.length - 1 && styles.orderItemDivider,
-                    ]}>
-                    <View style={styles.orderItemInfo}>
-                      <Text style={styles.orderItemName} numberOfLines={1}>
-                        {item.productName}
-                      </Text>
-                      <Text style={styles.orderItemUnitDetails}>
-                        {item.quantity} {item.unit} × {formatPesoCurrency(item.sellingPrice)}
-                      </Text>
-                    </View>
-                    <Text style={styles.orderItemSubtotal}>
-                      {formatPesoCurrency(item.subtotal)}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-
-            {/* Payment Method Selector */}
+            {/* 2. Payment Method Selector */}
             <View style={styles.cardSection}>
               <Text style={styles.sectionHeading}>Payment Method</Text>
               <View style={styles.paymentMethodToggleRow}>
                 <Pressable
                   style={({ pressed }) => [
                     styles.paymentMethodTab,
-                    paymentMethod === 'cash' && styles.paymentMethodTabActive,
+                    paymentMethod === 'cash' && styles.paymentMethodTabCashActive,
                     pressed && styles.paymentMethodTabPressed,
                   ]}
                   onPress={() => {
                     onClearError?.();
                     setPaymentMethod('cash');
                   }}
-                  accessibilityRole="button"
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: paymentMethod === 'cash' }}
                   accessibilityLabel="Pay with Cash">
-                  <Text
+                  <View
                     style={[
-                      styles.paymentMethodTabText,
-                      paymentMethod === 'cash' && styles.paymentMethodTabTextActive,
+                      styles.methodIconWrap,
+                      paymentMethod === 'cash' && styles.methodIconWrapActive,
                     ]}>
-                    💵 Cash (Bayad)
-                  </Text>
+                    <Text
+                      style={[
+                        styles.methodPesoGlyph,
+                        paymentMethod === 'cash' && styles.methodPesoGlyphActive,
+                      ]}>
+                      ₱
+                    </Text>
+                  </View>
+                  <View style={styles.methodTextWrap}>
+                    <Text
+                      style={[
+                        styles.paymentMethodTabText,
+                        paymentMethod === 'cash' &&
+                          styles.paymentMethodTabTextCashActive,
+                      ]}
+                      numberOfLines={1}>
+                      Cash
+                    </Text>
+                    <Text style={styles.paymentMethodSubtext} numberOfLines={1}>
+                      Bayad
+                    </Text>
+                  </View>
+                  {paymentMethod === 'cash' ? (
+                    <View style={styles.methodCheckCircle}>
+                      <CheckIcon size={11} color={Colors.textInverse} />
+                    </View>
+                  ) : null}
                 </Pressable>
 
                 <Pressable
                   style={({ pressed }) => [
                     styles.paymentMethodTab,
-                    paymentMethod === 'credit' && styles.paymentMethodTabActive,
+                    paymentMethod === 'credit' &&
+                      styles.paymentMethodTabUtangActive,
                     pressed && styles.paymentMethodTabPressed,
                   ]}
                   onPress={() => {
                     onClearError?.();
                     setPaymentMethod('credit');
                   }}
-                  accessibilityRole="button"
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: paymentMethod === 'credit' }}
                   accessibilityLabel="Record as Utang">
-                  <Text
+                  <View
                     style={[
-                      styles.paymentMethodTabText,
-                      paymentMethod === 'credit' && styles.paymentMethodTabTextActive,
+                      styles.methodIconWrap,
+                      paymentMethod === 'credit' &&
+                        styles.methodIconWrapUtangActive,
                     ]}>
-                    📝 Utang (Credit)
-                  </Text>
+                    <NavUtangIcon
+                      size={16}
+                      color={
+                        paymentMethod === 'credit'
+                          ? Colors.textInverse
+                          : Colors.textSecondary
+                      }
+                    />
+                  </View>
+                  <View style={styles.methodTextWrap}>
+                    <Text
+                      style={[
+                        styles.paymentMethodTabText,
+                        paymentMethod === 'credit' &&
+                          styles.paymentMethodTabTextUtangActive,
+                      ]}
+                      numberOfLines={1}>
+                      Utang
+                    </Text>
+                    <Text style={styles.paymentMethodSubtext} numberOfLines={1}>
+                      Store Credit
+                    </Text>
+                  </View>
+                  {paymentMethod === 'credit' ? (
+                    <View style={styles.methodCheckCircleUtang}>
+                      <CheckIcon size={11} color={Colors.textInverse} />
+                    </View>
+                  ) : null}
                 </Pressable>
               </View>
             </View>
 
-            {/* Cash Payment Section */}
+            {/* 3A. Cash Payment Section */}
             {paymentMethod === 'cash' && (
               <View style={styles.cardSection}>
-                <Text style={styles.sectionHeading}>Amount Tendered (Bayad)</Text>
+                <Text style={styles.sectionHeading}>
+                  Amount Tendered (Bayad)
+                </Text>
                 <Text style={styles.inputHelpText}>
-                  Enter the cash amount handed by the customer.
+                  Enter the cash handed by the customer or tap a quick amount.
                 </Text>
 
                 {/* Amount Input Box */}
@@ -350,6 +414,8 @@ export function CheckoutModal({
                     styles.inputContainer,
                     paymentValidation.status === 'insufficient' &&
                       styles.inputContainerWarning,
+                    paymentValidation.status === 'invalid' &&
+                      styles.inputContainerError,
                     paymentValidation.isValid && styles.inputContainerValid,
                   ]}>
                   <Text style={styles.pesoSymbol}>₱</Text>
@@ -372,7 +438,8 @@ export function CheckoutModal({
                       style={styles.inputClearButton}
                       onPress={() => setAmountTenderedInput('')}
                       accessibilityRole="button"
-                      accessibilityLabel="Clear payment amount">
+                      accessibilityLabel="Clear payment amount"
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                       <Text style={styles.inputClearButtonText}>✕</Text>
                     </Pressable>
                   )}
@@ -381,7 +448,7 @@ export function CheckoutModal({
                 {/* Quick Payment Options */}
                 {quickPaymentOptions.length > 0 && (
                   <View style={styles.quickOptionsWrap}>
-                    <Text style={styles.quickOptionsLabel}>Quick Tender:</Text>
+                    <Text style={styles.quickOptionsLabel}>Quick Tender</Text>
                     <View style={styles.quickChipsRow}>
                       {quickPaymentOptions.map((option) => {
                         const isExact = option === cartSummary.totalAmount;
@@ -432,7 +499,8 @@ export function CheckoutModal({
                 {paymentValidation.status === 'invalid' && (
                   <View style={styles.feedbackBoxError}>
                     <Text style={styles.feedbackTextError}>
-                      {paymentValidation.errorMessage ?? 'Please enter a valid numeric amount.'}
+                      {paymentValidation.errorMessage ??
+                        'Please enter a valid numeric amount.'}
                     </Text>
                   </View>
                 )}
@@ -440,17 +508,23 @@ export function CheckoutModal({
                 {paymentValidation.status === 'insufficient' && (
                   <View style={styles.feedbackBoxWarning}>
                     <View style={styles.feedbackRow}>
-                      <Text style={styles.warningBadgeIcon}>⚠️</Text>
+                      <View style={styles.feedbackIconWrap}>
+                        <WarningTriangleIcon
+                          size={18}
+                          bgColor={Colors.warningText}
+                          fgColor={Colors.textInverse}
+                        />
+                      </View>
                       <View style={styles.warningTextWrap}>
                         <Text style={styles.feedbackTitleWarning}>
                           Insufficient Payment
                         </Text>
                         <Text style={styles.feedbackTextWarning}>
-                          Customer payment is lacking by{' '}
+                          Short by{' '}
                           <Text style={styles.feedbackHighlightWarning}>
                             {formatPesoCurrency(paymentValidation.amountNeeded)}
                           </Text>
-                          . Please ask for additional cash.
+                          . Please collect the remaining amount.
                         </Text>
                       </View>
                     </View>
@@ -470,11 +544,13 @@ export function CheckoutModal({
                       <Text style={styles.changeCardLabel}>
                         {paymentValidation.status === 'exact'
                           ? 'EXACT PAYMENT (SAKTO)'
-                          : 'CHANGE DUE TO CUSTOMER (SUKLI)'}
+                          : 'CHANGE DUE (SUKLI)'}
                       </Text>
                       {paymentValidation.status === 'exact' ? (
                         <View style={styles.exactPill}>
-                          <Text style={styles.exactPillText}>No change needed</Text>
+                          <Text style={styles.exactPillText}>
+                            No change needed
+                          </Text>
                         </View>
                       ) : null}
                     </View>
@@ -494,7 +570,8 @@ export function CheckoutModal({
 
                     {paymentValidation.status === 'overpaid' && (
                       <Text style={styles.changeHintText}>
-                        Hand {formatPesoCurrency(paymentValidation.change)} back to the customer before completing.
+                        Return {formatPesoCurrency(paymentValidation.change)} to
+                        the customer before confirming.
                       </Text>
                     )}
                   </View>
@@ -502,37 +579,50 @@ export function CheckoutModal({
               </View>
             )}
 
-            {/* Utang (Credit) Customer Selector Section */}
+            {/* 3B. Utang (Credit) Customer Selector Section */}
             {paymentMethod === 'credit' && (
               <View style={styles.cardSection}>
-                <Text style={styles.sectionHeading}>Select Customer for Utang</Text>
+                <Text style={styles.sectionHeading}>
+                  Select Customer for Utang
+                </Text>
                 <Text style={styles.inputHelpText}>
-                  This purchase will be charged to the customer&apos;s store credit account.
+                  This sale will be charged to the selected customer&apos;s
+                  credit account.
                 </Text>
 
                 {selectedCustomer ? (
                   /* Selected Customer Card */
                   <View style={styles.selectedCustomerCard}>
                     <View style={styles.selectedCustomerHeader}>
+                      <View style={styles.selectedCustomerAvatar}>
+                        <UserIcon size={18} color={Colors.primaryDark} />
+                      </View>
                       <View style={styles.selectedCustomerInfo}>
-                        <Text style={styles.selectedCustomerName} numberOfLines={1}>
+                        <Text
+                          style={styles.selectedCustomerName}
+                          numberOfLines={1}>
                           {selectedCustomer.name}
                         </Text>
                         {selectedCustomer.phone ? (
                           <Text style={styles.selectedCustomerPhone}>
-                            📞 {selectedCustomer.phone}
+                            {selectedCustomer.phone}
                           </Text>
                         ) : null}
                       </View>
                       <Pressable
-                        style={styles.changeCustomerButton}
+                        style={({ pressed }) => [
+                          styles.changeCustomerButton,
+                          pressed && styles.quickChipPressed,
+                        ]}
                         onPress={() => {
                           onClearError?.();
                           setSelectedCustomer(null);
                         }}
                         accessibilityRole="button"
                         accessibilityLabel="Change selected customer">
-                        <Text style={styles.changeCustomerButtonText}>Change</Text>
+                        <Text style={styles.changeCustomerButtonText}>
+                          Change
+                        </Text>
                       </Pressable>
                     </View>
 
@@ -540,24 +630,29 @@ export function CheckoutModal({
 
                     <View style={styles.balanceComparisonRow}>
                       <View style={styles.balanceComparisonCol}>
-                        <Text style={styles.balanceComparisonLabel}>Current Utang</Text>
+                        <Text style={styles.balanceComparisonLabel}>
+                          Current Utang
+                        </Text>
                         <Text style={styles.balanceComparisonValue}>
                           {formatPesoCurrency(
-                            selectedCustomer.credit_summary?.current_balance ?? 0
+                            selectedCustomer.credit_summary?.current_balance ??
+                              0
                           )}
                         </Text>
                       </View>
                       <Text style={styles.balanceComparisonArrow}>→</Text>
                       <View style={styles.balanceComparisonCol}>
-                        <Text style={styles.balanceComparisonLabel}>New Total Utang</Text>
+                        <Text style={styles.balanceComparisonLabel}>
+                          New Total Utang
+                        </Text>
                         <Text
                           style={[
                             styles.balanceComparisonValue,
                             styles.balanceComparisonNew,
                           ]}>
                           {formatPesoCurrency(
-                            (selectedCustomer.credit_summary?.current_balance ?? 0) +
-                              cartSummary.totalAmount
+                            (selectedCustomer.credit_summary
+                              ?.current_balance ?? 0) + cartSummary.totalAmount
                           )}
                         </Text>
                       </View>
@@ -566,12 +661,20 @@ export function CheckoutModal({
                 ) : (
                   /* Search and Customer List */
                   <View style={styles.customerSelectorContainer}>
+                    <View style={styles.customerRequiredBanner}>
+                      <Text style={styles.customerRequiredText}>
+                        Required: Choose a customer below to enable Record
+                        Utang.
+                      </Text>
+                    </View>
+
                     <View style={styles.customerSearchContainer}>
+                      <SearchVectorIcon size={17} color={Colors.textMuted} />
                       <TextInput
                         style={styles.customerSearchInput}
                         value={customerSearchQuery}
                         onChangeText={setCustomerSearchQuery}
-                        placeholder="Search active customer..."
+                        placeholder="Search active customer by name or phone..."
                         placeholderTextColor={Colors.textPlaceholder}
                         returnKeyType="search"
                         accessibilityLabel="Search customer for utang"
@@ -589,7 +692,10 @@ export function CheckoutModal({
 
                     {isLoadingCustomers ? (
                       <View style={styles.customerLoadingWrap}>
-                        <ActivityIndicator size="small" color={Colors.primary} />
+                        <ActivityIndicator
+                          size="small"
+                          color={Colors.primary}
+                        />
                         <Text style={styles.customerLoadingText}>
                           Loading active customers...
                         </Text>
@@ -607,12 +713,18 @@ export function CheckoutModal({
                       </View>
                     ) : customers.length === 0 ? (
                       <View style={styles.customerEmptyWrap}>
-                        <Text style={styles.customerEmptyIcon}>👥</Text>
+                        <View style={styles.customerEmptyIconWrap}>
+                          <NavCustomersIcon
+                            size={24}
+                            color={Colors.textMuted}
+                          />
+                        </View>
                         <Text style={styles.customerEmptyTitle}>
                           No Active Customers
                         </Text>
                         <Text style={styles.customerEmptyText}>
-                          Add active customers in the Customers module first before recording utang sales.
+                          Add active customers in the Customers module first
+                          before recording utang sales.
                         </Text>
                       </View>
                     ) : filteredCustomers.length === 0 ? (
@@ -621,19 +733,22 @@ export function CheckoutModal({
                           No matching customer
                         </Text>
                         <Text style={styles.customerEmptyText}>
-                          No customer found matching &quot;{customerSearchQuery}&quot;.
+                          No customer found matching &quot;{customerSearchQuery}
+                          &quot;.
                         </Text>
                       </View>
                     ) : (
                       <View style={styles.customerList}>
-                        {filteredCustomers.slice(0, 5).map((c) => {
+                        {visibleCustomers.map((c, idx) => {
                           const currentUtang =
                             c.credit_summary?.current_balance ?? 0;
+                          const isLast = idx === visibleCustomers.length - 1;
                           return (
                             <Pressable
                               key={c.id}
                               style={({ pressed }) => [
                                 styles.customerItemRow,
+                                isLast && styles.customerItemRowLast,
                                 pressed && styles.customerItemRowPressed,
                               ]}
                               onPress={() => {
@@ -656,7 +771,7 @@ export function CheckoutModal({
                               </View>
                               <View style={styles.customerItemBalanceCol}>
                                 <Text style={styles.customerItemBalanceLabel}>
-                                  Utang
+                                  Current Utang
                                 </Text>
                                 <Text
                                   style={[
@@ -670,10 +785,25 @@ export function CheckoutModal({
                             </Pressable>
                           );
                         })}
-                        {filteredCustomers.length > 5 && (
-                          <Text style={styles.customerMoreCountText}>
-                            Showing 5 of {filteredCustomers.length} customers. Search to narrow down.
-                          </Text>
+                        {filteredCustomers.length >
+                          DEFAULT_CUSTOMER_DISPLAY_LIMIT && (
+                          <Pressable
+                            style={styles.customerMoreBtn}
+                            onPress={() =>
+                              setShowAllCustomers((prev) => !prev)
+                            }
+                            accessibilityRole="button"
+                            accessibilityLabel={
+                              showAllCustomers
+                                ? 'Show fewer customers'
+                                : `Show all ${filteredCustomers.length} customers`
+                            }>
+                            <Text style={styles.customerMoreCountText}>
+                              {showAllCustomers
+                                ? 'Show fewer'
+                                : `Showing ${DEFAULT_CUSTOMER_DISPLAY_LIMIT} of ${filteredCustomers.length} • Show all`}
+                            </Text>
+                          </Pressable>
                         )}
                       </View>
                     )}
@@ -682,16 +812,87 @@ export function CheckoutModal({
               </View>
             )}
 
+            {/* 4. Collapsible Order Summary */}
+            <View style={styles.cardSection}>
+              <Pressable
+                style={styles.summaryToggleHeader}
+                onPress={() => setIsOrderSummaryExpanded((prev) => !prev)}
+                accessibilityRole="button"
+                accessibilityState={{ expanded: isOrderSummaryExpanded }}
+                accessibilityLabel={
+                  isOrderSummaryExpanded
+                    ? 'Collapse order summary'
+                    : 'Expand order summary'
+                }>
+                <View style={styles.summaryToggleLeft}>
+                  <Text style={styles.sectionHeading}>Order Summary</Text>
+                  <Text style={styles.sectionItemCount}>
+                    {cartSummary.totalItems}{' '}
+                    {cartSummary.totalItems === 1 ? 'item' : 'items'} (
+                    {cartItems.length}{' '}
+                    {cartItems.length === 1 ? 'line' : 'lines'})
+                  </Text>
+                </View>
+                <View style={styles.summaryTogglePill}>
+                  <Text style={styles.summaryTogglePillText}>
+                    {isOrderSummaryExpanded ? 'Hide ▲' : 'View ▼'}
+                  </Text>
+                </View>
+              </Pressable>
+
+              {isOrderSummaryExpanded ? (
+                <View style={styles.itemsListContainer}>
+                  {cartItems.map((item, index) => (
+                    <View
+                      key={item.productId}
+                      style={[
+                        styles.orderItemRow,
+                        index < cartItems.length - 1 && styles.orderItemDivider,
+                      ]}>
+                      <View style={styles.orderItemInfo}>
+                        <Text style={styles.orderItemName} numberOfLines={2}>
+                          {item.productName}
+                        </Text>
+                        <Text style={styles.orderItemUnitDetails}>
+                          {item.quantity} {item.unit} ×{' '}
+                          {formatPesoCurrency(item.sellingPrice)}
+                        </Text>
+                      </View>
+                      <Text style={styles.orderItemSubtotal}>
+                        {formatPesoCurrency(item.subtotal)}
+                      </Text>
+                    </View>
+                  ))}
+
+                  <View style={styles.summaryTotalFooter}>
+                    <Text style={styles.summaryTotalFooterLabel}>
+                      Transaction Total
+                    </Text>
+                    <Text style={styles.summaryTotalFooterValue}>
+                      {formatPesoCurrency(cartSummary.totalAmount)}
+                    </Text>
+                  </View>
+                </View>
+              ) : null}
+            </View>
+
             {/* Submission Error Banner */}
             {submissionError ? (
               <View style={styles.errorBannerCard}>
                 <View style={styles.errorBannerHeader}>
-                  <Text style={styles.errorBannerIcon}>⚠️</Text>
-                  <Text style={styles.errorBannerTitle}>Could Not Complete Sale</Text>
+                  <WarningTriangleIcon
+                    size={18}
+                    bgColor={Colors.error}
+                    fgColor={Colors.textInverse}
+                  />
+                  <Text style={styles.errorBannerTitle}>
+                    Could Not Complete Sale
+                  </Text>
                 </View>
                 <Text style={styles.errorBannerText}>{submissionError}</Text>
                 <Text style={styles.errorBannerHint}>
-                  Your cart is safely preserved. You can retry with the same payment or return to cart to adjust items.
+                  Your cart is safely preserved. You can retry with the same
+                  payment or return to cart to adjust items.
                 </Text>
               </View>
             ) : null}
@@ -713,7 +914,7 @@ export function CheckoutModal({
                   ? `Confirm Sale · ${formatPesoCurrency(cartSummary.totalAmount)}`
                   : 'Enter Sufficient Payment'
               }
-              variant="primary"
+              variant={paymentMethod === 'credit' ? 'accent' : 'primary'}
               loading={isSubmitting}
               disabled={
                 isSubmitting ||
@@ -747,7 +948,7 @@ export function CheckoutModal({
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: Colors.backgroundWarm,
+    backgroundColor: Colors.primaryDark,
   },
   container: {
     flex: 1,
@@ -757,101 +958,122 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    backgroundColor: Colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.twoHalf,
+    backgroundColor: Colors.primaryDark,
+    ...Shadows.sm,
+  },
+  headerLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.twoHalf,
+  },
+  headerIconBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.16)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitleWrap: {
     flex: 1,
   },
   headerTitle: {
     fontSize: Typography.sizes.lg,
-    fontWeight: Typography.weights.bold,
-    color: Colors.textBrand,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.textInverse,
   },
   headerSubtitle: {
-    fontSize: Typography.sizes.xs,
-    color: Colors.textSecondary,
-    marginTop: 2,
+    fontSize: Typography.sizes.caption,
+    color: Colors.primaryBorder,
+    marginTop: 1,
   },
   closeButton: {
     width: 38,
     height: 38,
     borderRadius: BorderRadius.full,
-    backgroundColor: Colors.backgroundAlt,
+    backgroundColor: 'rgba(255, 255, 255, 0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.22)',
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: Spacing.sm,
   },
   closeButtonPressed: {
-    backgroundColor: Colors.border,
+    opacity: 0.8,
   },
   closeButtonDisabled: {
     opacity: 0.4,
   },
   closeButtonText: {
     fontSize: Typography.sizes.base,
-    color: Colors.textSecondary,
+    color: Colors.textInverse,
     fontWeight: Typography.weights.bold,
   },
   scrollView: {
     flex: 1,
-    backgroundColor: Colors.backgroundAlt,
+    backgroundColor: Colors.background,
   },
   scrollContent: {
-    padding: Spacing.md,
-    gap: Spacing.md,
-    paddingBottom: Spacing.xl,
+    padding: Spacing.three,
+    gap: Spacing.twoHalf,
+    paddingBottom: Spacing.four,
+  },
+  scrollContentNarrow: {
+    padding: Spacing.twoHalf,
+    gap: Spacing.two,
   },
   totalHeroCard: {
-    backgroundColor: Colors.primaryDark,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.card,
+    padding: Spacing.three,
+    borderWidth: 1.5,
+    borderColor: Colors.primaryBorder,
     ...Shadows.sm,
   },
   totalHeroTop: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: Spacing.xs,
+    gap: Spacing.two,
+    marginBottom: Spacing.one,
   },
   totalBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    paddingHorizontal: Spacing.sm,
+    backgroundColor: Colors.primarySoft,
+    paddingHorizontal: Spacing.two,
     paddingVertical: 3,
-    borderRadius: BorderRadius.sm,
+    borderRadius: BorderRadius.xs,
   },
   totalBadgeText: {
-    fontSize: Typography.sizes.caption,
-    fontWeight: Typography.weights.bold,
-    color: Colors.textInverse,
+    fontSize: 11,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.primaryDark,
     letterSpacing: 0.5,
   },
   totalCountText: {
-    fontSize: Typography.sizes.xs,
-    color: '#D1FAE5',
+    fontSize: Typography.sizes.caption,
+    color: Colors.textSecondary,
+    fontWeight: Typography.weights.semiBold,
   },
   totalHeroAmount: {
     fontSize: Typography.sizes.display,
     fontWeight: Typography.weights.extraBold,
-    color: Colors.textInverse,
-    marginTop: Spacing.xs,
+    color: Colors.primaryDark,
+    fontVariant: ['tabular-nums'],
+    marginTop: 2,
+  },
+  totalHeroAmountNarrow: {
+    fontSize: 28,
   },
   cardSection: {
     backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
+    borderRadius: BorderRadius.card,
+    padding: Spacing.three,
     borderWidth: 1,
     borderColor: Colors.border,
-    ...Shadows.sm,
-  },
-  sectionHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: Spacing.sm,
+    ...Shadows.xs,
   },
   sectionHeading: {
     fontSize: Typography.sizes.base,
@@ -859,62 +1081,120 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
   },
   sectionItemCount: {
-    fontSize: Typography.sizes.xs,
-    color: Colors.textMuted,
-  },
-  itemsListContainer: {
-    borderTopWidth: 1,
-    borderTopColor: Colors.borderSubtle,
-    marginTop: Spacing.xs,
-  },
-  orderItemRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: Spacing.sm,
-  },
-  orderItemDivider: {
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.borderSubtle,
-  },
-  orderItemInfo: {
-    flex: 1,
-    paddingRight: Spacing.md,
-  },
-  orderItemName: {
-    fontSize: Typography.sizes.body,
-    fontWeight: Typography.weights.semiBold,
-    color: Colors.textPrimary,
-  },
-  orderItemUnitDetails: {
-    fontSize: Typography.sizes.xs,
-    color: Colors.textMuted,
+    fontSize: Typography.sizes.caption,
+    color: Colors.textSecondary,
     marginTop: 2,
   },
-  orderItemSubtotal: {
+  // Payment Method Selector
+  paymentMethodToggleRow: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+    marginTop: Spacing.two,
+  },
+  paymentMethodTab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    paddingVertical: Spacing.twoHalf,
+    paddingHorizontal: Spacing.twoHalf,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    backgroundColor: Colors.surfaceSubtle,
+    minHeight: 54,
+  },
+  paymentMethodTabCashActive: {
+    borderColor: Colors.primary,
+    backgroundColor: Colors.primarySoft,
+  },
+  paymentMethodTabUtangActive: {
+    borderColor: Colors.accent,
+    backgroundColor: Colors.accentLight,
+  },
+  paymentMethodTabPressed: {
+    opacity: 0.85,
+  },
+  methodIconWrap: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: Colors.borderSubtle,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  methodIconWrapActive: {
+    backgroundColor: Colors.primary,
+  },
+  methodIconWrapUtangActive: {
+    backgroundColor: Colors.accent,
+  },
+  methodPesoGlyph: {
     fontSize: Typography.sizes.body,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.textSecondary,
+  },
+  methodPesoGlyphActive: {
+    color: Colors.textInverse,
+  },
+  methodTextWrap: {
+    flex: 1,
+  },
+  paymentMethodTabText: {
+    fontSize: Typography.sizes.bodySm,
     fontWeight: Typography.weights.bold,
     color: Colors.textPrimary,
   },
+  paymentMethodTabTextCashActive: {
+    color: Colors.primaryDark,
+  },
+  paymentMethodTabTextUtangActive: {
+    color: Colors.accentDark,
+  },
+  paymentMethodSubtext: {
+    fontSize: 11,
+    color: Colors.textSecondary,
+  },
+  methodCheckCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  methodCheckCircleUtang: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: Colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // Cash Input
   inputHelpText: {
-    fontSize: Typography.sizes.xs,
-    color: Colors.textMuted,
+    fontSize: Typography.sizes.caption,
+    color: Colors.textSecondary,
     marginTop: 2,
-    marginBottom: Spacing.sm,
+    marginBottom: Spacing.two,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.background,
+    backgroundColor: Colors.surfaceSubtle,
     borderWidth: 2,
     borderColor: Colors.border,
     borderRadius: BorderRadius.md,
-    paddingHorizontal: Spacing.md,
-    height: 56,
+    paddingHorizontal: Spacing.three,
+    height: 54,
   },
   inputContainerWarning: {
     borderColor: Colors.warning,
     backgroundColor: Colors.warningLight,
+  },
+  inputContainerError: {
+    borderColor: Colors.error,
+    backgroundColor: Colors.errorLight,
   },
   inputContainerValid: {
     borderColor: Colors.primary,
@@ -922,62 +1202,71 @@ const styles = StyleSheet.create({
   },
   pesoSymbol: {
     fontSize: Typography.sizes.xl,
-    fontWeight: Typography.weights.bold,
+    fontWeight: Typography.weights.extraBold,
     color: Colors.textSecondary,
-    marginRight: Spacing.xs,
+    marginRight: Spacing.two,
   },
   numericInput: {
     flex: 1,
     fontSize: Typography.sizes.xl,
-    fontWeight: Typography.weights.bold,
+    fontWeight: Typography.weights.extraBold,
     color: Colors.textPrimary,
+    fontVariant: ['tabular-nums'],
     paddingVertical: 0,
   },
   inputClearButton: {
-    padding: Spacing.xs,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: Colors.borderSubtle,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   inputClearButtonText: {
-    fontSize: Typography.sizes.body,
-    color: Colors.textMuted,
+    fontSize: Typography.sizes.bodySm,
+    color: Colors.textSecondary,
     fontWeight: Typography.weights.bold,
   },
   quickOptionsWrap: {
-    marginTop: Spacing.sm,
+    marginTop: Spacing.twoHalf,
   },
   quickOptionsLabel: {
-    fontSize: Typography.sizes.xs,
-    fontWeight: Typography.weights.medium,
-    color: Colors.textMuted,
-    marginBottom: Spacing.xs,
+    fontSize: Typography.sizes.caption,
+    fontWeight: Typography.weights.semiBold,
+    color: Colors.textSecondary,
+    marginBottom: Spacing.one,
   },
   quickChipsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: Spacing.xs,
+    gap: Spacing.two,
   },
   quickChip: {
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 6,
+    paddingHorizontal: Spacing.twoHalf,
+    paddingVertical: 8,
     borderRadius: BorderRadius.full,
-    backgroundColor: Colors.backgroundAlt,
+    backgroundColor: Colors.surfaceSubtle,
     borderWidth: 1,
     borderColor: Colors.border,
+    minHeight: 36,
+    justifyContent: 'center',
   },
   quickChipExact: {
     borderColor: Colors.primary,
-    backgroundColor: Colors.primaryLight,
+    backgroundColor: Colors.primarySoft,
   },
   quickChipSelected: {
     borderColor: Colors.primaryDark,
-    backgroundColor: Colors.primary,
+    backgroundColor: Colors.primaryDark,
   },
   quickChipPressed: {
     opacity: 0.8,
   },
   quickChipText: {
-    fontSize: Typography.sizes.xs,
-    fontWeight: Typography.weights.semiBold,
+    fontSize: Typography.sizes.caption,
+    fontWeight: Typography.weights.bold,
     color: Colors.textSecondary,
+    fontVariant: ['tabular-nums'],
   },
   quickChipTextExact: {
     color: Colors.primaryDark,
@@ -986,31 +1275,31 @@ const styles = StyleSheet.create({
     color: Colors.textInverse,
   },
   feedbackBoxMuted: {
-    marginTop: Spacing.sm,
-    padding: Spacing.sm,
-    backgroundColor: Colors.backgroundAlt,
+    marginTop: Spacing.two,
+    padding: Spacing.two,
+    backgroundColor: Colors.surfaceSubtle,
     borderRadius: BorderRadius.sm,
   },
   feedbackTextMuted: {
-    fontSize: Typography.sizes.xs,
-    color: Colors.textMuted,
+    fontSize: Typography.sizes.caption,
+    color: Colors.textSecondary,
   },
   feedbackBoxError: {
-    marginTop: Spacing.sm,
-    padding: Spacing.sm,
+    marginTop: Spacing.two,
+    padding: Spacing.two,
     backgroundColor: Colors.errorLight,
     borderRadius: BorderRadius.sm,
     borderWidth: 1,
     borderColor: Colors.errorBorder,
   },
   feedbackTextError: {
-    fontSize: Typography.sizes.xs,
+    fontSize: Typography.sizes.caption,
     color: Colors.error,
-    fontWeight: Typography.weights.medium,
+    fontWeight: Typography.weights.semiBold,
   },
   feedbackBoxWarning: {
-    marginTop: Spacing.sm,
-    padding: Spacing.sm,
+    marginTop: Spacing.two,
+    padding: Spacing.twoHalf,
     backgroundColor: Colors.warningLight,
     borderRadius: BorderRadius.md,
     borderWidth: 1,
@@ -1019,127 +1308,106 @@ const styles = StyleSheet.create({
   feedbackRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: Spacing.xs,
+    gap: Spacing.two,
   },
-  warningBadgeIcon: {
-    fontSize: Typography.sizes.body,
+  feedbackIconWrap: {
+    marginTop: 1,
   },
   warningTextWrap: {
     flex: 1,
   },
   feedbackTitleWarning: {
-    fontSize: Typography.sizes.xs,
+    fontSize: Typography.sizes.caption,
     fontWeight: Typography.weights.bold,
     color: Colors.warningText,
   },
   feedbackTextWarning: {
-    fontSize: Typography.sizes.xs,
+    fontSize: Typography.sizes.caption,
     color: Colors.warningText,
     marginTop: 2,
   },
   feedbackHighlightWarning: {
-    fontWeight: Typography.weights.bold,
+    fontWeight: Typography.weights.extraBold,
+    fontVariant: ['tabular-nums'],
   },
   changeCard: {
-    marginTop: Spacing.md,
-    padding: Spacing.md,
+    marginTop: Spacing.twoHalf,
+    padding: Spacing.three,
     borderRadius: BorderRadius.md,
     borderWidth: 1.5,
   },
   changeCardExact: {
-    backgroundColor: Colors.pastel.green.bg,
-    borderColor: Colors.pastel.green.border,
+    backgroundColor: Colors.primarySoft,
+    borderColor: Colors.primaryBorder,
   },
   changeCardOverpaid: {
-    backgroundColor: '#F0FDF4',
-    borderColor: Colors.success,
+    backgroundColor: Colors.primarySoft,
+    borderColor: Colors.primary,
   },
   changeCardTop: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: Spacing.two,
   },
   changeCardLabel: {
-    fontSize: Typography.sizes.caption,
-    fontWeight: Typography.weights.bold,
-    color: Colors.textSecondary,
+    fontSize: 11,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.primaryDark,
     letterSpacing: 0.5,
   },
   exactPill: {
-    backgroundColor: Colors.successLight,
-    paddingHorizontal: Spacing.xs,
+    backgroundColor: Colors.primaryLight,
+    paddingHorizontal: Spacing.two,
     paddingVertical: 2,
-    borderRadius: BorderRadius.xs,
+    borderRadius: BorderRadius.full,
   },
   exactPillText: {
-    fontSize: Typography.sizes.caption,
+    fontSize: 11,
     fontWeight: Typography.weights.bold,
-    color: Colors.successText,
+    color: Colors.primaryDark,
   },
   changeAmountText: {
     fontSize: Typography.sizes.displaySm,
     fontWeight: Typography.weights.extraBold,
-    marginTop: Spacing.xs,
+    fontVariant: ['tabular-nums'],
+    marginTop: Spacing.one,
   },
   changeAmountExact: {
     color: Colors.textSecondary,
   },
   changeAmountOverpaid: {
-    color: Colors.success,
+    color: Colors.primaryDark,
   },
   changeHintText: {
-    fontSize: Typography.sizes.xs,
+    fontSize: Typography.sizes.caption,
     color: Colors.textSecondary,
     marginTop: 4,
   },
-  // Payment Method Tabs
-  paymentMethodToggleRow: {
-    flexDirection: 'row',
-    gap: Spacing.sm,
-    marginTop: Spacing.xs,
-  },
-  paymentMethodTab: {
-    flex: 1,
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.md,
-    borderRadius: BorderRadius.md,
-    borderWidth: 1.5,
-    borderColor: Colors.border,
-    backgroundColor: Colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  paymentMethodTabActive: {
-    borderColor: Colors.primary,
-    backgroundColor: Colors.primaryLight,
-  },
-  paymentMethodTabPressed: {
-    opacity: 0.8,
-  },
-  paymentMethodTabText: {
-    fontSize: Typography.sizes.bodySm,
-    fontWeight: Typography.weights.semiBold,
-    color: Colors.textSecondary,
-  },
-  paymentMethodTabTextActive: {
-    color: Colors.primary,
-    fontWeight: Typography.weights.bold,
-  },
-
   // Utang / Customer Selection Styles
   selectedCustomerCard: {
     backgroundColor: Colors.primarySoft,
     borderWidth: 1.5,
     borderColor: Colors.primaryBorder,
     borderRadius: BorderRadius.md,
-    padding: Spacing.md,
-    gap: Spacing.sm,
-    marginTop: Spacing.xs,
+    padding: Spacing.three,
+    gap: Spacing.two,
+    marginTop: Spacing.one,
   },
   selectedCustomerHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: Spacing.two,
+  },
+  selectedCustomerAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.primaryBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   selectedCustomerInfo: {
     flex: 1,
@@ -1151,25 +1419,25 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
   },
   selectedCustomerPhone: {
-    fontSize: Typography.sizes.xs,
+    fontSize: Typography.sizes.caption,
     color: Colors.textSecondary,
   },
   changeCustomerButton: {
     backgroundColor: Colors.surface,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 4,
-    borderRadius: BorderRadius.sm,
+    paddingHorizontal: Spacing.twoHalf,
+    paddingVertical: 6,
+    borderRadius: BorderRadius.full,
     borderWidth: 1,
     borderColor: Colors.border,
   },
   changeCustomerButtonText: {
     fontSize: Typography.sizes.caption,
     fontWeight: Typography.weights.bold,
-    color: Colors.primary,
+    color: Colors.primaryDark,
   },
   customerBalanceDivider: {
     height: 1,
-    backgroundColor: Colors.borderSubtle,
+    backgroundColor: Colors.primaryBorder,
     marginVertical: 2,
   },
   balanceComparisonRow: {
@@ -1188,31 +1456,44 @@ const styles = StyleSheet.create({
   },
   balanceComparisonValue: {
     fontSize: Typography.sizes.bodySm,
-    fontWeight: Typography.weights.bold,
+    fontWeight: Typography.weights.extraBold,
     color: Colors.textPrimary,
+    fontVariant: ['tabular-nums'],
   },
   balanceComparisonArrow: {
     fontSize: Typography.sizes.body,
     color: Colors.textMuted,
-    paddingHorizontal: Spacing.xs,
+    paddingHorizontal: Spacing.two,
   },
   balanceComparisonNew: {
-    color: Colors.accent,
+    color: Colors.accentDark,
   },
-
-  // Customer List & Selector
   customerSelectorContainer: {
-    marginTop: Spacing.xs,
-    gap: Spacing.sm,
+    marginTop: Spacing.one,
+    gap: Spacing.two,
+  },
+  customerRequiredBanner: {
+    backgroundColor: Colors.accentLight,
+    borderWidth: 1,
+    borderColor: Colors.accentBorder,
+    borderRadius: BorderRadius.sm,
+    paddingHorizontal: Spacing.twoHalf,
+    paddingVertical: Spacing.one + 2,
+  },
+  customerRequiredText: {
+    fontSize: Typography.sizes.caption,
+    fontWeight: Typography.weights.semiBold,
+    color: Colors.accentDark,
   },
   customerSearchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.surface,
+    gap: Spacing.two,
+    backgroundColor: Colors.surfaceSubtle,
     borderWidth: 1,
     borderColor: Colors.border,
     borderRadius: BorderRadius.md,
-    paddingHorizontal: Spacing.sm,
+    paddingHorizontal: Spacing.twoHalf,
     height: 44,
   },
   customerSearchInput: {
@@ -1225,44 +1506,44 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: Spacing.sm,
-    paddingVertical: Spacing.md,
+    gap: Spacing.two,
+    paddingVertical: Spacing.three,
   },
   customerLoadingText: {
-    fontSize: Typography.sizes.xs,
+    fontSize: Typography.sizes.caption,
     color: Colors.textSecondary,
   },
   customerErrorWrap: {
     backgroundColor: Colors.errorLight,
-    padding: Spacing.sm,
+    padding: Spacing.twoHalf,
     borderRadius: BorderRadius.sm,
     alignItems: 'center',
-    gap: Spacing.xs,
+    gap: Spacing.one,
   },
   customerErrorText: {
-    fontSize: Typography.sizes.xs,
+    fontSize: Typography.sizes.caption,
     color: Colors.error,
     textAlign: 'center',
   },
   customerRetryBtn: {
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 2,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: 4,
   },
   customerRetryText: {
-    fontSize: Typography.sizes.xs,
+    fontSize: Typography.sizes.caption,
     fontWeight: Typography.weights.bold,
     color: Colors.error,
     textDecorationLine: 'underline',
   },
   customerEmptyWrap: {
-    backgroundColor: Colors.backgroundAlt,
-    padding: Spacing.md,
+    backgroundColor: Colors.surfaceSubtle,
+    padding: Spacing.three,
     borderRadius: BorderRadius.md,
     alignItems: 'center',
     gap: 4,
   },
-  customerEmptyIcon: {
-    fontSize: 24,
+  customerEmptyIconWrap: {
+    marginBottom: 4,
   },
   customerEmptyTitle: {
     fontSize: Typography.sizes.bodySm,
@@ -1270,7 +1551,7 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
   },
   customerEmptyText: {
-    fontSize: Typography.sizes.xs,
+    fontSize: Typography.sizes.caption,
     color: Colors.textSecondary,
     textAlign: 'center',
   },
@@ -1285,17 +1566,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.twoHalf,
     borderBottomWidth: 1,
     borderBottomColor: Colors.borderSubtle,
+    minHeight: 48,
+  },
+  customerItemRowLast: {
+    borderBottomWidth: 0,
   },
   customerItemRowPressed: {
-    backgroundColor: Colors.backgroundAlt,
+    backgroundColor: Colors.surfaceSubtle,
   },
   customerItemInfo: {
     flex: 1,
     gap: 2,
+    paddingRight: Spacing.two,
   },
   customerItemName: {
     fontSize: Typography.sizes.bodySm,
@@ -1311,28 +1597,113 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   customerItemBalanceLabel: {
-    fontSize: Typography.sizes.caption,
+    fontSize: 11,
     color: Colors.textMuted,
   },
   customerItemBalanceAmount: {
     fontSize: Typography.sizes.bodySm,
     fontWeight: Typography.weights.bold,
     color: Colors.textPrimary,
+    fontVariant: ['tabular-nums'],
   },
   customerItemBalanceAmountPositive: {
-    color: Colors.accent,
+    color: Colors.accentDark,
+  },
+  customerMoreBtn: {
+    paddingVertical: Spacing.two,
+    backgroundColor: Colors.surfaceSubtle,
+    borderTopWidth: 1,
+    borderTopColor: Colors.borderSubtle,
+    alignItems: 'center',
   },
   customerMoreCountText: {
     fontSize: Typography.sizes.caption,
-    color: Colors.textMuted,
-    textAlign: 'center',
-    paddingVertical: Spacing.xs,
-    backgroundColor: Colors.backgroundAlt,
+    fontWeight: Typography.weights.semiBold,
+    color: Colors.primaryDark,
   },
-
+  // Collapsible Order Summary
+  summaryToggleHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.two,
+  },
+  summaryToggleLeft: {
+    flex: 1,
+  },
+  summaryTogglePill: {
+    backgroundColor: Colors.primarySoft,
+    borderWidth: 1,
+    borderColor: Colors.primaryBorder,
+    borderRadius: BorderRadius.full,
+    paddingHorizontal: Spacing.twoHalf,
+    paddingVertical: 5,
+  },
+  summaryTogglePillText: {
+    fontSize: Typography.sizes.caption,
+    fontWeight: Typography.weights.bold,
+    color: Colors.primaryDark,
+  },
+  itemsListContainer: {
+    borderTopWidth: 1,
+    borderTopColor: Colors.borderSubtle,
+    marginTop: Spacing.twoHalf,
+  },
+  orderItemRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    paddingVertical: Spacing.two,
+  },
+  orderItemDivider: {
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borderSubtle,
+  },
+  orderItemInfo: {
+    flex: 1,
+    paddingRight: Spacing.three,
+  },
+  orderItemName: {
+    fontSize: Typography.sizes.bodySm,
+    fontWeight: Typography.weights.semiBold,
+    color: Colors.textPrimary,
+    lineHeight: 18,
+  },
+  orderItemUnitDetails: {
+    fontSize: Typography.sizes.caption,
+    color: Colors.textSecondary,
+    marginTop: 2,
+  },
+  orderItemSubtotal: {
+    fontSize: Typography.sizes.bodySm,
+    fontWeight: Typography.weights.bold,
+    color: Colors.textPrimary,
+    fontVariant: ['tabular-nums'],
+  },
+  summaryTotalFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: Spacing.two,
+    marginTop: Spacing.one,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+  },
+  summaryTotalFooterLabel: {
+    fontSize: Typography.sizes.bodySm,
+    fontWeight: Typography.weights.bold,
+    color: Colors.textSecondary,
+  },
+  summaryTotalFooterValue: {
+    fontSize: Typography.sizes.base,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.primaryDark,
+    fontVariant: ['tabular-nums'],
+  },
+  // Submission Error
   errorBannerCard: {
     backgroundColor: Colors.errorLight,
-    padding: Spacing.md,
+    padding: Spacing.three,
     borderRadius: BorderRadius.md,
     borderWidth: 1.5,
     borderColor: Colors.errorBorder,
@@ -1343,16 +1714,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
-  errorBannerIcon: {
-    fontSize: Typography.sizes.body,
-  },
   errorBannerTitle: {
     fontSize: Typography.sizes.bodySm,
     fontWeight: Typography.weights.bold,
     color: Colors.error,
   },
   errorBannerText: {
-    fontSize: Typography.sizes.xs,
+    fontSize: Typography.sizes.caption,
     color: Colors.error,
     fontWeight: Typography.weights.medium,
     lineHeight: 18,
@@ -1362,13 +1730,14 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     marginTop: 4,
   },
+  // Sticky Bottom Actions
   bottomBar: {
     backgroundColor: Colors.surface,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.twoHalf,
     borderTopWidth: 1,
     borderTopColor: Colors.border,
-    gap: Spacing.xs,
+    gap: Spacing.one,
     ...Shadows.md,
   },
   confirmButton: {
@@ -1378,4 +1747,3 @@ const styles = StyleSheet.create({
     width: '100%',
   },
 });
-

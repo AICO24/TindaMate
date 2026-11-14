@@ -9,6 +9,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import {
+  NavUtangIcon,
+  WarningTriangleIcon,
+} from '@/components/dashboard/DashboardNavIcons';
 import { CheckIcon } from '@/components/ui/AuthIcons';
 import { TindaMateButton } from '@/components/ui/TindaMateButton';
 import {
@@ -44,16 +48,15 @@ export interface SaleSuccessModalProps {
 }
 
 /**
- * SaleSuccessModal
+ * SaleSuccessModal (Batch S-2)
  *
- * Implements Batch 7C-1: Receipt / Sale Completion Experience
- * - Lightweight mobile receipt layout tailored for sari-sari store cashiers
- * - Complete itemized product breakdown (name, quantity, unit, unit price, subtotal)
- * - Server-authoritative transaction total amount
- * - Prominent Amount Tendered and Change Due (Sukli) display
- * - Transaction reference number (#XXXXXXXX) and timestamp (Date • Time)
- * - Scrollable receipt body preserving sticky action buttons ("Record Another Sale" / "View Sale Details")
- * - Safe fallback handling for single-item and multi-item transactions
+ * Polished POS transaction confirmation receipt modal:
+ * - Distinct Cash ("Sale Recorded!") vs Utang ("Utang Recorded!") status headers
+ * - Clean vector icons (no emojis) and tabular-nums monetary alignment
+ * - Itemized receipt breakdown with server-authoritative total
+ * - Prominent Amount Tendered & Change / Sukli block for Cash
+ * - Clear Unpaid Store Credit customer attribution for Utang
+ * - Sticky post-sale actions ("Record Another Sale" / "View Sale Details")
  */
 export function SaleSuccessModal({
   visible,
@@ -117,32 +120,56 @@ export function SaleSuccessModal({
               isNarrow && styles.modalCardNarrow,
               isShortScreen && styles.modalCardShort,
             ]}>
-            {/* Header: Success Badge, Title, Timestamp & Reference */}
+            {/* Header: Success Badge, Status Pill, Title, Timestamp & Reference */}
             <View style={styles.headerBlock}>
-              <View style={styles.iconCircle}>
-                <CheckIcon size={28} color={Colors.surface} />
+              <View
+                style={[
+                  styles.iconCircle,
+                  isUtang ? styles.iconCircleUtang : styles.iconCircleCash,
+                ]}>
+                {isUtang ? (
+                  <NavUtangIcon size={24} color={Colors.textInverse} />
+                ) : (
+                  <CheckIcon size={24} color={Colors.textInverse} />
+                )}
+              </View>
+
+              <View
+                style={[
+                  styles.statusPill,
+                  isUtang ? styles.statusPillUtang : styles.statusPillCash,
+                ]}>
+                <Text
+                  style={[
+                    styles.statusPillText,
+                    isUtang
+                      ? styles.statusPillTextUtang
+                      : styles.statusPillTextCash,
+                  ]}>
+                  {isUtang ? 'UNPAID · STORE CREDIT' : 'PAID · CASH SALE'}
+                </Text>
               </View>
 
               <Text style={styles.title} accessibilityRole="header">
                 {isUtang ? 'Utang Recorded!' : 'Sale Recorded!'}
               </Text>
 
-              {/* Meta details: Reference & Timestamp */}
               <View style={styles.metaRow}>
                 <Text style={styles.refText}>
-                  Ref: #{sale.id.slice(0, 8).toUpperCase()}
+                  Ref #{sale.id.slice(0, 8).toUpperCase()}
                 </Text>
                 <Text style={styles.metaDot}>•</Text>
                 <Text style={styles.dateText}>
-                  {formattedDate} • {formattedTime}
+                  {formattedDate} · {formattedTime}
                 </Text>
               </View>
 
-              {/* Payment Method Badge */}
+              {/* Utang Customer Attribution */}
               {isUtang && (
                 <View style={styles.utangHeaderBadge}>
-                  <Text style={styles.utangHeaderBadgeText}>
-                    📝 Charged to {sale.customer_name ?? 'Customer'}
+                  <NavUtangIcon size={14} color={Colors.accentDark} />
+                  <Text style={styles.utangHeaderBadgeText} numberOfLines={1}>
+                    Charged to {sale.customer_name ?? 'Store Customer'}
                   </Text>
                 </View>
               )}
@@ -151,7 +178,7 @@ export function SaleSuccessModal({
               {isRetry && (
                 <View style={styles.retryBadge}>
                   <Text style={styles.retryBadgeText}>
-                    ✓ Restored from previous attempt (No double-deduction)
+                    Restored from previous attempt (No double-deduction)
                   </Text>
                 </View>
               )}
@@ -159,8 +186,13 @@ export function SaleSuccessModal({
               {/* Price Difference Notice */}
               {priceDifferenceNotice ? (
                 <View style={styles.priceNoticeBox}>
+                  <WarningTriangleIcon
+                    size={14}
+                    bgColor={Colors.warningText}
+                    fgColor={Colors.textInverse}
+                  />
                   <Text style={styles.priceNoticeText}>
-                    ℹ️ {priceDifferenceNotice}
+                    {priceDifferenceNotice}
                   </Text>
                 </View>
               ) : null}
@@ -189,14 +221,16 @@ export function SaleSuccessModal({
                       key={`${item.id}-${index}`}
                       style={[
                         styles.itemRow,
-                        index < displayItems.length - 1 && styles.itemRowDivider,
+                        index < displayItems.length - 1 &&
+                          styles.itemRowDivider,
                       ]}>
                       <View style={styles.itemInfoCol}>
                         <Text style={styles.itemName} numberOfLines={2}>
                           {item.productName}
                         </Text>
                         <Text style={styles.itemCalculation}>
-                          {item.quantity} {item.unit} × {formatPesoCurrency(item.unitPrice)}
+                          {item.quantity} {item.unit} ×{' '}
+                          {formatPesoCurrency(item.unitPrice)}
                         </Text>
                       </View>
                       <Text style={styles.itemSubtotal}>
@@ -206,15 +240,16 @@ export function SaleSuccessModal({
                   ))}
                 </View>
 
-                {/* Dashed Separator */}
                 <View style={styles.dashedDivider} />
 
                 {/* Authoritative Total */}
                 <View style={styles.totalRow}>
-                  <View>
+                  <View style={styles.totalLabelCol}>
                     <Text style={styles.totalLabel}>TOTAL AMOUNT</Text>
                     <Text style={styles.totalSub}>
-                      {distinctCount} {distinctCount === 1 ? 'product' : 'products'} · {totalUnits} {totalUnits === 1 ? 'unit' : 'units'}
+                      {distinctCount}{' '}
+                      {distinctCount === 1 ? 'product' : 'products'} ·{' '}
+                      {totalUnits} {totalUnits === 1 ? 'unit' : 'units'}
                     </Text>
                   </View>
                   <Text
@@ -233,19 +268,22 @@ export function SaleSuccessModal({
                       <View style={styles.utangCardHeader}>
                         <View style={styles.utangBadge}>
                           <Text style={styles.utangBadgeText}>
-                            UTANG (STORE CREDIT)
+                            UTANG (UNPAID STORE CREDIT)
                           </Text>
                         </View>
                       </View>
                       <View style={styles.utangCustomerRow}>
                         <Text style={styles.utangCustomerLabel}>Customer:</Text>
-                        <Text style={styles.utangCustomerName} numberOfLines={1}>
+                        <Text
+                          style={styles.utangCustomerName}
+                          numberOfLines={1}>
                           {sale.customer_name ?? 'Store Customer'}
                         </Text>
                       </View>
                       <View style={styles.utangNoticeBox}>
                         <Text style={styles.utangNoticeText}>
-                          Charged to customer&apos;s credit account. No cash was received or change given.
+                          Charged to customer&apos;s credit account. No cash was
+                          received or change given.
                         </Text>
                       </View>
                     </View>
@@ -253,7 +291,9 @@ export function SaleSuccessModal({
                     <>
                       {amountTendered !== null && (
                         <View style={styles.paymentRow}>
-                          <Text style={styles.paymentLabel}>Amount Tendered:</Text>
+                          <Text style={styles.paymentLabel}>
+                            Amount Tendered:
+                          </Text>
                           <Text style={styles.paymentValue}>
                             {formatPesoCurrency(amountTendered)}
                           </Text>
@@ -275,7 +315,7 @@ export function SaleSuccessModal({
                                 ? styles.changeLabelExact
                                 : styles.changeLabelOverpaid,
                             ]}>
-                            Change / Sukli:
+                            Change / Sukli
                           </Text>
                           {change === 0 && (
                             <Text style={styles.exactPaymentHint}>
@@ -332,7 +372,7 @@ export function SaleSuccessModal({
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(6, 78, 59, 0.65)', // High-contrast forest green scrim
+    backgroundColor: 'rgba(6, 78, 59, 0.65)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -340,42 +380,74 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 440,
     maxHeight: '94%',
-    paddingHorizontal: Spacing.md,
+    paddingHorizontal: Spacing.three,
   },
   modalCard: {
     backgroundColor: Colors.surface,
     borderRadius: BorderRadius.xl,
-    padding: Spacing.md,
+    padding: Spacing.three,
     maxHeight: '100%',
     flexDirection: 'column',
     ...Shadows.md,
   },
   modalCardNarrow: {
-    padding: Spacing.sm,
+    padding: Spacing.twoHalf,
   },
   modalCardShort: {
-    padding: Spacing.xs,
+    padding: Spacing.two,
   },
   headerBlock: {
     alignItems: 'center',
-    paddingBottom: Spacing.sm,
+    paddingBottom: Spacing.twoHalf,
     borderBottomWidth: 1,
     borderBottomColor: Colors.borderSubtle,
   },
   iconCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: Colors.success,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: Spacing.xs,
+    marginBottom: Spacing.one + 2,
     ...Shadows.sm,
+  },
+  iconCircleCash: {
+    backgroundColor: Colors.primary,
+  },
+  iconCircleUtang: {
+    backgroundColor: Colors.accent,
+  },
+  statusPill: {
+    paddingHorizontal: Spacing.twoHalf,
+    paddingVertical: 3,
+    borderRadius: BorderRadius.full,
+    marginBottom: 4,
+  },
+  statusPillCash: {
+    backgroundColor: Colors.primarySoft,
+    borderWidth: 1,
+    borderColor: Colors.primaryBorder,
+  },
+  statusPillUtang: {
+    backgroundColor: Colors.accentLight,
+    borderWidth: 1,
+    borderColor: Colors.accentBorder,
+  },
+  statusPillText: {
+    fontSize: 10,
+    fontWeight: Typography.weights.extraBold,
+    letterSpacing: 0.5,
+  },
+  statusPillTextCash: {
+    color: Colors.primaryDark,
+  },
+  statusPillTextUtang: {
+    color: Colors.accentDark,
   },
   title: {
     fontSize: Typography.sizes.lg,
     fontWeight: Typography.weights.extraBold,
-    color: Colors.textBrand,
+    color: Colors.primaryDark,
     textAlign: 'center',
   },
   metaRow: {
@@ -389,7 +461,7 @@ const styles = StyleSheet.create({
   refText: {
     fontSize: Typography.sizes.caption,
     fontWeight: Typography.weights.bold,
-    color: Colors.textMuted,
+    color: Colors.textSecondary,
   },
   metaDot: {
     fontSize: Typography.sizes.caption,
@@ -403,10 +475,10 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.pastel.blue.bg,
     borderWidth: 1,
     borderColor: Colors.pastel.blue.border,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 3,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: 4,
     borderRadius: BorderRadius.sm,
-    marginTop: Spacing.xs,
+    marginTop: Spacing.one + 2,
     width: '100%',
   },
   retryBadgeText: {
@@ -416,71 +488,79 @@ const styles = StyleSheet.create({
     fontWeight: Typography.weights.semiBold,
   },
   utangHeaderBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
     backgroundColor: Colors.accentLight,
     borderWidth: 1,
     borderColor: Colors.accentBorder,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 3,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: 4,
     borderRadius: BorderRadius.sm,
-    marginTop: Spacing.xs,
+    marginTop: Spacing.one + 2,
     width: '100%',
   },
   utangHeaderBadgeText: {
     fontSize: Typography.sizes.caption,
-    color: Colors.accent,
-    textAlign: 'center',
+    color: Colors.accentDark,
     fontWeight: Typography.weights.bold,
+    flexShrink: 1,
   },
   priceNoticeBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
     backgroundColor: Colors.warningLight,
     borderWidth: 1,
     borderColor: Colors.accentBorder,
-    paddingHorizontal: Spacing.sm,
+    paddingHorizontal: Spacing.two,
     paddingVertical: 4,
     borderRadius: BorderRadius.sm,
-    marginTop: Spacing.xs,
+    marginTop: Spacing.one + 2,
     width: '100%',
   },
   priceNoticeText: {
     fontSize: Typography.sizes.caption,
     color: Colors.warningText,
-    textAlign: 'center',
+    flexShrink: 1,
   },
   receiptScrollView: {
     flexShrink: 1,
-    marginVertical: Spacing.xs,
+    marginVertical: Spacing.two,
   },
   receiptScrollContent: {
-    paddingVertical: Spacing.xs,
+    paddingVertical: 2,
   },
   receiptPaper: {
-    backgroundColor: Colors.backgroundWarm,
+    backgroundColor: Colors.surfaceSubtle,
     borderRadius: BorderRadius.md,
     borderWidth: 1,
     borderColor: Colors.border,
-    padding: Spacing.md,
+    padding: Spacing.twoHalf,
   },
   receiptSectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingBottom: Spacing.xs,
+    paddingBottom: Spacing.one + 2,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
-    marginBottom: Spacing.xs,
+    marginBottom: Spacing.one,
   },
   receiptSectionTitle: {
-    fontSize: Typography.sizes.caption,
-    fontWeight: Typography.weights.bold,
+    fontSize: 11,
+    fontWeight: Typography.weights.extraBold,
     color: Colors.primaryDark,
     letterSpacing: 0.5,
   },
   receiptSectionSubtitle: {
     fontSize: Typography.sizes.caption,
-    color: Colors.textMuted,
+    color: Colors.textSecondary,
   },
   itemsList: {
-    gap: Spacing.xs,
+    gap: 2,
   },
   itemRow: {
     flexDirection: 'row',
@@ -494,7 +574,7 @@ const styles = StyleSheet.create({
   },
   itemInfoCol: {
     flex: 1,
-    paddingRight: Spacing.sm,
+    paddingRight: Spacing.two,
   },
   itemName: {
     fontSize: Typography.sizes.bodySm,
@@ -503,37 +583,42 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   itemCalculation: {
-    fontSize: Typography.sizes.xs,
-    color: Colors.textMuted,
+    fontSize: Typography.sizes.caption,
+    color: Colors.textSecondary,
     marginTop: 2,
   },
   itemSubtotal: {
     fontSize: Typography.sizes.bodySm,
     fontWeight: Typography.weights.bold,
     color: Colors.textPrimary,
+    fontVariant: ['tabular-nums'],
     textAlign: 'right',
   },
   dashedDivider: {
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
     borderStyle: 'dashed',
-    marginVertical: Spacing.sm,
+    marginVertical: Spacing.two,
   },
   totalRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: Colors.pastel.green.bg,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: Spacing.sm,
+    backgroundColor: Colors.primarySoft,
+    paddingHorizontal: Spacing.twoHalf,
+    paddingVertical: Spacing.two,
     borderRadius: BorderRadius.sm,
     borderWidth: 1,
-    borderColor: Colors.pastel.green.border,
-    marginBottom: Spacing.sm,
+    borderColor: Colors.primaryBorder,
+    marginBottom: Spacing.two,
+    gap: Spacing.two,
+  },
+  totalLabelCol: {
+    flexShrink: 1,
   },
   totalLabel: {
-    fontSize: Typography.sizes.caption,
-    fontWeight: Typography.weights.bold,
+    fontSize: 11,
+    fontWeight: Typography.weights.extraBold,
     color: Colors.primaryDark,
     letterSpacing: 0.5,
   },
@@ -546,40 +631,42 @@ const styles = StyleSheet.create({
     fontSize: Typography.sizes.lg,
     fontWeight: Typography.weights.extraBold,
     color: Colors.primaryDark,
+    fontVariant: ['tabular-nums'],
   },
   paymentSection: {
-    gap: Spacing.xs,
+    gap: Spacing.one + 2,
   },
   utangCard: {
     backgroundColor: Colors.accentLight,
     borderWidth: 1,
     borderColor: Colors.accentBorder,
     borderRadius: BorderRadius.sm,
-    padding: Spacing.sm,
-    gap: Spacing.xs,
+    padding: Spacing.twoHalf,
+    gap: Spacing.one + 2,
   },
   utangCardHeader: {
     flexDirection: 'row',
   },
   utangBadge: {
     backgroundColor: Colors.accent,
-    paddingHorizontal: Spacing.xs,
+    paddingHorizontal: Spacing.two,
     paddingVertical: 2,
     borderRadius: BorderRadius.xs,
   },
   utangBadgeText: {
-    fontSize: Typography.sizes.caption,
-    fontWeight: Typography.weights.bold,
-    color: Colors.surface,
+    fontSize: 10,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.textInverse,
     letterSpacing: 0.5,
   },
   utangCustomerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: Spacing.two,
   },
   utangCustomerLabel: {
-    fontSize: Typography.sizes.xs,
+    fontSize: Typography.sizes.caption,
     color: Colors.textSecondary,
     fontWeight: Typography.weights.medium,
   },
@@ -587,10 +674,12 @@ const styles = StyleSheet.create({
     fontSize: Typography.sizes.bodySm,
     fontWeight: Typography.weights.bold,
     color: Colors.textPrimary,
+    flexShrink: 1,
+    textAlign: 'right',
   },
   utangNoticeBox: {
     backgroundColor: Colors.surface,
-    padding: Spacing.xs,
+    padding: Spacing.two,
     borderRadius: BorderRadius.xs,
     borderWidth: 1,
     borderColor: Colors.borderSubtle,
@@ -598,7 +687,6 @@ const styles = StyleSheet.create({
   utangNoticeText: {
     fontSize: Typography.sizes.caption,
     color: Colors.textSecondary,
-    fontStyle: 'italic',
   },
   paymentRow: {
     flexDirection: 'row',
@@ -607,31 +695,33 @@ const styles = StyleSheet.create({
     paddingHorizontal: 2,
   },
   paymentLabel: {
-    fontSize: Typography.sizes.xs,
+    fontSize: Typography.sizes.caption,
     color: Colors.textSecondary,
   },
   paymentValue: {
-    fontSize: Typography.sizes.xs,
-    fontWeight: Typography.weights.semiBold,
+    fontSize: Typography.sizes.caption,
+    fontWeight: Typography.weights.bold,
     color: Colors.textPrimary,
+    fontVariant: ['tabular-nums'],
   },
   changeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: Spacing.xs,
+    paddingHorizontal: Spacing.twoHalf,
+    paddingVertical: Spacing.two,
     borderRadius: BorderRadius.sm,
-    borderWidth: 1,
+    borderWidth: 1.5,
     marginTop: 2,
+    gap: Spacing.two,
   },
   changeContainerExact: {
     backgroundColor: Colors.surface,
     borderColor: Colors.border,
   },
   changeContainerOverpaid: {
-    backgroundColor: Colors.successLight,
-    borderColor: Colors.success,
+    backgroundColor: Colors.primarySoft,
+    borderColor: Colors.primary,
   },
   changeLabelCol: {
     flex: 1,
@@ -644,26 +734,27 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
   changeLabelOverpaid: {
-    color: Colors.successText,
+    color: Colors.primaryDark,
   },
   exactPaymentHint: {
     fontSize: Typography.sizes.caption,
     color: Colors.textMuted,
   },
   changeAmount: {
-    fontSize: Typography.sizes.base,
+    fontSize: Typography.sizes.lg,
     fontWeight: Typography.weights.extraBold,
+    fontVariant: ['tabular-nums'],
   },
   changeAmountExact: {
     color: Colors.textSecondary,
   },
   changeAmountOverpaid: {
-    color: Colors.success,
+    color: Colors.primaryDark,
   },
   actionsWrap: {
     width: '100%',
-    gap: Spacing.xs,
-    paddingTop: Spacing.sm,
+    gap: Spacing.two,
+    paddingTop: Spacing.twoHalf,
     borderTopWidth: 1,
     borderTopColor: Colors.borderSubtle,
   },
