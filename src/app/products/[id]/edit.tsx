@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -12,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { router, useLocalSearchParams } from 'expo-router';
 
+import { TindaMateLoadingView } from '@/components/animated-icon';
 import { ProductForm } from '@/components/products/ProductForm';
 import { ProductScreenHeader } from '@/components/products/ProductScreenHeader';
 import { TindaMateButton } from '@/components/ui/TindaMateButton';
@@ -140,8 +140,10 @@ export default function EditProductScreen() {
           <View style={styles.bodyContainer}>
             {isLoading ? (
               <View style={styles.stateCard}>
-                <ActivityIndicator size="large" color={Colors.primaryDark} />
-                <Text style={styles.stateTitle}>Loading Product...</Text>
+                <TindaMateLoadingView
+                  compact
+                  message="Loading product details..."
+                />
               </View>
             ) : !product ? (
               <View style={styles.stateCard}>

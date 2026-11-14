@@ -1,6 +1,5 @@
 import React, { useCallback, useState } from 'react';
 import {
-  ActivityIndicator,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -10,6 +9,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
 
@@ -20,8 +20,8 @@ import {
   DashboardBadgeVectorIcon,
   NavProductsIcon,
 } from '@/components/dashboard/DashboardNavIcons';
-import { OrganicWaveDecoration } from '@/components/dashboard/OrganicWaveDecoration';
 import { ProductScreenHeader } from '@/components/products/ProductScreenHeader';
+import { StockStatusBadge } from '@/components/products/StockStatusBadge';
 import { TindaMateButton } from '@/components/ui/TindaMateButton';
 import {
   BorderRadius,
@@ -59,10 +59,10 @@ function formatTimestamp(isoString: string): string {
  * Showcase product detail view matching the Design 2.0 visual reference:
  * - Deep Green Header with Back & Edit actions
  * - Centered Product Hero Showcase (Image or Icon Stage)
- * - Title, Large Peso Selling Price (`₱85.00`), and Semantic Stock Pill (`In Stock • 12 pcs`)
- * - Product Details & Pricing/Margin breakdown card
- * - Quick POS Add-to-Cart Stepper (`− 1 +` + `[ Add to Cart ]` button)
- * - 3 Quick Action Tiles: `Edit`, `Adjust Stock`, `View History`
+ * - Title, Large Tabular Peso Selling Price (`₱85.00`), and Semantic Stock Pill (`In Stock • 12 pcs`)
+ * - 2x2 Inventory & Pricing Metrics Grid (Cost Price, Unit Profit/Margin, Low-Stock Alert, Category & Timestamp)
+ * - Quick POS Add-to-Cart Stepper (`− 1 +` + `[ Add to Cart ]` button passing selected quantity)
+ * - Clean Action Tiles: `Edit Product & Stock` and `Sales History`
  */
 export default function ProductDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -99,6 +99,13 @@ export default function ProductDetailsScreen() {
 
         const item = await fetchStoreProductById(productId);
         setProduct(item);
+        if (item) {
+          setSelectedQty((prev) =>
+            item.stock_quantity > 0
+              ? Math.min(Math.max(1, prev), item.stock_quantity)
+              : 1
+          );
+        }
         setImageError(false);
       } catch (err: unknown) {
         const msg =
@@ -135,13 +142,16 @@ export default function ProductDetailsScreen() {
 
   const handleAddToPosCart = () => {
     if (!product || product.stock_quantity <= 0) return;
+    const safeQty = Math.min(
+      Math.max(1, selectedQty),
+      product.stock_quantity
+    );
     router.push({
       pathname: '/sales',
-      params: { productId: product.id },
+      params: { productId: product.id, qty: String(safeQty) },
     } as any);
   };
 
-  const [isFavorite, setIsFavorite] = useState(false);
   const status = product
     ? getProductStockStatus(
         product.stock_quantity,
@@ -153,36 +163,36 @@ export default function ProductDetailsScreen() {
   const isLow = status === 'Low Stock';
   const hasValidImage = Boolean(product?.image_url?.trim()) && !imageError;
 
+  const hasCostPrice =
+    product !== null &&
+    product.cost_price !== null &&
+    Number.isFinite(product.cost_price);
+  const unitProfit =
+    hasCostPrice && product
+      ? Number((product.selling_price - product.cost_price!).toFixed(2))
+      : null;
+  const marginPct =
+    unitProfit !== null && product && product.selling_price > 0
+      ? ((unitProfit / product.selling_price) * 100).toFixed(1)
+      : null;
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      <StatusBar style="light" />
       <View style={styles.mainContainer}>
         {/* Deep Green Top Header */}
-        <View style={styles.heroHeaderZone}>
-          <ProductScreenHeader
-            title=""
-            onBack={handleBack}
-            rightElement={
-              <View style={styles.headerRightActions}>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
-                  onPress={() => setIsFavorite((prev) => !prev)}
-                  style={styles.headerIconBtn}>
-                  <Text style={[styles.headerGlyph, isFavorite && { color: '#EF4444' }]}>
-                    {isFavorite ? '♥' : '♡'}
-                  </Text>
-                </Pressable>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Product menu options"
-                  onPress={handleEdit}
-                  style={styles.headerIconBtn}>
-                  <Text style={styles.headerGlyph}>⋮</Text>
-                </Pressable>
-              </View>
-            }
-          />
-        </View>
+        <ProductScreenHeader
+          title="Product Details"
+          subtitle={
+            product
+              ? product.category?.trim() || 'Store Inventory Item'
+              : 'Loading item...'
+          }
+          onBack={handleBack}
+          rightActionLabel={product ? 'Edit' : undefined}
+          rightActionAccessibilityLabel="Edit product details"
+          onRightActionPress={product ? handleEdit : undefined}
+        />
 
         <ScrollView
           style={styles.scrollView}
@@ -208,7 +218,10 @@ export default function ProductDetailsScreen() {
 
             {isLoading ? (
               <View style={styles.stateCard}>
-                <TindaMateLoadingView compact message="Loading Product Details..." />
+                <TindaMateLoadingView
+                  compact
+                  message="Loading Product Details..."
+                />
               </View>
             ) : !product ? (
               <View style={styles.stateCard}>
@@ -233,201 +246,238 @@ export default function ProductDetailsScreen() {
                 </View>
               </View>
             ) : (
-              <>
-                {/* Main Product Showcase Card */}
-                <View style={styles.showcaseCard}>
-                  {/* Centered Product Image Stage with Organic Waves */}
-                  <View style={styles.imageStage}>
-                    <View style={styles.stageWaveTop} pointerEvents="none" />
-                    <View style={styles.stageWaveWarm} pointerEvents="none" />
-                    {hasValidImage ? (
-                      <Image
-                        source={{ uri: product.image_url!.trim() }}
-                        style={styles.heroImage}
-                        contentFit="contain"
-                        transition={200}
-                        onError={() => setImageError(true)}
-                        accessibilityLabel={`${product.name} photo`}
-                      />
-                    ) : (
-                      <View style={styles.fallbackHeroIcon}>
-                        <NavProductsIcon color={Colors.primary} />
-                      </View>
-                    )}
+              <View style={styles.showcaseCard}>
+                {/* Centered Product Image Stage with Subtle Organic Accents */}
+                <View style={styles.imageStage}>
+                  <View style={styles.stageWaveTop} pointerEvents="none" />
+                  <View style={styles.stageWaveWarm} pointerEvents="none" />
+                  {hasValidImage ? (
+                    <Image
+                      source={{ uri: product.image_url!.trim() }}
+                      style={styles.heroImage}
+                      contentFit="contain"
+                      transition={200}
+                      onError={() => setImageError(true)}
+                      accessibilityLabel={`${product.name} photo`}
+                    />
+                  ) : (
+                    <View style={styles.fallbackHeroIcon}>
+                      <NavProductsIcon color={Colors.primary} />
+                    </View>
+                  )}
+                </View>
+
+                {/* Product Name */}
+                <Text
+                  style={styles.productTitle}
+                  accessibilityRole="header"
+                  maxFontSizeMultiplier={1.3}>
+                  {product.name}
+                </Text>
+
+                {/* Price & Stock Status Pill Row */}
+                <View style={styles.priceStockRow}>
+                  <View style={styles.priceWrap}>
+                    <Text
+                      style={styles.sellingPriceBig}
+                      adjustsFontSizeToFit
+                      minimumFontScale={0.85}
+                      numberOfLines={1}>
+                      {formatPesoCurrency(product.selling_price)}
+                    </Text>
+                    <Text style={styles.unitTagText}>/ {product.unit}</Text>
                   </View>
 
-                  {/* Product Name */}
-                  <Text
-                    style={styles.productTitle}
-                    accessibilityRole="header"
-                    maxFontSizeMultiplier={1.3}>
-                    {product.name}
+                  <StockStatusBadge
+                    status={status}
+                    label={`${status} • ${product.stock_quantity} ${product.unit}`}
+                    size="md"
+                  />
+                </View>
+
+                <View style={styles.divider} />
+
+                {/* 2x2 Inventory & Financial Metrics Grid */}
+                <View style={styles.detailsSection}>
+                  <Text style={styles.detailsHeading}>
+                    Pricing & Inventory Summary
                   </Text>
 
-                  {/* Price & Stock Status Pill Row */}
-                  <View style={styles.priceStockRow}>
-                    <View style={styles.priceWrap}>
-                      <Text
-                        style={styles.sellingPriceBig}
-                        adjustsFontSizeToFit
-                        minimumFontScale={0.85}
-                        numberOfLines={1}>
-                        {formatPesoCurrency(product.selling_price)}
+                  <View
+                    style={[
+                      styles.metricsGrid,
+                      isCompactPhone && styles.metricsGridStacked,
+                    ]}>
+                    <View style={styles.metricMiniCard}>
+                      <Text style={styles.metricLabel}>Cost Price</Text>
+                      <Text style={styles.metricValue} numberOfLines={1}>
+                        {hasCostPrice
+                          ? formatPesoCurrency(product.cost_price)
+                          : 'Not set'}
                       </Text>
-                      <Text style={styles.unitTagText}>/ {product.unit}</Text>
+                      <Text style={styles.metricCaption} numberOfLines={1}>
+                        {hasCostPrice
+                          ? `Purchase cost per ${product.unit}`
+                          : 'Tap Edit to add cost'}
+                      </Text>
                     </View>
 
-                    <View
-                      style={[
-                        styles.stockStatusPill,
-                        isOut
-                          ? styles.stockStatusPillOut
-                          : isLow
-                          ? styles.stockStatusPillLow
-                          : styles.stockStatusPillHealthy,
-                      ]}>
+                    <View style={styles.metricMiniCard}>
+                      <Text style={styles.metricLabel}>Est. Unit Profit</Text>
                       <Text
                         style={[
-                          styles.stockStatusPillText,
-                          isOut
-                            ? styles.stockStatusTextOut
-                            : isLow
-                            ? styles.stockStatusTextLow
-                            : styles.stockStatusTextHealthy,
-                        ]}>
-                        {status} • {product.stock_quantity} {product.unit}
+                          styles.metricValue,
+                          unitProfit !== null && unitProfit > 0
+                            ? styles.metricValuePositive
+                            : unitProfit !== null && unitProfit < 0
+                            ? styles.metricValueNegative
+                            : null,
+                        ]}
+                        numberOfLines={1}>
+                        {unitProfit !== null
+                          ? `${unitProfit > 0 ? '+' : ''}${formatPesoCurrency(
+                              unitProfit
+                            )}`
+                          : '—'}
+                      </Text>
+                      <Text style={styles.metricCaption} numberOfLines={1}>
+                        {marginPct !== null
+                          ? `${marginPct}% gross margin`
+                          : 'Requires cost price'}
                       </Text>
                     </View>
                   </View>
 
-                  <View style={styles.divider} />
-
-                  {/* Product Details Box */}
-                  <View style={styles.detailsSection}>
-                    <Text style={styles.detailsHeading}>Product Details</Text>
-                    <View style={styles.detailsDescriptionBox}>
-                      <Text style={styles.detailsDescriptionText}>
-                        {product.category
-                          ? `${product.category} item sold per ${product.unit}. `
-                          : `Store inventory item sold per ${product.unit}. `}
+                  <View
+                    style={[
+                      styles.metricsGrid,
+                      isCompactPhone && styles.metricsGridStacked,
+                    ]}>
+                    <View style={styles.metricMiniCard}>
+                      <Text style={styles.metricLabel}>Low-Stock Alert</Text>
+                      <Text style={styles.metricValue} numberOfLines={1}>
+                        {product.low_stock_threshold} {product.unit}
+                      </Text>
+                      <Text style={styles.metricCaption} numberOfLines={1}>
                         {isOut
-                          ? 'Currently out of stock — tap Adjust Stock below to replenish inventory.'
+                          ? 'Needs immediate restock'
                           : isLow
-                          ? `Low stock alert active (threshold: ${product.low_stock_threshold} ${product.unit}).`
-                          : `Ready for POS checkout (${product.stock_quantity} ${product.unit} available in store).`}
+                          ? 'Below alert threshold'
+                          : 'Stock is healthy'}
                       </Text>
                     </View>
-                  </View>
 
-                  {/* POS Quick Add Row: Stepper + Add to Cart CTA */}
-                  <View style={styles.posQuickAddRow}>
-                    <View style={styles.qtyStepper}>
-                      <Pressable
-                        accessibilityRole="button"
-                        accessibilityLabel="Decrease quantity"
-                        disabled={selectedQty <= 1 || isOut}
-                        onPress={() =>
-                          setSelectedQty((q) => Math.max(1, q - 1))
-                        }
-                        style={({ pressed }) => [
-                          styles.qtyBtn,
-                          (selectedQty <= 1 || isOut) && styles.qtyBtnDisabled,
-                          pressed && styles.buttonPressed,
-                        ]}>
-                        <Text style={styles.qtyBtnText}>−</Text>
-                      </Pressable>
-                      <Text style={styles.qtyDisplay}>{selectedQty}</Text>
-                      <Pressable
-                        accessibilityRole="button"
-                        accessibilityLabel="Increase quantity"
-                        disabled={
-                          isOut || selectedQty >= product.stock_quantity
-                        }
-                        onPress={() =>
-                          setSelectedQty((q) =>
-                            Math.min(product.stock_quantity, q + 1)
-                          )
-                        }
-                        style={({ pressed }) => [
-                          styles.qtyBtn,
-                          (isOut || selectedQty >= product.stock_quantity) &&
-                            styles.qtyBtnDisabled,
-                          pressed && styles.buttonPressed,
-                        ]}>
-                        <Text style={styles.qtyBtnText}>+</Text>
-                      </Pressable>
-                    </View>
-
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={`Add ${product.name} to POS cart`}
-                      disabled={isOut}
-                      onPress={handleAddToPosCart}
-                      style={({ pressed }) => [
-                        styles.addToCartButton,
-                        isOut && styles.addToCartButtonDisabled,
-                        pressed && !isOut && styles.buttonPressed,
-                      ]}>
-                      <CartVectorIcon color={Colors.textInverse} size={18} />
-                      <Text style={styles.addToCartButtonText}>
-                        {isOut ? 'Out of Stock' : 'Add to Cart'}
+                    <View style={styles.metricMiniCard}>
+                      <Text style={styles.metricLabel}>Category</Text>
+                      <Text style={styles.metricValue} numberOfLines={1}>
+                        {product.category?.trim() || 'General'}
                       </Text>
-                    </Pressable>
-                  </View>
-
-                  {/* 3 Quick Action Tiles: Edit, Adjust Stock, View History */}
-                  <View style={styles.bottomTilesRow}>
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel="Edit product details"
-                      onPress={handleEdit}
-                      style={({ pressed }) => [
-                        styles.actionTile,
-                        pressed && styles.buttonPressed,
-                      ]}>
-                      <View style={styles.actionTileIconWrap}>
-                        <Text style={styles.actionTileGlyph}>✎</Text>
-                      </View>
-                      <Text style={styles.actionTileLabel}>Edit</Text>
-                    </Pressable>
-
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel="Adjust product stock"
-                      onPress={handleEdit}
-                      style={({ pressed }) => [
-                        styles.actionTile,
-                        pressed && styles.buttonPressed,
-                      ]}>
-                      <View style={styles.actionTileIconWrap}>
-                        <NavProductsIcon color={Colors.primaryDark} />
-                      </View>
-                      <Text style={styles.actionTileLabel}>Adjust Stock</Text>
-                    </Pressable>
-
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel="View sales history"
-                      onPress={() => router.push('/sales/history')}
-                      style={({ pressed }) => [
-                        styles.actionTile,
-                        pressed && styles.buttonPressed,
-                      ]}>
-                      <View style={styles.actionTileIconWrap}>
-                        <DashboardBadgeVectorIcon
-                          type="sales_history"
-                          color={Colors.primaryDark}
-                        />
-                      </View>
-                      <Text style={styles.actionTileLabel}>View History</Text>
-                    </Pressable>
+                      <Text style={styles.metricCaption} numberOfLines={1}>
+                        Updated {formatTimestamp(product.updated_at)}
+                      </Text>
+                    </View>
                   </View>
                 </View>
-              </>
+
+                <View style={styles.divider} />
+
+                {/* POS Quick Add Row: Stepper + Add to Cart CTA */}
+                <View style={styles.posQuickAddRow}>
+                  <View style={styles.qtyStepper}>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Decrease quantity"
+                      disabled={selectedQty <= 1 || isOut}
+                      onPress={() =>
+                        setSelectedQty((q) => Math.max(1, q - 1))
+                      }
+                      style={({ pressed }) => [
+                        styles.qtyBtn,
+                        (selectedQty <= 1 || isOut) && styles.qtyBtnDisabled,
+                        pressed && styles.buttonPressed,
+                      ]}>
+                      <Text style={styles.qtyBtnText}>−</Text>
+                    </Pressable>
+                    <Text style={styles.qtyDisplay}>{selectedQty}</Text>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Increase quantity"
+                      disabled={isOut || selectedQty >= product.stock_quantity}
+                      onPress={() =>
+                        setSelectedQty((q) =>
+                          Math.min(product.stock_quantity, q + 1)
+                        )
+                      }
+                      style={({ pressed }) => [
+                        styles.qtyBtn,
+                        (isOut || selectedQty >= product.stock_quantity) &&
+                          styles.qtyBtnDisabled,
+                        pressed && styles.buttonPressed,
+                      ]}>
+                      <Text style={styles.qtyBtnText}>+</Text>
+                    </Pressable>
+                  </View>
+
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Add ${selectedQty} ${product.unit} of ${product.name} to POS cart`}
+                    disabled={isOut}
+                    onPress={handleAddToPosCart}
+                    style={({ pressed }) => [
+                      styles.addToCartButton,
+                      isOut && styles.addToCartButtonDisabled,
+                      pressed && !isOut && styles.buttonPressed,
+                    ]}>
+                    <CartVectorIcon color={Colors.textInverse} size={18} />
+                    <Text style={styles.addToCartButtonText}>
+                      {isOut
+                        ? 'Out of Stock'
+                        : selectedQty > 1
+                        ? `Sell ${selectedQty} ${product.unit} in POS`
+                        : 'Add to POS Cart'}
+                    </Text>
+                  </Pressable>
+                </View>
+
+                {/* Bottom Action Tiles: Edit Product & Stock + Sales History */}
+                <View style={styles.bottomTilesRow}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Edit product details and stock"
+                    onPress={handleEdit}
+                    style={({ pressed }) => [
+                      styles.actionTile,
+                      pressed && styles.buttonPressed,
+                    ]}>
+                    <View style={styles.actionTileIconWrap}>
+                      <NavProductsIcon color={Colors.primaryDark} />
+                    </View>
+                    <Text style={styles.actionTileLabel}>
+                      Edit Details & Stock
+                    </Text>
+                  </Pressable>
+
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="View store sales history"
+                    onPress={() => router.push('/sales/history')}
+                    style={({ pressed }) => [
+                      styles.actionTile,
+                      pressed && styles.buttonPressed,
+                    ]}>
+                    <View style={styles.actionTileIconWrap}>
+                      <DashboardBadgeVectorIcon
+                        type="sales_history"
+                        color={Colors.primaryDark}
+                      />
+                    </View>
+                    <Text style={styles.actionTileLabel}>Sales History</Text>
+                  </Pressable>
+                </View>
+              </View>
             )}
           </View>
         </ScrollView>
-        <OrganicWaveDecoration />
       </View>
     </SafeAreaView>
   );
@@ -442,39 +492,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
-  heroHeaderZone: {
-    backgroundColor: Colors.primaryDark,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    paddingBottom: Spacing.one,
-    ...Shadows.sm,
-  },
-  headerRightActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  headerIconBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.25)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerGlyph: {
-    fontSize: 18,
-    color: Colors.textInverse,
-    fontWeight: 'bold',
-  },
   scrollView: {
     flex: 1,
     backgroundColor: Colors.background,
   },
   scrollContent: {
-    paddingBottom: Spacing.six,
+    paddingBottom: Spacing.five,
   },
   bodyContainer: {
     width: '100%',
@@ -486,18 +509,18 @@ const styles = StyleSheet.create({
   },
   showcaseCard: {
     backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.xxl,
+    borderRadius: BorderRadius.primaryCard,
     borderWidth: 1,
-    borderColor: Colors.borderSubtle,
-    padding: Spacing.four,
+    borderColor: Colors.border,
+    padding: Spacing.threeHalf,
     gap: Spacing.three,
-    ...Shadows.md,
+    ...Shadows.sm,
   },
   imageStage: {
     width: '100%',
-    height: 200,
-    borderRadius: BorderRadius.xl,
-    backgroundColor: '#FAFAF9',
+    height: 190,
+    borderRadius: BorderRadius.lg,
+    backgroundColor: Colors.surfaceSubtle,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -513,7 +536,7 @@ const styles = StyleSheet.create({
     height: 190,
     borderRadius: 95,
     backgroundColor: '#10B981',
-    opacity: 0.18,
+    opacity: 0.14,
   },
   stageWaveWarm: {
     position: 'absolute',
@@ -523,17 +546,19 @@ const styles = StyleSheet.create({
     height: 170,
     borderRadius: 85,
     backgroundColor: '#F59E0B',
-    opacity: 0.2,
+    opacity: 0.16,
   },
   heroImage: {
-    width: '82%',
+    width: '84%',
     height: '86%',
   },
   fallbackHeroIcon: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     backgroundColor: Colors.primarySoft,
+    borderWidth: 1,
+    borderColor: Colors.primaryBorder,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -556,48 +581,16 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   sellingPriceBig: {
-    fontSize: 30,
+    fontSize: 28,
     fontWeight: Typography.weights.extraBold,
     color: Colors.primaryDark,
     letterSpacing: -0.5,
+    fontVariant: ['tabular-nums'],
   },
   unitTagText: {
     fontSize: Typography.sizes.bodySm,
     fontWeight: Typography.weights.semiBold,
     color: Colors.textMuted,
-  },
-  stockStatusPill: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: BorderRadius.full,
-  },
-  stockStatusPillHealthy: {
-    backgroundColor: '#DCFCE7',
-    borderWidth: 1,
-    borderColor: '#BBF7D0',
-  },
-  stockStatusPillLow: {
-    backgroundColor: '#FEF3C7',
-    borderWidth: 1,
-    borderColor: '#FDE68A',
-  },
-  stockStatusPillOut: {
-    backgroundColor: Colors.errorLight,
-    borderWidth: 1,
-    borderColor: Colors.errorBorder,
-  },
-  stockStatusPillText: {
-    fontSize: Typography.sizes.xs,
-    fontWeight: Typography.weights.extraBold,
-  },
-  stockStatusTextHealthy: {
-    color: Colors.primaryDark,
-  },
-  stockStatusTextLow: {
-    color: Colors.warningText,
-  },
-  stockStatusTextOut: {
-    color: Colors.error,
   },
   divider: {
     height: 1,
@@ -607,21 +600,9 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   detailsHeading: {
-    fontSize: Typography.sizes.base,
+    fontSize: Typography.sizes.body,
     fontWeight: Typography.weights.extraBold,
-    color: Colors.textPrimary,
-  },
-  detailsDescriptionBox: {
-    backgroundColor: Colors.surfaceSubtle,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.three,
-    borderWidth: 1,
-    borderColor: Colors.borderSubtle,
-  },
-  detailsDescriptionText: {
-    fontSize: Typography.sizes.bodySm,
-    color: Colors.textSecondary,
-    lineHeight: Typography.lineHeights.normal,
+    color: Colors.textBrand,
   },
   metricsGrid: {
     flexDirection: 'row',
@@ -633,33 +614,41 @@ const styles = StyleSheet.create({
   metricMiniCard: {
     flex: 1,
     backgroundColor: Colors.surfaceSubtle,
-    borderRadius: BorderRadius.lg,
+    borderRadius: BorderRadius.md,
     padding: Spacing.twoHalf,
     borderWidth: 1,
-    borderColor: Colors.borderSubtle,
-    gap: 2,
+    borderColor: Colors.border,
+    gap: 3,
   },
   metricLabel: {
     fontSize: 11,
     fontWeight: Typography.weights.bold,
     color: Colors.textMuted,
     textTransform: 'uppercase',
+    letterSpacing: 0.2,
   },
   metricValue: {
     fontSize: Typography.sizes.base,
     fontWeight: Typography.weights.extraBold,
     color: Colors.textPrimary,
+    fontVariant: ['tabular-nums'],
+  },
+  metricValuePositive: {
+    color: Colors.primaryDark,
+  },
+  metricValueNegative: {
+    color: Colors.error,
   },
   metricCaption: {
     fontSize: 11,
     color: Colors.textSecondary,
+    fontWeight: Typography.weights.medium,
   },
   // POS Quick Add Row
   posQuickAddRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    marginTop: 4,
   },
   qtyStepper: {
     flexDirection: 'row',
@@ -695,6 +684,7 @@ const styles = StyleSheet.create({
     fontSize: Typography.sizes.base,
     fontWeight: Typography.weights.extraBold,
     color: Colors.textPrimary,
+    fontVariant: ['tabular-nums'],
   },
   addToCartButton: {
     flex: 1,
@@ -709,50 +699,45 @@ const styles = StyleSheet.create({
     ...Shadows.primaryButton,
   },
   addToCartButtonDisabled: {
-    backgroundColor: Colors.textMuted,
+    backgroundColor: Colors.disabled,
+    ...Shadows.none,
   },
   addToCartButtonText: {
     fontSize: Typography.sizes.body,
     fontWeight: Typography.weights.extraBold,
     color: Colors.textInverse,
   },
-  // Bottom 3 Action Tiles
+  // Bottom Action Tiles
   bottomTilesRow: {
     flexDirection: 'row',
     gap: 10,
-    marginTop: 4,
   },
   actionTile: {
     flex: 1,
+    flexDirection: 'row',
     backgroundColor: Colors.surfaceSubtle,
-    borderRadius: BorderRadius.xl,
+    borderRadius: BorderRadius.md,
     borderWidth: 1,
-    borderColor: Colors.borderSubtle,
-    paddingVertical: 14,
-    paddingHorizontal: 8,
+    borderColor: Colors.border,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
   },
   actionTileIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: Colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
     ...Shadows.xs,
   },
-  actionTileGlyph: {
-    fontSize: 18,
-    fontWeight: Typography.weights.bold,
-    color: Colors.primaryDark,
-  },
   actionTileLabel: {
     fontSize: Typography.sizes.xs,
     fontWeight: Typography.weights.bold,
     color: Colors.textPrimary,
-    textAlign: 'center',
   },
   stateCard: {
     backgroundColor: Colors.surface,
