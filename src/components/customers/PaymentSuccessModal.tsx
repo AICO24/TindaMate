@@ -9,7 +9,7 @@ import {
   View,
 } from 'react-native';
 
-import { CheckIcon } from '@/components/ui/AuthIcons';
+import { AlertCircleIcon, CheckIcon } from '@/components/ui/AuthIcons';
 import { TindaMateButton } from '@/components/ui/TindaMateButton';
 import {
   BorderRadius,
@@ -68,18 +68,30 @@ export function PaymentSuccessModal({
       transparent
       animationType="fade"
       onRequestClose={onDismiss}>
-      <View style={styles.overlay}>
+      <View style={[styles.overlay, isCompactPhone && styles.overlayCompact]}>
         <View
           style={[
             styles.card,
             isCompactPhone && styles.cardCompact,
           ]}>
           <ScrollView
-            contentContainerStyle={styles.scrollContent}
+            contentContainerStyle={[
+              styles.scrollContent,
+              isCompactPhone && styles.scrollContentCompact,
+            ]}
             showsVerticalScrollIndicator={false}>
             {/* Success Check Icon */}
             <View style={styles.checkCircle}>
               <CheckIcon size={28} color={Colors.textInverse} />
+            </View>
+
+            {/* Status Pill */}
+            <View style={styles.statusPill}>
+              <Text style={styles.statusPillText}>
+                {paymentResult.isFullyPaid
+                  ? 'ACCOUNT FULLY SETTLED'
+                  : 'PAYMENT RECORDED'}
+              </Text>
             </View>
 
             {/* Header Titles */}
@@ -93,13 +105,21 @@ export function PaymentSuccessModal({
             {/* Amount Paid Callout */}
             <View style={styles.amountBox}>
               <Text style={styles.amountLabel}>Amount Paid</Text>
-              <Text style={styles.amountValue}>{formattedAmount}</Text>
+              <Text
+                style={styles.amountValue}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.8}>
+                {formattedAmount}
+              </Text>
             </View>
 
             {/* Account Status / Settlement Banner */}
             {paymentResult.isFullyPaid ? (
               <View style={styles.fullyPaidBanner}>
-                <Text style={styles.fullyPaidBannerEmoji}>🎉</Text>
+                <View style={styles.fullyPaidIconCircle}>
+                  <CheckIcon size={16} color={Colors.textInverse} />
+                </View>
                 <View style={styles.fullyPaidBannerInfo}>
                   <Text style={styles.fullyPaidBannerTitle}>Account Fully Settled!</Text>
                   <Text style={styles.fullyPaidBannerSub}>
@@ -158,9 +178,12 @@ export function PaymentSuccessModal({
             </View>
 
             {paymentResult.isRetry ? (
-              <Text style={styles.retryNote}>
-                ℹ️ Note: This was a duplicate retry of a previously processed payment.
-              </Text>
+              <View style={styles.retryBanner}>
+                <AlertCircleIcon size={15} color={Colors.info} />
+                <Text style={styles.retryNote}>
+                  Note: This was a duplicate retry of a previously processed payment.
+                </Text>
+              </View>
             ) : null}
 
             {/* Action Button */}
@@ -182,10 +205,13 @@ export function PaymentSuccessModal({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    backgroundColor: 'rgba(15, 23, 42, 0.65)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: Spacing.four,
+  },
+  overlayCompact: {
+    padding: Spacing.three,
   },
   card: {
     width: '100%',
@@ -206,6 +232,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.threeHalf,
   },
+  scrollContentCompact: {
+    padding: Spacing.four,
+    gap: Spacing.three,
+  },
   checkCircle: {
     width: 60,
     height: 60,
@@ -215,6 +245,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: Spacing.one,
     ...Shadows.xs,
+  },
+  statusPill: {
+    backgroundColor: Colors.primarySoft,
+    borderWidth: 1,
+    borderColor: Colors.primaryBorder,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: 4,
+    borderRadius: BorderRadius.full,
+  },
+  statusPillText: {
+    fontSize: 10,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.primaryDark,
+    letterSpacing: 0.6,
   },
   titleWrap: {
     alignItems: 'center',
@@ -252,6 +296,7 @@ const styles = StyleSheet.create({
     fontSize: Typography.sizes.displaySm,
     fontWeight: Typography.weights.extraBold,
     color: Colors.primaryDark,
+    fontVariant: ['tabular-nums'],
   },
   fullyPaidBanner: {
     width: '100%',
@@ -264,8 +309,13 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
     padding: Spacing.three,
   },
-  fullyPaidBannerEmoji: {
-    fontSize: 24,
+  fullyPaidIconCircle: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   fullyPaidBannerInfo: {
     flex: 1,
@@ -308,6 +358,7 @@ const styles = StyleSheet.create({
     fontSize: Typography.sizes.caption,
     fontWeight: Typography.weights.bold,
     color: Colors.textPrimary,
+    fontVariant: ['tabular-nums'],
   },
   detailValuePayment: {
     color: Colors.pastel.green.accent,
@@ -315,9 +366,10 @@ const styles = StyleSheet.create({
   detailValueBold: {
     fontSize: Typography.sizes.body,
     fontWeight: Typography.weights.extraBold,
+    fontVariant: ['tabular-nums'],
   },
   remainingActive: {
-    color: Colors.pastel.orange.accent,
+    color: Colors.accentDark,
   },
   remainingSettled: {
     color: Colors.pastel.green.accent,
@@ -327,15 +379,28 @@ const styles = StyleSheet.create({
     fontWeight: Typography.weights.bold,
     color: Colors.textSecondary,
     fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    fontVariant: ['tabular-nums'],
   },
   divider: {
     height: 1,
     backgroundColor: Colors.borderSubtle,
   },
+  retryBanner: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    backgroundColor: Colors.pastel.blue.bg,
+    borderWidth: 1,
+    borderColor: Colors.pastel.blue.border,
+    borderRadius: BorderRadius.md,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+  },
   retryNote: {
+    flex: 1,
     fontSize: Typography.sizes.caption,
-    color: Colors.textMuted,
-    textAlign: 'center',
+    color: Colors.pastel.blue.text,
   },
   actionWrap: {
     width: '100%',

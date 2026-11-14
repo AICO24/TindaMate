@@ -12,6 +12,8 @@ import {
   View,
 } from 'react-native';
 
+import { WarningTriangleIcon } from '@/components/dashboard/DashboardNavIcons';
+import { AlertCircleIcon, CheckIcon } from '@/components/ui/AuthIcons';
 import { TindaMateButton } from '@/components/ui/TindaMateButton';
 import {
   BorderRadius,
@@ -116,7 +118,10 @@ export function RecordPaymentModal({
       animationType="fade"
       onRequestClose={onClose}>
       <KeyboardAvoidingView
-        style={styles.modalOverlay}
+        style={[
+          styles.modalOverlay,
+          isCompactPhone && styles.modalOverlayCompact,
+        ]}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <Pressable
           style={styles.backdropPressable}
@@ -143,6 +148,7 @@ export function RecordPaymentModal({
               accessibilityLabel="Close payment modal"
               onPress={isSubmitting ? undefined : onClose}
               disabled={isSubmitting}
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
               style={({ pressed }) => [
                 styles.closeButton,
                 pressed && styles.closeButtonPressed,
@@ -222,7 +228,7 @@ export function RecordPaymentModal({
                     pressed && styles.quickChipPressed,
                   ]}>
                   <Text style={styles.quickChipFullText}>
-                    ⚡ Pay Full Amount ({formattedBalance})
+                    Pay Full Amount ({formattedBalance})
                   </Text>
                 </Pressable>
               </View>
@@ -230,7 +236,7 @@ export function RecordPaymentModal({
               {/* Validation / Helper Text */}
               {showError ? (
                 <View style={styles.errorTextRow}>
-                  <Text style={styles.errorTextIcon}>⚠️</Text>
+                  <AlertCircleIcon size={14} color={Colors.error} />
                   <Text style={styles.validationErrorText}>{validation.error}</Text>
                 </View>
               ) : (
@@ -277,7 +283,8 @@ export function RecordPaymentModal({
                     </Text>
                     {validation.remainingBalance === 0 ? (
                       <View style={styles.settledPill}>
-                        <Text style={styles.settledPillText}>✓ Fully Settled</Text>
+                        <CheckIcon size={10} color={Colors.successText} />
+                        <Text style={styles.settledPillText}>Fully Settled</Text>
                       </View>
                     ) : null}
                   </View>
@@ -315,7 +322,11 @@ export function RecordPaymentModal({
             {/* 5. Submission Error Banner */}
             {submissionError ? (
               <View style={styles.errorBanner}>
-                <Text style={styles.errorBannerIcon}>⚠️</Text>
+                <WarningTriangleIcon
+                  size={18}
+                  bgColor={Colors.dangerLight}
+                  fgColor={Colors.error}
+                />
                 <Text style={styles.errorBannerText}>{submissionError}</Text>
               </View>
             ) : null}
@@ -361,6 +372,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: Spacing.four,
   },
+  modalOverlayCompact: {
+    padding: Spacing.three,
+  },
   backdropPressable: {
     ...StyleSheet.absoluteFill,
   },
@@ -403,9 +417,9 @@ const styles = StyleSheet.create({
     fontWeight: Typography.weights.medium,
   },
   closeButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: Colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
@@ -428,16 +442,16 @@ const styles = StyleSheet.create({
     gap: Spacing.threeHalf,
   },
   balanceCard: {
-    backgroundColor: '#FFF7ED',
+    backgroundColor: Colors.pastel.orange.bg,
     borderRadius: BorderRadius.lg,
     borderWidth: 1.5,
-    borderColor: '#FED7AA',
+    borderColor: Colors.pastel.orange.border,
     padding: Spacing.threeHalf,
     alignItems: 'center',
     gap: Spacing.one,
   },
   balanceBadge: {
-    backgroundColor: '#FFEDD5',
+    backgroundColor: Colors.accentLight,
     paddingHorizontal: Spacing.twoHalf,
     paddingVertical: 3,
     borderRadius: BorderRadius.full,
@@ -445,14 +459,15 @@ const styles = StyleSheet.create({
   balanceBadgeText: {
     fontSize: Typography.sizes.xs,
     fontWeight: Typography.weights.bold,
-    color: '#C2410C',
+    color: Colors.accentDark,
     textTransform: 'uppercase',
     letterSpacing: 0.4,
   },
   balanceAmount: {
     fontSize: 30,
     fontWeight: Typography.weights.extraBold,
-    color: Colors.accent,
+    color: Colors.accentDark,
+    fontVariant: ['tabular-nums'],
   },
   inputSection: {
     gap: Spacing.one,
@@ -475,7 +490,7 @@ const styles = StyleSheet.create({
   },
   currencyInputWrapFocused: {
     borderColor: Colors.primary,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.surface,
     ...Shadows.xs,
   },
   currencyInputWrapError: {
@@ -495,6 +510,7 @@ const styles = StyleSheet.create({
     fontSize: Typography.sizes.xl,
     fontWeight: Typography.weights.extraBold,
     color: Colors.textPrimary,
+    fontVariant: ['tabular-nums'],
     height: '100%',
     paddingVertical: 0,
     paddingHorizontal: 0,
@@ -535,13 +551,11 @@ const styles = StyleSheet.create({
   errorTextRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.one,
+    gap: 6,
     marginTop: 2,
   },
-  errorTextIcon: {
-    fontSize: 12,
-  },
   validationErrorText: {
+    flex: 1,
     fontSize: Typography.sizes.caption,
     color: Colors.error,
     fontWeight: Typography.weights.medium,
@@ -558,7 +572,7 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   summaryBoxPartial: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: Colors.surfaceSubtle,
     borderColor: Colors.border,
   },
   summaryBoxSettled: {
@@ -579,11 +593,13 @@ const styles = StyleSheet.create({
     fontSize: Typography.sizes.bodySm,
     fontWeight: Typography.weights.bold,
     color: Colors.textSecondary,
+    fontVariant: ['tabular-nums'],
   },
   summaryValuePayment: {
     fontSize: Typography.sizes.bodySm,
     fontWeight: Typography.weights.bold,
     color: Colors.pastel.green.accent,
+    fontVariant: ['tabular-nums'],
   },
   summaryDivider: {
     height: 1,
@@ -597,20 +613,24 @@ const styles = StyleSheet.create({
   },
   summaryTotalRight: {
     alignItems: 'flex-end',
-    gap: 2,
+    gap: 3,
   },
   summaryTotalValue: {
     fontSize: Typography.sizes.base,
     fontWeight: Typography.weights.extraBold,
+    fontVariant: ['tabular-nums'],
   },
   summaryTotalValuePartial: {
-    color: Colors.accent,
+    color: Colors.accentDark,
   },
   summaryTotalValueSettled: {
     color: Colors.pastel.green.accent,
   },
   settledPill: {
-    backgroundColor: '#DCFCE7',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: Colors.primaryLight,
     paddingHorizontal: Spacing.two,
     paddingVertical: 2,
     borderRadius: BorderRadius.xs,
@@ -636,7 +656,7 @@ const styles = StyleSheet.create({
   },
   notesInputFocused: {
     borderColor: Colors.primary,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.surface,
   },
   errorBanner: {
     flexDirection: 'row',
@@ -647,9 +667,6 @@ const styles = StyleSheet.create({
     borderColor: Colors.errorBorder,
     borderRadius: BorderRadius.md,
     padding: Spacing.three,
-  },
-  errorBannerIcon: {
-    fontSize: 16,
   },
   errorBannerText: {
     flex: 1,
