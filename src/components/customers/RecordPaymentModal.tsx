@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Modal,
@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  type TextInputInstance,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -24,6 +25,7 @@ import {
 } from '@/constants/theme';
 import { validatePaymentAmountInput } from '@/lib/customers';
 import { formatPesoCurrency } from '@/lib/products';
+import { getQuickPaymentOptions } from '@/lib/sales';
 
 export interface RecordPaymentModalProps {
   /** Whether the payment modal is visible */
@@ -41,7 +43,11 @@ export interface RecordPaymentModalProps {
   /** Callback triggered when user cancels or dismisses modal */
   onClose: () => void;
   /** Callback triggered when user confirms payment with valid amount */
-  onSubmitPayment: (amount: number, notes?: string) => void;
+  onSubmitPayment: (
+    amount: number,
+    notes?: string,
+    paymentMeta?: { amountTendered: number; changeDue: number }
+  ) => void;
 }
 
 /**
@@ -73,20 +79,31 @@ export function RecordPaymentModal({
   const [notesInput, setNotesInput] = useState('');
   const [isAmountFocused, setIsAmountFocused] = useState(false);
   const [isNotesFocused, setIsNotesFocused] = useState(false);
+  const amountInputRef = useRef<TextInputInstance>(null);
+  const onClearErrorRef = useRef(onClearError);
 
-  // Reset inputs whenever modal opens
+  useEffect(() => {
+    onClearErrorRef.current = onClearError;
+  }, [onClearError]);
+
+  // Reset inputs only when modal transitions to visible
   useEffect(() => {
     if (visible) {
       setAmountInput('');
       setNotesInput('');
       setIsAmountFocused(false);
       setIsNotesFocused(false);
-      onClearError?.();
+      onClearErrorRef.current?.();
+      const timer = setTimeout(() => {
+        amountInputRef.current?.focus();
+      }, 120);
+      return () => clearTimeout(timer);
     }
-  }, [visible, onClearError]);
+  }, [visible]);
 
   const validation = validatePaymentAmountInput(amountInput, currentBalance);
   const formattedBalance = formatPesoCurrency(currentBalance);
+  const quickPaymentOptions = getQuickPaymentOptions(currentBalance);
   const hasInput = amountInput.trim().length > 0;
   const showError = Boolean(validation.error && hasInput);
 
@@ -97,18 +114,26 @@ export function RecordPaymentModal({
     }
   };
 
-  const handlePayFullAmount = () => {
-    setAmountInput(currentBalance.toFixed(2));
+  const handleSelectQuickAmount = (option: number) => {
+    setAmountInput(option === currentBalance ? option.toFixed(2) : String(option));
     if (submissionError) {
       onClearError?.();
     }
   };
 
   const handleSubmit = () => {
-    if (!validation.isValid || validation.amount === null || isSubmitting) {
+    if (
+      !validation.isValid ||
+      validation.amount === null ||
+      validation.amountTendered === null ||
+      isSubmitting
+    ) {
       return;
     }
-    onSubmitPayment(validation.amount, notesInput.trim() || undefined);
+    onSubmitPayment(validation.amount, notesInput.trim() || undefined, {
+      amountTendered: validation.amountTendered,
+      changeDue: validation.changeDue,
+    });
   };
 
   return (
@@ -174,7 +199,9 @@ export function RecordPaymentModal({
             <View style={styles.inputSection}>
               <Text style={styles.inputLabel}>Amount Received (Bayad)</Text>
 
-              <View
+              <Pressable
+                accessible={false}
+                onPress={() => amountInputRef.current?.focus()}
                 style={[
                   styles.currencyInputWrap,
                   isAmountFocused && styles.currencyInputWrapFocused,
@@ -182,6 +209,7 @@ export function RecordPaymentModal({
                 ]}>
                 <Text style={styles.currencyPrefix}>₱</Text>
                 <TextInput
+                  ref={amountInputRef}
                   style={[
                     styles.currencyInput,
                     Platform.OS === 'web'
@@ -194,13 +222,13 @@ export function RecordPaymentModal({
                   ]}
                   placeholder="0.00"
                   placeholderTextColor={Colors.textPlaceholder}
+                  inputMode="decimal"
                   keyboardType="decimal-pad"
                   value={amountInput}
                   onChangeText={handleAmountChange}
                   onFocus={() => setIsAmountFocused(true)}
                   onBlur={() => setIsAmountFocused(false)}
                   editable={!isSubmitting}
-                  autoFocus
                   accessibilityLabel="Amount received input"
                   accessibilityHint="Enter payment amount in Philippine pesos"
                 />
@@ -209,28 +237,49 @@ export function RecordPaymentModal({
                     accessibilityRole="button"
                     accessibilityLabel="Clear amount"
                     onPress={() => handleAmountChange('')}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     style={styles.clearInputButton}>
                     <Text style={styles.clearInputText}>✕</Text>
                   </Pressable>
                 )}
-              </View>
+              </Pressable>
 
-              {/* Quick Action: Pay Full Amount */}
+              {/* Quick Action: Exact Full Amount + Bill Chips */}
               <View style={styles.quickOptionsRow}>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`Pay full balance of ${formattedBalance}`}
-                  onPress={handlePayFullAmount}
-                  disabled={isSubmitting}
-                  style={({ pressed }) => [
-                    styles.quickChipFull,
-                    amountInput === currentBalance.toFixed(2) && styles.quickChipFullActive,
-                    pressed && styles.quickChipPressed,
-                  ]}>
-                  <Text style={styles.quickChipFullText}>
-                    Pay Full Amount ({formattedBalance})
-                  </Text>
-                </Pressable>
+                {quickPaymentOptions.map((option) => {
+                  const isExact = option === currentBalance;
+                  const isSelected =
+                    Number(amountInput) === option ||
+                    amountInput === option.toFixed(2);
+                  return (
+                    <Pressable
+                      key={option}
+                      accessibilityRole="button"
+                      accessibilityLabel={
+                        isExact
+                          ? `Pay full balance of ${formattedBalance}`
+                          : `Enter ${formatPesoCurrency(option)} cash`
+                      }
+                      onPress={() => handleSelectQuickAmount(option)}
+                      disabled={isSubmitting}
+                      style={({ pressed }) => [
+                        styles.quickChipFull,
+                        isExact && styles.quickChipExact,
+                        isSelected && styles.quickChipFullActive,
+                        pressed && styles.quickChipPressed,
+                      ]}>
+                      <Text
+                        style={[
+                          styles.quickChipFullText,
+                          isSelected && styles.quickChipFullTextActive,
+                        ]}>
+                        {isExact
+                          ? `Pay Full (${formattedBalance})`
+                          : formatPesoCurrency(option)}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
               </View>
 
               {/* Validation / Helper Text */}
@@ -241,56 +290,88 @@ export function RecordPaymentModal({
                 </View>
               ) : (
                 <Text style={styles.helperText}>
-                  Enter the amount paid by the customer. Cannot exceed outstanding balance.
+                  Enter cash received. If higher than balance, change (sukli) is computed automatically.
                 </Text>
               )}
             </View>
 
-            {/* 3. Live Payment Breakdown Preview */}
-            {validation.isValid && validation.amount !== null && (
-              <View
-                style={[
-                  styles.summaryBox,
-                  validation.remainingBalance === 0
-                    ? styles.summaryBoxSettled
-                    : styles.summaryBoxPartial,
-                ]}>
-                <View style={styles.summaryRow}>
-                  <Text style={styles.summaryLabel}>Current Balance:</Text>
-                  <Text style={styles.summaryValueMuted}>{formattedBalance}</Text>
-                </View>
-
-                <View style={styles.summaryRow}>
-                  <Text style={styles.summaryLabel}>Amount Received:</Text>
-                  <Text style={styles.summaryValuePayment}>
-                    - {formatPesoCurrency(validation.amount)}
-                  </Text>
-                </View>
-
-                <View style={styles.summaryDivider} />
-
-                <View style={styles.summaryRow}>
-                  <Text style={styles.summaryTotalLabel}>Remaining Balance:</Text>
-                  <View style={styles.summaryTotalRight}>
-                    <Text
-                      style={[
-                        styles.summaryTotalValue,
-                        validation.remainingBalance === 0
-                          ? styles.summaryTotalValueSettled
-                          : styles.summaryTotalValuePartial,
-                      ]}>
-                      {formatPesoCurrency(validation.remainingBalance)}
-                    </Text>
-                    {validation.remainingBalance === 0 ? (
-                      <View style={styles.settledPill}>
-                        <CheckIcon size={10} color={Colors.successText} />
-                        <Text style={styles.settledPillText}>Fully Settled</Text>
-                      </View>
-                    ) : null}
+            {/* 3. Live Payment Breakdown & Sukli Preview */}
+            {validation.isValid &&
+              validation.amount !== null &&
+              validation.amountTendered !== null && (
+                <View
+                  style={[
+                    styles.summaryBox,
+                    validation.remainingBalance === 0
+                      ? styles.summaryBoxSettled
+                      : styles.summaryBoxPartial,
+                  ]}>
+                  <View style={styles.summaryRow}>
+                    <Text style={styles.summaryLabel}>Current Balance:</Text>
+                    <Text style={styles.summaryValueMuted}>{formattedBalance}</Text>
                   </View>
+
+                  <View style={styles.summaryRow}>
+                    <Text style={styles.summaryLabel}>
+                      {validation.changeDue > 0
+                        ? 'Cash Received (Bayad):'
+                        : 'Amount Received:'}
+                    </Text>
+                    <Text style={styles.summaryValuePayment}>
+                      {validation.changeDue > 0
+                        ? formatPesoCurrency(validation.amountTendered)
+                        : `- ${formatPesoCurrency(validation.amount)}`}
+                    </Text>
+                  </View>
+
+                  {validation.changeDue > 0 ? (
+                    <View style={styles.summaryRow}>
+                      <Text style={styles.summaryLabel}>Applied to Utang:</Text>
+                      <Text style={styles.summaryValuePayment}>
+                        - {formatPesoCurrency(validation.amount)}
+                      </Text>
+                    </View>
+                  ) : null}
+
+                  <View style={styles.summaryDivider} />
+
+                  <View style={styles.summaryRow}>
+                    <Text style={styles.summaryTotalLabel}>Remaining Balance:</Text>
+                    <View style={styles.summaryTotalRight}>
+                      <Text
+                        style={[
+                          styles.summaryTotalValue,
+                          validation.remainingBalance === 0
+                            ? styles.summaryTotalValueSettled
+                            : styles.summaryTotalValuePartial,
+                        ]}>
+                        {formatPesoCurrency(validation.remainingBalance)}
+                      </Text>
+                      {validation.remainingBalance === 0 ? (
+                        <View style={styles.settledPill}>
+                          <CheckIcon size={10} color={Colors.successText} />
+                          <Text style={styles.settledPillText}>Fully Settled</Text>
+                        </View>
+                      ) : null}
+                    </View>
+                  </View>
+
+                  {validation.changeDue > 0 ? (
+                    <View style={styles.changeCalloutBox}>
+                      <Text style={styles.changeCalloutLabel}>
+                        CHANGE DUE (SUKLI)
+                      </Text>
+                      <Text
+                        style={styles.changeCalloutAmount}
+                        numberOfLines={1}
+                        adjustsFontSizeToFit
+                        minimumFontScale={0.8}>
+                        {formatPesoCurrency(validation.changeDue)}
+                      </Text>
+                    </View>
+                  ) : null}
                 </View>
-              </View>
-            )}
+              )}
 
             {/* 4. Optional Payment Notes */}
             <View style={styles.notesSection}>
@@ -377,8 +458,10 @@ const styles = StyleSheet.create({
   },
   backdropPressable: {
     ...StyleSheet.absoluteFill,
+    zIndex: 0,
   },
   modalCard: {
+    zIndex: 1,
     width: '100%',
     maxWidth: 440,
     maxHeight: '92%',
@@ -506,7 +589,6 @@ const styles = StyleSheet.create({
   currencyInput: {
     flex: 1,
     minWidth: 0,
-    width: '100%',
     fontSize: Typography.sizes.xl,
     fontWeight: Typography.weights.extraBold,
     color: Colors.textPrimary,
@@ -524,21 +606,28 @@ const styles = StyleSheet.create({
     fontWeight: Typography.weights.bold,
   },
   quickOptionsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.two,
     marginTop: Spacing.one,
   },
   quickChipFull: {
-    backgroundColor: Colors.pastel.green.bg,
+    backgroundColor: Colors.surfaceSubtle,
     borderWidth: 1,
-    borderColor: Colors.pastel.green.border,
-    paddingVertical: Spacing.two,
+    borderColor: Colors.border,
+    paddingVertical: 7,
     paddingHorizontal: Spacing.three,
-    borderRadius: BorderRadius.md,
+    borderRadius: BorderRadius.full,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  quickChipExact: {
+    backgroundColor: Colors.pastel.green.bg,
+    borderColor: Colors.pastel.green.border,
+  },
   quickChipFullActive: {
-    backgroundColor: Colors.primaryLight,
-    borderColor: Colors.primary,
+    backgroundColor: Colors.primaryDark,
+    borderColor: Colors.primaryDark,
   },
   quickChipPressed: {
     opacity: 0.8,
@@ -547,6 +636,10 @@ const styles = StyleSheet.create({
     fontSize: Typography.sizes.caption,
     fontWeight: Typography.weights.bold,
     color: Colors.primaryDark,
+    fontVariant: ['tabular-nums'],
+  },
+  quickChipFullTextActive: {
+    color: Colors.textInverse,
   },
   errorTextRow: {
     flexDirection: 'row',
@@ -639,6 +732,31 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: Typography.weights.bold,
     color: Colors.successText,
+  },
+  changeCalloutBox: {
+    marginTop: Spacing.one,
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1.5,
+    borderColor: Colors.primaryBorder,
+    paddingVertical: Spacing.twoHalf,
+    paddingHorizontal: Spacing.three,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.two,
+  },
+  changeCalloutLabel: {
+    fontSize: Typography.sizes.xs,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.primaryDark,
+    letterSpacing: 0.4,
+  },
+  changeCalloutAmount: {
+    fontSize: Typography.sizes.xl,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.primary,
+    fontVariant: ['tabular-nums'],
   },
   notesSection: {
     gap: Spacing.one,

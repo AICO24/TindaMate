@@ -56,6 +56,12 @@ export function PaymentSuccessModal({
   }
 
   const formattedAmount = formatPesoCurrency(paymentResult.amount);
+  const changeDue = paymentResult.changeDue ?? 0;
+  const hasChange = changeDue > 0;
+  const formattedTendered = formatPesoCurrency(
+    paymentResult.amountTendered ?? paymentResult.amount
+  );
+  const formattedChange = formatPesoCurrency(changeDue);
   const formattedPrevious = formatPesoCurrency(paymentResult.previousBalance);
   const formattedRemaining = formatPesoCurrency(paymentResult.remainingBalance);
   const formattedDate = formatSaleDate(paymentResult.payment.created_at);
@@ -139,11 +145,33 @@ export function PaymentSuccessModal({
               <View style={styles.divider} />
 
               <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Amount Paid</Text>
+                <Text style={styles.detailLabel}>
+                  {hasChange ? 'Applied to Utang' : 'Amount Paid'}
+                </Text>
                 <Text style={[styles.detailValue, styles.detailValuePayment]}>
                   - {formattedAmount}
                 </Text>
               </View>
+
+              {hasChange ? (
+                <>
+                  <View style={styles.divider} />
+
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Cash Received (Bayad)</Text>
+                    <Text style={styles.detailValue}>{formattedTendered}</Text>
+                  </View>
+
+                  <View style={styles.divider} />
+
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabelBold}>Change Due (Sukli)</Text>
+                    <Text style={[styles.detailValueBold, styles.detailValuePayment]}>
+                      {formattedChange}
+                    </Text>
+                  </View>
+                </>
+              ) : null}
 
               <View style={styles.divider} />
 

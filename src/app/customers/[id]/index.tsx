@@ -181,7 +181,11 @@ export default function CustomerDetailsScreen() {
     setIsPaymentModalVisible(false);
   };
 
-  const handleSubmitPayment = async (amount: number, notes?: string) => {
+  const handleSubmitPayment = async (
+    amount: number,
+    notes?: string,
+    paymentMeta?: { amountTendered: number; changeDue: number }
+  ) => {
     if (!customer || isSubmittingPayment) return;
 
     try {
@@ -196,7 +200,11 @@ export default function CustomerDetailsScreen() {
 
       // Close payment input modal and open confirmation receipt
       setIsPaymentModalVisible(false);
-      setPaymentResult(result);
+      setPaymentResult({
+        ...result,
+        amountTendered: paymentMeta?.amountTendered,
+        changeDue: paymentMeta?.changeDue,
+      });
 
       // Re-fetch authoritative customer balance and credit ledger transactions
       await loadCustomer(false);
