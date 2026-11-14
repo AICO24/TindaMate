@@ -598,6 +598,8 @@ export function validatePaymentAmountInput(
     return {
       isValid: false,
       amount: null,
+      amountTendered: null,
+      changeDue: 0,
       remainingBalance: currentBalance,
       error: 'Please enter a payment amount.',
     };
@@ -608,6 +610,8 @@ export function validatePaymentAmountInput(
     return {
       isValid: false,
       amount: null,
+      amountTendered: null,
+      changeDue: 0,
       remainingBalance: currentBalance,
       error: 'Please enter a valid payment amount.',
     };
@@ -619,29 +623,39 @@ export function validatePaymentAmountInput(
     return {
       isValid: false,
       amount: null,
+      amountTendered: null,
+      changeDue: 0,
       remainingBalance: currentBalance,
       error: 'Payment amount must be greater than zero.',
     };
   }
 
   const balanceCentavos = Math.round(currentBalance * 100);
+  const tenderedAmount = Number((amountCentavos / 100).toFixed(2));
+
+  // If cash tendered exceeds outstanding balance, cap ledger payment at balance and compute sukli
   if (amountCentavos > balanceCentavos) {
-    const formattedMax = formatPesoCurrency(currentBalance);
+    const appliedAmount = Number((balanceCentavos / 100).toFixed(2));
+    const changeDue = Number(
+      ((amountCentavos - balanceCentavos) / 100).toFixed(2)
+    );
     return {
-      isValid: false,
-      amount: Number((amountCentavos / 100).toFixed(2)),
-      remainingBalance: currentBalance,
-      error: `Payment cannot exceed outstanding balance of ${formattedMax}.`,
+      isValid: true,
+      amount: appliedAmount,
+      amountTendered: tenderedAmount,
+      changeDue,
+      remainingBalance: 0,
     };
   }
 
   const remainingCentavos = Math.max(0, balanceCentavos - amountCentavos);
   const remainingBalance = Number((remainingCentavos / 100).toFixed(2));
-  const validAmount = Number((amountCentavos / 100).toFixed(2));
 
   return {
     isValid: true,
-    amount: validAmount,
+    amount: tenderedAmount,
+    amountTendered: tenderedAmount,
+    changeDue: 0,
     remainingBalance,
   };
 }

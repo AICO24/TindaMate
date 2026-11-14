@@ -171,6 +171,8 @@ export interface CompletedPaymentResult {
   customerId: string;
   creditAccountId: string;
   amount: number;
+  amountTendered?: number;
+  changeDue?: number;
   previousBalance: number;
   remainingBalance: number;
   isFullyPaid: boolean;
@@ -183,6 +185,8 @@ export interface CompletedPaymentResult {
 export interface PaymentAmountValidation {
   isValid: boolean;
   amount: number | null;
+  amountTendered: number | null;
+  changeDue: number;
   remainingBalance: number;
   error?: string;
 }
