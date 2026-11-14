@@ -43,10 +43,10 @@ function formatShortActivityDate(isoDate?: string | null): string | null {
  * CustomerCard — TindaMate Design 2.0
  *
  * Financially professional customer ledger row:
- * - Circular monogram avatar (deep forest green for active accounts, warm amber for settled/paid)
- * - Customer name
- * - Prominent outstanding balance (₱1,250.00) OR green "PAID" status pill
- * - Last activity / payment date & phone metadata
+ * - Circular monogram avatar (Orange for unpaid utang, Green for settled/paid, Slate for inactive)
+ * - Customer name + optional INACTIVE badge
+ * - Phone number and last activity date metadata
+ * - Right-aligned financial status column: Orange utang balance + UTANG pill OR Green PAID pill
  * - Right chevron
  */
 export function CustomerCard({ customer, onPress }: CustomerCardProps) {
@@ -60,17 +60,25 @@ export function CustomerCard({ customer, onPress }: CustomerCardProps) {
   const lastActivityDate = formatShortActivityDate(
     customer.credit_summary?.last_transaction_at
   );
-  const secondaryMeta = lastActivityDate
-    ? `Last activity: ${lastActivityDate}`
-    : customer.phone
-    ? `Phone: ${customer.phone}`
-    : null;
+
+  const metaParts: string[] = [];
+  if (customer.phone) {
+    metaParts.push(customer.phone);
+  }
+  if (lastActivityDate) {
+    metaParts.push(
+      customer.phone
+        ? `Active ${lastActivityDate}`
+        : `Last activity: ${lastActivityDate}`
+    );
+  }
+  const secondaryMeta = metaParts.join(' • ');
 
   const accessibilityLabel = `${customer.name}, ${
     customer.phone ? `Phone: ${customer.phone}, ` : ''
   }${
     hasUtang
-      ? `Outstanding credit: ${formattedBalance}`
+      ? `Outstanding utang: ${formattedBalance}`
       : 'Paid, no outstanding balance'
   }${!customer.is_active ? ', Inactive' : ''}`;
 
@@ -86,25 +94,26 @@ export function CustomerCard({ customer, onPress }: CustomerCardProps) {
         !customer.is_active && styles.cardInactive,
         pressed && styles.cardPressed,
       ]}>
-      <View style={styles.contentRow}>
+      <View style={[styles.contentRow, isCompactPhone && styles.contentRowCompact]}>
         {/* Left: Circular Avatar Monogram */}
         <View
           style={[
             styles.avatarCircle,
-            !hasUtang && styles.avatarCircleSettled,
+            isCompactPhone && styles.avatarCircleCompact,
+            hasUtang ? styles.avatarCircleUtang : styles.avatarCircleSettled,
             !customer.is_active && styles.avatarCircleInactive,
           ]}>
           <Text
             style={[
               styles.avatarText,
-              !hasUtang && styles.avatarTextSettled,
+              isCompactPhone && styles.avatarTextCompact,
               !customer.is_active && styles.avatarTextInactive,
             ]}>
             {initials}
           </Text>
         </View>
 
-        {/* Center: Name, Balance / PAID Pill, and Last Activity */}
+        {/* Center: Name, Inactive Badge, Phone & Last Activity */}
         <View style={styles.infoCol}>
           <View style={styles.nameHeaderRow}>
             <Text
@@ -125,31 +134,51 @@ export function CustomerCard({ customer, onPress }: CustomerCardProps) {
             ) : null}
           </View>
 
-          {hasUtang ? (
-            <Text
-              style={styles.balanceAmountText}
-              numberOfLines={1}
-              maxFontSizeMultiplier={1.3}>
-              {formattedBalance}
-            </Text>
-          ) : (
-            <View style={styles.paidPill}>
-              <Text style={styles.paidPillText}>PAID</Text>
-            </View>
-          )}
-
           {secondaryMeta ? (
             <Text
               style={styles.activityMetaText}
               numberOfLines={1}
+              ellipsizeMode="tail"
               maxFontSizeMultiplier={1.2}>
               {secondaryMeta}
             </Text>
-          ) : null}
+          ) : (
+            <Text
+              style={styles.activityMetaMuted}
+              numberOfLines={1}
+              maxFontSizeMultiplier={1.2}>
+              No transactions yet
+            </Text>
+          )}
         </View>
 
-        {/* Right: Chevron */}
-        <View style={styles.rightCol}>
+        {/* Right: Financial Balance / PAID Status + Chevron */}
+        <View style={styles.rightCluster}>
+          <View style={styles.statusCol}>
+            {hasUtang ? (
+              <>
+                <Text
+                  style={[
+                    styles.balanceAmountText,
+                    isCompactPhone && styles.balanceAmountTextCompact,
+                  ]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.8}
+                  maxFontSizeMultiplier={1.25}>
+                  {formattedBalance}
+                </Text>
+                <View style={styles.utangPill}>
+                  <Text style={styles.utangPillText}>UTANG</Text>
+                </View>
+              </>
+            ) : (
+              <View style={styles.paidPill}>
+                <Text style={styles.paidPillText}>PAID</Text>
+              </View>
+            )}
+          </View>
+
           <Text style={styles.chevron} importantForAccessibility="no">
             ›
           </Text>
@@ -186,48 +215,57 @@ const styles = StyleSheet.create({
   contentRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
+    gap: 12,
+  },
+  contentRowCompact: {
+    gap: 10,
   },
   avatarCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#0D7A4D',
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     alignItems: 'center',
     justifyContent: 'center',
     ...Shadows.xs,
   },
+  avatarCircleCompact: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+  },
+  avatarCircleUtang: {
+    backgroundColor: Colors.accentDark,
+  },
   avatarCircleSettled: {
-    backgroundColor: '#EA580C',
-    borderWidth: 0,
+    backgroundColor: Colors.primary,
   },
   avatarCircleInactive: {
-    backgroundColor: '#64748B',
-    borderWidth: 0,
+    backgroundColor: Colors.pastel.neutral.iconBg,
   },
   avatarText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: Typography.weights.extraBold,
     color: Colors.textInverse,
     letterSpacing: 0.3,
   },
-  avatarTextSettled: {
-    color: Colors.textInverse,
+  avatarTextCompact: {
+    fontSize: 14,
   },
   avatarTextInactive: {
     color: Colors.textInverse,
   },
   infoCol: {
     flex: 1,
+    minWidth: 0,
     gap: 3,
   },
   nameHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    flexWrap: 'wrap',
   },
   customerName: {
+    flexShrink: 1,
     fontSize: Typography.sizes.body,
     fontWeight: Typography.weights.bold,
     color: Colors.textPrimary,
@@ -249,38 +287,66 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     textTransform: 'uppercase',
   },
-  balanceAmountText: {
-    fontSize: Typography.sizes.base,
-    fontWeight: Typography.weights.extraBold,
-    color: Colors.textPrimary,
-  },
-  paidPill: {
-    alignSelf: 'flex-start',
-    backgroundColor: Colors.primary,
-    paddingHorizontal: 10,
-    paddingVertical: 2,
-    borderRadius: BorderRadius.full,
-    marginVertical: 1,
-  },
-  paidPillText: {
-    fontSize: 11,
-    fontWeight: Typography.weights.extraBold,
-    color: Colors.textInverse,
-    letterSpacing: 0.5,
-  },
   activityMetaText: {
     fontSize: Typography.sizes.caption,
     color: Colors.textSecondary,
     fontWeight: Typography.weights.medium,
   },
-  rightCol: {
-    paddingLeft: 4,
+  activityMetaMuted: {
+    fontSize: Typography.sizes.caption,
+    color: Colors.textMuted,
+    fontWeight: Typography.weights.medium,
+  },
+  rightCluster: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 8,
+    flexShrink: 0,
+  },
+  statusCol: {
+    alignItems: 'flex-end',
+    gap: 3,
+  },
+  balanceAmountText: {
+    fontSize: Typography.sizes.base,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.accentDark,
+    fontVariant: ['tabular-nums'],
+  },
+  balanceAmountTextCompact: {
+    fontSize: Typography.sizes.body,
+  },
+  utangPill: {
+    backgroundColor: Colors.accentLight,
+    borderWidth: 1,
+    borderColor: Colors.accentBorder,
+    paddingHorizontal: 7,
+    paddingVertical: 1,
+    borderRadius: BorderRadius.full,
+  },
+  utangPillText: {
+    fontSize: 9,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.accentDark,
+    letterSpacing: 0.4,
+  },
+  paidPill: {
+    backgroundColor: Colors.primarySoft,
+    borderWidth: 1,
+    borderColor: Colors.primaryBorder,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: BorderRadius.full,
+  },
+  paidPillText: {
+    fontSize: 10,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.primaryDark,
+    letterSpacing: 0.5,
   },
   chevron: {
     fontSize: 22,
     fontWeight: Typography.weights.bold,
-    color: Colors.textSecondary,
+    color: Colors.textMuted,
   },
 });
