@@ -492,6 +492,7 @@ export default function ProductsListScreen() {
           title="Products"
           subtitle={headerSubtitle}
           showBack={false}
+          showCartButton
           leftIcon={<NavProductsIcon color={Colors.textInverse} />}
           rightActionLabel="+ Add Product"
           rightActionAccessibilityLabel="Add a new product"

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Pressable,
   StyleProp,
@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 
+import { CartVectorIcon } from '@/components/dashboard/DashboardNavIcons';
 import { ArrowLeftIcon } from '@/components/ui/AuthIcons';
 import {
   BorderRadius,
@@ -19,6 +20,12 @@ import {
   Spacing,
   Typography,
 } from '@/constants/theme';
+import {
+  getCartSnapshot,
+  getCartTotalItemCount,
+  getPersistedCart,
+  subscribeToCartChanges,
+} from '@/lib/cartStore';
 
 export interface ProductScreenHeaderProps {
   title: string;
@@ -26,6 +33,9 @@ export interface ProductScreenHeaderProps {
   showBack?: boolean;
   onBack?: () => void;
   leftIcon?: React.ReactNode;
+  /** Shows the live shopping cart icon & item counter badge in the top-right header */
+  showCartButton?: boolean;
+  onCartPress?: () => void;
   rightActionLabel?: string;
   onRightActionPress?: () => void;
   rightActionAccessibilityLabel?: string;
@@ -36,6 +46,69 @@ export interface ProductScreenHeaderProps {
   style?: StyleProp<ViewStyle>;
   /** Optional style override for inner centered container */
   contentContainerStyle?: StyleProp<ViewStyle>;
+}
+
+/**
+ * HeaderCartBadgeButton — Live shopping cart icon button with item counter badge
+ * (TikTok Shop / Shopee style) synchronized across Products & POS screens.
+ */
+export function HeaderCartBadgeButton({
+  onPress,
+}: {
+  onPress?: () => void;
+}) {
+  const [cartItemCount, setCartItemCount] = useState<number>(() =>
+    getCartTotalItemCount(getCartSnapshot())
+  );
+
+  useEffect(() => {
+    getPersistedCart().then((cart) => {
+      setCartItemCount(getCartTotalItemCount(cart));
+    });
+
+    const unsubscribe = subscribeToCartChanges((cart) => {
+      setCartItemCount(getCartTotalItemCount(cart));
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const handlePress = () => {
+    if (onPress) {
+      onPress();
+      return;
+    }
+    router.push('/sales');
+  };
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={
+        cartItemCount > 0
+          ? `Shopping cart, ${cartItemCount} ${
+              cartItemCount === 1 ? 'item' : 'items'
+            } in cart`
+          : 'Shopping cart, empty'
+      }
+      accessibilityHint="Opens the POS cart to review items and checkout"
+      onPress={handlePress}
+      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      style={({ pressed }) => [
+        styles.cartButton,
+        cartItemCount > 0 && styles.cartButtonActive,
+        pressed && styles.backButtonPressed,
+      ]}>
+      <CartVectorIcon color={Colors.textInverse} size={IconSizes.md} />
+      {cartItemCount > 0 ? (
+        <View style={styles.cartBadge}>
+          <Text style={styles.cartBadgeText} numberOfLines={1}>
+            {cartItemCount > 99 ? '99+' : String(cartItemCount)}
+          </Text>
+        </View>
+      ) : null}
+    </Pressable>
+  );
 }
 
 /**
@@ -56,6 +129,8 @@ export function ProductScreenHeader({
   showBack = true,
   onBack,
   leftIcon,
+  showCartButton = false,
+  onCartPress,
   rightActionLabel,
   onRightActionPress,
   rightActionAccessibilityLabel,
@@ -134,25 +209,32 @@ export function ProductScreenHeader({
 
           {rightElement ? (
             rightElement
-          ) : rightActionLabel && onRightActionPress ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={
-                rightActionAccessibilityLabel ?? rightActionLabel
-              }
-              onPress={onRightActionPress}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              style={({ pressed }) => [
-                styles.rightActionPill,
-                pressed && styles.rightActionPillPressed,
-              ]}>
-              <Text
-                style={styles.rightActionText}
-                numberOfLines={1}
-                maxFontSizeMultiplier={1.2}>
-                {rightActionLabel}
-              </Text>
-            </Pressable>
+          ) : showCartButton || (rightActionLabel && onRightActionPress) ? (
+            <View style={styles.rightActionsRow}>
+              {showCartButton ? (
+                <HeaderCartBadgeButton onPress={onCartPress} />
+              ) : null}
+              {rightActionLabel && onRightActionPress ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    rightActionAccessibilityLabel ?? rightActionLabel
+                  }
+                  onPress={onRightActionPress}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  style={({ pressed }) => [
+                    styles.rightActionPill,
+                    pressed && styles.rightActionPillPressed,
+                  ]}>
+                  <Text
+                    style={styles.rightActionText}
+                    numberOfLines={1}
+                    maxFontSizeMultiplier={1.2}>
+                    {rightActionLabel}
+                  </Text>
+                </Pressable>
+              ) : null}
+            </View>
           ) : null}
         </View>
 
@@ -263,6 +345,50 @@ const styles = StyleSheet.create({
     fontWeight: Typography.weights.medium,
     marginTop: 2,
   },
+  rightActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  cartButton: {
+    width: 38,
+    height: 38,
+    borderRadius: BorderRadius.full,
+    backgroundColor: 'rgba(255, 255, 255, 0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.22)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  cartButtonActive: {
+    backgroundColor: 'rgba(255, 255, 255, 0.20)',
+    borderColor: 'rgba(255, 255, 255, 0.34)',
+  },
+  cartBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: Colors.accent,
+    minWidth: 19,
+    height: 19,
+    borderRadius: BorderRadius.full,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: Colors.primaryDark,
+    ...Shadows.xs,
+  },
+  cartBadgeText: {
+    color: Colors.textInverse,
+    fontWeight: Typography.weights.extraBold,
+    fontSize: 10,
+    lineHeight: 12,
+    includeFontPadding: false,
+    textAlign: 'center',
+    fontVariant: ['tabular-nums'],
+  },
   rightActionPill: {
     backgroundColor: Colors.primary,
     paddingHorizontal: Spacing.three,
@@ -272,7 +398,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.28)',
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 36,
+    minHeight: 38,
     ...Shadows.xs,
   },
   rightActionPillPressed: {
