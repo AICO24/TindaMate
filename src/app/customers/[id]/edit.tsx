@@ -1,24 +1,28 @@
 import React, { useCallback, useState } from 'react';
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 
+import { TindaMateLoadingView } from '@/components/animated-icon';
 import { CustomerForm } from '@/components/customers/CustomerForm';
 import { DashboardErrorBanner } from '@/components/dashboard/DashboardErrorBanner';
+import { WarningTriangleIcon } from '@/components/dashboard/DashboardNavIcons';
 import { ProductScreenHeader } from '@/components/products/ProductScreenHeader';
+import { TindaMateButton } from '@/components/ui/TindaMateButton';
 import {
   BorderRadius,
   Colors,
   DashboardMaxContentWidth,
+  Shadows,
   Spacing,
   Typography,
 } from '@/constants/theme';
@@ -36,6 +40,8 @@ import { CreateCustomerInput, CustomerWithCredit } from '@/types/customer';
  * Name, Phone, Notes, and Active/Inactive status.
  */
 export default function EditCustomerScreen() {
+  const { width: windowWidth } = useWindowDimensions();
+  const isCompactPhone = windowWidth < 360;
   const { id } = useLocalSearchParams<{ id: string }>();
   const customerId = Array.isArray(id) ? id[0] : id;
 
@@ -141,8 +147,12 @@ export default function EditCustomerScreen() {
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
-          <View style={styles.bodyContainer}>
-            {loadError ? (
+          <View
+            style={[
+              styles.bodyContainer,
+              isCompactPhone && styles.bodyContainerCompact,
+            ]}>
+            {loadError && customer ? (
               <DashboardErrorBanner
                 message={loadError}
                 onRetry={loadCustomer}
@@ -151,9 +161,11 @@ export default function EditCustomerScreen() {
             ) : null}
 
             {isLoading ? (
-              <View style={styles.loadingCard}>
-                <ActivityIndicator size="large" color={Colors.primaryDark} />
-                <Text style={styles.loadingText}>Loading Customer...</Text>
+              <View style={styles.stateCard}>
+                <TindaMateLoadingView
+                  compact
+                  message="Loading customer profile..."
+                />
               </View>
             ) : customer ? (
               <CustomerForm
@@ -172,7 +184,34 @@ export default function EditCustomerScreen() {
                 onSubmit={handleUpdateCustomer}
                 onCancel={handleBack}
               />
-            ) : null}
+            ) : (
+              <View style={styles.stateCard}>
+                <View style={styles.errorIconCircle}>
+                  <WarningTriangleIcon
+                    size={26}
+                    bgColor={Colors.dangerLight}
+                    fgColor={Colors.danger}
+                  />
+                </View>
+                <Text style={styles.stateTitle}>Customer Unavailable</Text>
+                <Text style={styles.stateSubtitle}>
+                  {loadError ??
+                    'Customer record not found or could not be loaded.'}
+                </Text>
+                <View style={styles.stateActions}>
+                  <TindaMateButton
+                    title="Retry"
+                    variant="primary"
+                    onPress={loadCustomer}
+                  />
+                  <TindaMateButton
+                    title="Back to Customers"
+                    variant="secondary"
+                    onPress={() => router.replace('/customers' as any)}
+                  />
+                </View>
+              </View>
+            )}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -199,23 +238,48 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: DashboardMaxContentWidth,
     alignSelf: 'center',
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.four,
+    paddingHorizontal: Spacing.three,
+    paddingTop: Spacing.three,
     gap: Spacing.three,
   },
-  loadingCard: {
+  bodyContainerCompact: {
+    paddingHorizontal: Spacing.twoHalf,
+  },
+  stateCard: {
     backgroundColor: Colors.surface,
     borderRadius: BorderRadius.xl,
     padding: Spacing.six,
     alignItems: 'center',
-    gap: Spacing.three,
+    gap: Spacing.twoHalf,
     borderWidth: 1,
     borderColor: Colors.border,
+    ...Shadows.xs,
   },
-  loadingText: {
+  errorIconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: Colors.dangerLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stateTitle: {
+    fontSize: Typography.sizes.lg,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.textPrimary,
+    textAlign: 'center',
+  },
+  stateSubtitle: {
     fontSize: Typography.sizes.body,
     color: Colors.textSecondary,
-    fontWeight: Typography.weights.medium,
+    textAlign: 'center',
+    lineHeight: Typography.lineHeights.relaxed,
+  },
+  stateActions: {
+    width: '100%',
+    maxWidth: 280,
+    gap: Spacing.two,
+    marginTop: Spacing.two,
   },
 });
 

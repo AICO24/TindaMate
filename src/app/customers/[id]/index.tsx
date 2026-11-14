@@ -1,6 +1,5 @@
 import React, { useCallback, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   Linking,
   Platform,
@@ -21,7 +20,13 @@ import { PaymentSuccessModal } from '@/components/customers/PaymentSuccessModal'
 import { RecordPaymentModal } from '@/components/customers/RecordPaymentModal';
 import { DashboardErrorBanner } from '@/components/dashboard/DashboardErrorBanner';
 import { TindaMateLoadingView } from '@/components/animated-icon';
+import {
+  NavSalesIcon,
+  NavUtangIcon,
+  WarningTriangleIcon,
+} from '@/components/dashboard/DashboardNavIcons';
 import { ProductScreenHeader } from '@/components/products/ProductScreenHeader';
+import { AlertCircleIcon, CheckIcon } from '@/components/ui/AuthIcons';
 import { TindaMateButton } from '@/components/ui/TindaMateButton';
 import {
   BorderRadius,
@@ -306,7 +311,11 @@ export default function CustomerDetailsScreen() {
               progressBackgroundColor={Colors.surface}
             />
           }>
-          <View style={styles.bodyContainer}>
+          <View
+            style={[
+              styles.bodyContainer,
+              isNarrowPhone && styles.bodyContainerCompact,
+            ]}>
             {/* Error Banner when customer was already loaded */}
             {errorMessage && customer ? (
               <DashboardErrorBanner
@@ -328,7 +337,11 @@ export default function CustomerDetailsScreen() {
               /* 2. Error / Not Found State */
               <View style={styles.errorCard}>
                 <View style={styles.errorIconCircle}>
-                  <Text style={styles.errorIconText}>!</Text>
+                  <WarningTriangleIcon
+                    size={24}
+                    bgColor={Colors.errorLight}
+                    fgColor={Colors.error}
+                  />
                 </View>
                 <Text style={styles.errorTitle}>Customer Not Found</Text>
                 <Text style={styles.errorSubtitle}>
@@ -421,7 +434,9 @@ export default function CustomerDetailsScreen() {
                         styles.contactRow,
                         pressed && styles.contactRowPressed,
                       ]}>
-                      <Text style={styles.contactIcon}>📞</Text>
+                      <View style={styles.contactIconBadge}>
+                        <Text style={styles.contactIconText}>TEL</Text>
+                      </View>
                       <View style={styles.contactInfo}>
                         <Text style={styles.contactLabel}>Mobile Phone</Text>
                         <Text style={styles.contactValue}>{customer.phone}</Text>
@@ -443,7 +458,7 @@ export default function CustomerDetailsScreen() {
                 <View style={styles.creditCard}>
                   <View style={styles.creditHeaderRow}>
                     <View style={styles.creditHeaderTitleRow}>
-                      <Text style={styles.creditIcon}>💳</Text>
+                      <NavUtangIcon size={18} color={Colors.primaryDark} />
                       <Text style={styles.creditSectionTitle}>
                         Customer Credit (Utang)
                       </Text>
@@ -485,6 +500,8 @@ export default function CustomerDetailsScreen() {
                           ? styles.balanceCalloutAmountActive
                           : styles.balanceCalloutAmountClear,
                       ]}
+                      adjustsFontSizeToFit
+                      minimumFontScale={0.75}
                       numberOfLines={1}>
                       {formattedBalance}
                     </Text>
@@ -503,8 +520,9 @@ export default function CustomerDetailsScreen() {
                     </View>
                   ) : (
                     <View style={styles.fullyPaidBadgeBox}>
+                      <CheckIcon size={14} color={Colors.pastel.green.accent} />
                       <Text style={styles.fullyPaidBadgeText}>
-                        ✓ Fully Paid · No Outstanding Balance
+                        Fully Paid · No Outstanding Balance
                       </Text>
                     </View>
                   )}
@@ -513,13 +531,25 @@ export default function CustomerDetailsScreen() {
                   <View style={styles.statsGrid}>
                     <View style={styles.statBox}>
                       <Text style={styles.statLabel}>Total Charged</Text>
-                      <Text style={styles.statValue}>{formattedCharged}</Text>
+                      <Text
+                        style={styles.statValue}
+                        numberOfLines={1}
+                        adjustsFontSizeToFit
+                        minimumFontScale={0.85}>
+                        {formattedCharged}
+                      </Text>
                       <Text style={styles.statHelper}>Purchases on credit</Text>
                     </View>
 
                     <View style={styles.statBox}>
                       <Text style={styles.statLabel}>Total Paid</Text>
-                      <Text style={styles.statValue}>{formattedPaid}</Text>
+                      <Text
+                        style={styles.statValue}
+                        numberOfLines={1}
+                        adjustsFontSizeToFit
+                        minimumFontScale={0.85}>
+                        {formattedPaid}
+                      </Text>
                       <Text style={styles.statHelper}>Settled payments</Text>
                     </View>
                   </View>
@@ -533,8 +563,9 @@ export default function CustomerDetailsScreen() {
 
                   {/* Informational Hint */}
                   <View style={styles.infoBanner}>
+                    <AlertCircleIcon size={16} color={Colors.pastel.blue.accent} />
                     <Text style={styles.infoBannerText}>
-                      💡 Purchases recorded as Utang from the POS are automatically logged into this customer's credit ledger.
+                      Purchases recorded as Utang from the POS are automatically logged into this customer&apos;s credit ledger.
                     </Text>
                   </View>
                 </View>
@@ -561,7 +592,7 @@ export default function CustomerDetailsScreen() {
                     /* Clean Empty State for Customer with no credit transactions */
                     <View style={styles.emptyHistoryCard}>
                       <View style={styles.emptyIconCircle}>
-                        <Text style={styles.emptyIconEmoji}>📋</Text>
+                        <NavSalesIcon size={22} color={Colors.primary} />
                       </View>
                       <Text style={styles.emptyHistoryTitle}>
                         No Credit Transactions Yet
@@ -659,9 +690,12 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: DashboardMaxContentWidth,
     alignSelf: 'center',
-    paddingHorizontal: Spacing.four,
+    paddingHorizontal: Spacing.three,
     paddingTop: Spacing.three,
     gap: Spacing.three,
+  },
+  bodyContainerCompact: {
+    paddingHorizontal: Spacing.twoHalf,
   },
   loadingCard: {
     backgroundColor: Colors.surface,
@@ -689,19 +723,14 @@ const styles = StyleSheet.create({
     ...Shadows.xs,
   },
   errorIconCircle: {
-    width: 44,
-    height: 44,
+    width: 48,
+    height: 48,
     borderRadius: BorderRadius.full,
     backgroundColor: Colors.errorLight,
     borderWidth: 1,
     borderColor: Colors.errorBorder,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  errorIconText: {
-    fontSize: Typography.sizes.lg,
-    fontWeight: Typography.weights.extraBold,
-    color: Colors.error,
   },
   errorTitle: {
     fontSize: Typography.sizes.base,
@@ -826,8 +855,21 @@ const styles = StyleSheet.create({
   contactRowPressed: {
     opacity: 0.85,
   },
-  contactIcon: {
-    fontSize: 20,
+  contactIconBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: BorderRadius.sm,
+    backgroundColor: Colors.primarySoft,
+    borderWidth: 1,
+    borderColor: Colors.primaryBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  contactIconText: {
+    fontSize: 10,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.primaryDark,
+    letterSpacing: 0.5,
   },
   contactInfo: {
     flex: 1,
@@ -880,10 +922,7 @@ const styles = StyleSheet.create({
   creditHeaderTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-  },
-  creditIcon: {
-    fontSize: 18,
+    gap: 8,
   },
   creditSectionTitle: {
     fontSize: Typography.sizes.base,
@@ -939,6 +978,7 @@ const styles = StyleSheet.create({
   balanceCalloutAmount: {
     fontSize: Typography.sizes.hero,
     fontWeight: Typography.weights.extraBold,
+    fontVariant: ['tabular-nums'],
   },
   balanceCalloutAmountActive: {
     color: Colors.pastel.orange.accent,
@@ -952,6 +992,8 @@ const styles = StyleSheet.create({
   },
   fullyPaidBadgeBox: {
     width: '100%',
+    flexDirection: 'row',
+    gap: 6,
     backgroundColor: Colors.pastel.green.bg,
     borderWidth: 1,
     borderColor: Colors.pastel.green.border,
@@ -989,6 +1031,7 @@ const styles = StyleSheet.create({
     fontSize: Typography.sizes.base,
     fontWeight: Typography.weights.extraBold,
     color: Colors.textPrimary,
+    fontVariant: ['tabular-nums'],
   },
   statHelper: {
     fontSize: 10,
@@ -1012,6 +1055,9 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
   },
   infoBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.two,
     backgroundColor: Colors.pastel.blue.bg,
     borderRadius: BorderRadius.md,
     padding: Spacing.three,
@@ -1019,6 +1065,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.pastel.blue.border,
   },
   infoBannerText: {
+    flex: 1,
     fontSize: Typography.sizes.xs,
     color: Colors.pastel.blue.accent,
     lineHeight: Typography.lineHeights.normal,
@@ -1054,6 +1101,7 @@ const styles = StyleSheet.create({
     fontSize: Typography.sizes.xs,
     fontWeight: Typography.weights.bold,
     color: Colors.pastel.green.accent,
+    fontVariant: ['tabular-nums'],
   },
   historySubtitle: {
     fontSize: Typography.sizes.caption,
@@ -1080,9 +1128,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: Spacing.one,
-  },
-  emptyIconEmoji: {
-    fontSize: 22,
   },
   emptyHistoryTitle: {
     fontSize: Typography.sizes.base,

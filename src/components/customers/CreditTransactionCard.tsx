@@ -157,10 +157,12 @@ export function CreditTransactionCard({
       {/* Bottom Hint Row if linked to sale */}
       {hasSale ? (
         <View style={styles.footerRow}>
-          <Text style={styles.viewSaleHint}>View Sale Receipt</Text>
-          <Text style={styles.chevronIcon} importantForAccessibility="no">
-            ›
-          </Text>
+          <View style={styles.viewSalePill}>
+            <Text style={styles.viewSaleHint}>View Sale Receipt</Text>
+            <Text style={styles.chevronIcon} importantForAccessibility="no">
+              ›
+            </Text>
+          </View>
         </View>
       ) : null}
     </View>
@@ -243,15 +245,16 @@ const styles = StyleSheet.create({
     fontWeight: Typography.weights.extraBold,
   },
   typeBadgeTextCharge: {
-    color: Colors.pastel.orange.accent,
+    color: Colors.accentDark,
   },
   typeBadgeTextPayment: {
-    color: Colors.pastel.green.accent,
+    color: Colors.primaryDark,
   },
   referenceText: {
     fontSize: Typography.sizes.caption,
     color: Colors.textMuted,
     fontWeight: Typography.weights.medium,
+    fontVariant: ['tabular-nums'],
   },
   dateTimeText: {
     fontSize: Typography.sizes.caption,
@@ -285,9 +288,10 @@ const styles = StyleSheet.create({
   amountText: {
     fontSize: Typography.sizes.lg,
     fontWeight: Typography.weights.extraBold,
+    fontVariant: ['tabular-nums'],
   },
   amountTextCharge: {
-    color: Colors.accent,
+    color: Colors.accentDark,
   },
   amountTextPayment: {
     color: Colors.primaryDark,
@@ -301,20 +305,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-end',
-    gap: 4,
-    paddingTop: Spacing.one,
+    paddingTop: Spacing.two,
     borderTopWidth: 1,
     borderTopColor: Colors.borderSubtle,
+  },
+  viewSalePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: Colors.primarySoft,
+    borderWidth: 1,
+    borderColor: Colors.primaryBorder,
+    paddingHorizontal: Spacing.twoHalf,
+    paddingVertical: 4,
+    borderRadius: BorderRadius.full,
   },
   viewSaleHint: {
     fontSize: Typography.sizes.caption,
     fontWeight: Typography.weights.bold,
-    color: Colors.primary,
+    color: Colors.primaryDark,
   },
   chevronIcon: {
     fontSize: Typography.sizes.base,
     fontWeight: Typography.weights.bold,
-    color: Colors.primary,
+    color: Colors.primaryDark,
     marginTop: -2,
   },
 });
