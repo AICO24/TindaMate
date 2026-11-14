@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Pressable,
   RefreshControl,
@@ -36,6 +36,14 @@ import {
   formatPesoCurrency,
   getProductStockStatus,
 } from '@/lib/products';
+import {
+  addProductWithQuantityToCart,
+  getCartSnapshot,
+  getCartTotalItemCount,
+  getPersistedCart,
+  savePersistedCart,
+  subscribeToCartChanges,
+} from '@/lib/cartStore';
 import { supabase } from '@/lib/supabase';
 import { Product } from '@/types/product';
 
@@ -72,10 +80,25 @@ export default function ProductDetailsScreen() {
 
   const [product, setProduct] = useState<Product | null>(null);
   const [selectedQty, setSelectedQty] = useState<number>(1);
+  const [cartItemCount, setCartItemCount] = useState<number>(0);
+  const [justAdded, setJustAdded] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Hydrate cart count and subscribe to changes across POS & Products
+    getPersistedCart().then((cart) => {
+      setCartItemCount(getCartTotalItemCount(cart));
+    });
+
+    const unsubscribe = subscribeToCartChanges((cart) => {
+      setCartItemCount(getCartTotalItemCount(cart));
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const loadProduct = useCallback(
     async (showRefresh = false) => {
@@ -140,16 +163,25 @@ export default function ProductDetailsScreen() {
     router.push(`/products/${product.id}/edit`);
   };
 
-  const handleAddToPosCart = () => {
+  const handleAddToCart = async () => {
     if (!product || product.stock_quantity <= 0) return;
     const safeQty = Math.min(
       Math.max(1, selectedQty),
       product.stock_quantity
     );
-    router.push({
-      pathname: '/sales',
-      params: { productId: product.id, qty: String(safeQty) },
-    } as any);
+
+    const currentCart = getCartSnapshot();
+    const updatedCart = addProductWithQuantityToCart(
+      currentCart,
+      product,
+      safeQty
+    );
+    await savePersistedCart(updatedCart);
+
+    setJustAdded(true);
+    setTimeout(() => {
+      setJustAdded(false);
+    }, 1800);
   };
 
   const status = product
@@ -189,9 +221,45 @@ export default function ProductDetailsScreen() {
               : 'Loading item...'
           }
           onBack={handleBack}
-          rightActionLabel={product ? 'Edit' : undefined}
-          rightActionAccessibilityLabel="Edit product details"
-          onRightActionPress={product ? handleEdit : undefined}
+          rightElement={
+            <View style={styles.headerRightActions}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Shopping cart with ${cartItemCount} item${cartItemCount === 1 ? '' : 's'}`}
+                onPress={() => router.push('/sales')}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                style={({ pressed }) => [
+                  styles.headerCartButton,
+                  pressed && styles.buttonPressed,
+                ]}>
+                <CartVectorIcon color={Colors.textInverse} size={20} />
+                {cartItemCount > 0 ? (
+                  <View style={styles.headerCartBadge}>
+                    <Text
+                      style={styles.headerCartBadgeText}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit>
+                      {cartItemCount > 99 ? '99+' : cartItemCount}
+                    </Text>
+                  </View>
+                ) : null}
+              </Pressable>
+
+              {product ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Edit product details"
+                  onPress={handleEdit}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  style={({ pressed }) => [
+                    styles.headerEditPill,
+                    pressed && styles.buttonPressed,
+                  ]}>
+                  <Text style={styles.headerEditText}>Edit</Text>
+                </Pressable>
+              ) : null}
+            </View>
+          }
         />
 
         <ScrollView
@@ -420,11 +488,12 @@ export default function ProductDetailsScreen() {
 
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel={`Add ${selectedQty} ${product.unit} of ${product.name} to POS cart`}
+                    accessibilityLabel={`Add ${selectedQty} ${product.unit} of ${product.name} to cart`}
                     disabled={isOut}
-                    onPress={handleAddToPosCart}
+                    onPress={handleAddToCart}
                     style={({ pressed }) => [
                       styles.addToCartButton,
+                      justAdded && styles.addToCartButtonSuccess,
                       isOut && styles.addToCartButtonDisabled,
                       pressed && !isOut && styles.buttonPressed,
                     ]}>
@@ -432,9 +501,9 @@ export default function ProductDetailsScreen() {
                     <Text style={styles.addToCartButtonText}>
                       {isOut
                         ? 'Out of Stock'
-                        : selectedQty > 1
-                        ? `Sell ${selectedQty} ${product.unit} in POS`
-                        : 'Add to POS Cart'}
+                        : justAdded
+                        ? 'Added to Cart ✓'
+                        : 'Add to Cart'}
                     </Text>
                   </Pressable>
                 </View>
@@ -702,10 +771,68 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.disabled,
     ...Shadows.none,
   },
+  addToCartButtonSuccess: {
+    backgroundColor: '#059669',
+  },
   addToCartButtonText: {
     fontSize: Typography.sizes.body,
     fontWeight: Typography.weights.extraBold,
     color: Colors.textInverse,
+  },
+  // Header Right Actions (Shopping Cart + Edit Pill)
+  headerRightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  headerCartButton: {
+    width: 38,
+    height: 38,
+    borderRadius: BorderRadius.full,
+    backgroundColor: 'rgba(255, 255, 255, 0.16)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.22)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  headerCartBadge: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    backgroundColor: Colors.accent,
+    minWidth: 18,
+    height: 18,
+    borderRadius: BorderRadius.full,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: Colors.primaryDark,
+  },
+  headerCartBadgeText: {
+    color: Colors.textInverse,
+    fontWeight: Typography.weights.bold,
+    fontSize: 10,
+    lineHeight: 12,
+    includeFontPadding: false,
+    textAlign: 'center',
+  },
+  headerEditPill: {
+    backgroundColor: 'rgba(255, 255, 255, 0.16)',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 7,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.22)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerEditText: {
+    fontWeight: Typography.weights.semiBold,
+    fontSize: Typography.sizes.sm,
+    color: Colors.textInverse,
+    includeFontPadding: false,
   },
   // Bottom Action Tiles
   bottomTilesRow: {

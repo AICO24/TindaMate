@@ -62,6 +62,10 @@ import {
   syncCartWithLatestProducts,
   updateCartItemQuantity,
 } from '@/lib/sales';
+import {
+  getPersistedCart,
+  savePersistedCart,
+} from '@/lib/cartStore';
 import { supabase } from '@/lib/supabase';
 import { Product } from '@/types/product';
 import {
@@ -109,9 +113,18 @@ export default function SalesScreen() {
     {}
   );
 
-  // Local Cart State (Batch 7B-1)
+  // Local Cart State (Batch 7B-1 & Persistent Store)
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const didApplyInitialProductRef = useRef(false);
+
+  // Sync state changes to persistent cart store
+  const updateCartState = useCallback((updater: (prev: CartItem[]) => CartItem[]) => {
+    setCartItems((prev) => {
+      const next = updater(prev);
+      savePersistedCart(next);
+      return next;
+    });
+  }, []);
 
   // Local Checkout Modal State (Batch 7B-2)
   const [isCheckoutVisible, setIsCheckoutVisible] = useState(false);
@@ -259,33 +272,39 @@ export default function SalesScreen() {
         const products = await fetchStoreProducts();
         setAllProducts(products);
 
-        // Keep local cart synchronized with latest stock counts
-        setCartItems((prev) => syncCartWithLatestProducts(prev, products));
+        // Load persisted cart if not loaded yet
+        const existingPersisted = await getPersistedCart();
 
-        // If launched with an initial productId param (e.g. from Product details), add to cart
-        if (
-          initialProductId &&
-          !didApplyInitialProductRef.current &&
-          products.length > 0
-        ) {
-          didApplyInitialProductRef.current = true;
-          const matching = products.find(
-            (item) => item.id === initialProductId && item.stock_quantity > 0
-          );
-          if (matching) {
-            setCartItems((prev) => {
-              const withItem = addProductToCart(prev, matching);
+        // Keep cart synchronized with latest stock counts
+        updateCartState((current) => {
+          const baseCart = current.length > 0 ? current : existingPersisted;
+          let synced = syncCartWithLatestProducts(baseCart, products);
+
+          // If launched with an initial productId param (e.g. from Product details), add to cart
+          if (
+            initialProductId &&
+            !didApplyInitialProductRef.current &&
+            products.length > 0
+          ) {
+            didApplyInitialProductRef.current = true;
+            const matching = products.find(
+              (item) => item.id === initialProductId && item.stock_quantity > 0
+            );
+            if (matching) {
+              const withItem = addProductToCart(synced, matching);
               if (initialQty > 1) {
-                return updateCartItemQuantity(
+                synced = updateCartItemQuantity(
                   withItem,
                   matching.id,
                   initialQty - 1
                 );
+              } else {
+                synced = withItem;
               }
-              return withItem;
-            });
+            }
           }
-        }
+          return synced;
+        });
       } catch (err: unknown) {
         const msg =
           err instanceof Error
@@ -316,7 +335,7 @@ export default function SalesScreen() {
       return;
     }
 
-    setCartItems((prev) => {
+    updateCartState((prev) => {
       const existing = prev.find((item) => item.productId === product.id);
       if (existing && existing.quantity >= existing.availableStock) {
         return prev;
@@ -329,28 +348,28 @@ export default function SalesScreen() {
    * Increments quantity of an existing cart item by 1 (capped at availableStock)
    */
   const handleIncrement = (productId: string) => {
-    setCartItems((prev) => updateCartItemQuantity(prev, productId, +1));
+    updateCartState((prev) => updateCartItemQuantity(prev, productId, +1));
   };
 
   /**
    * Decrements quantity of an existing cart item by 1 (removes if reaches 0)
    */
   const handleDecrement = (productId: string) => {
-    setCartItems((prev) => updateCartItemQuantity(prev, productId, -1));
+    updateCartState((prev) => updateCartItemQuantity(prev, productId, -1));
   };
 
   /**
    * Explicitly removes a product from the cart
    */
   const handleRemove = (productId: string) => {
-    setCartItems((prev) => removeCartItem(prev, productId));
+    updateCartState((prev) => removeCartItem(prev, productId));
   };
 
   /**
    * Empties the entire cart
    */
   const handleClearCart = () => {
-    setCartItems([]);
+    updateCartState(() => []);
   };
 
   /**
@@ -418,7 +437,7 @@ export default function SalesScreen() {
 
       activeIdempotencyKeyRef.current = null;
       setIsSubmitting(false);
-      setCartItems([]);
+      updateCartState(() => []);
       setIsCheckoutVisible(false);
 
       setCompletedSaleResult(result);
