@@ -85,10 +85,17 @@ export default function SalesScreen() {
   const activeTab = resolveActiveNavTab(pathname);
   const { width: windowWidth } = useWindowDimensions();
   const isCompactPhone = windowWidth < 360;
-  const params = useLocalSearchParams<{ productId?: string }>();
+  const params = useLocalSearchParams<{ productId?: string; qty?: string }>();
   const initialProductId = Array.isArray(params.productId)
     ? params.productId[0]
     : params.productId;
+  const rawInitialQty = Array.isArray(params.qty)
+    ? params.qty[0]
+    : params.qty;
+  const initialQty = useMemo(() => {
+    const parsed = Number(rawInitialQty);
+    return Number.isFinite(parsed) && parsed >= 1 ? Math.trunc(parsed) : 1;
+  }, [rawInitialQty]);
 
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
@@ -266,7 +273,17 @@ export default function SalesScreen() {
             (item) => item.id === initialProductId && item.stock_quantity > 0
           );
           if (matching) {
-            setCartItems((prev) => addProductToCart(prev, matching));
+            setCartItems((prev) => {
+              const withItem = addProductToCart(prev, matching);
+              if (initialQty > 1) {
+                return updateCartItemQuantity(
+                  withItem,
+                  matching.id,
+                  initialQty - 1
+                );
+              }
+              return withItem;
+            });
           }
         }
       } catch (err: unknown) {
@@ -280,7 +297,7 @@ export default function SalesScreen() {
         setIsRefreshing(false);
       }
     },
-    [initialProductId]
+    [initialProductId, initialQty]
   );
 
   useFocusEffect(

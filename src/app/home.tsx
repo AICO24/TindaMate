@@ -693,7 +693,17 @@ export default function AuthenticatedDashboardScreen() {
                     handleModuleClick('Stock Alerts', 'Batch 3');
                     return;
                   }
-                  router.push('/products');
+                  router.push({
+                    pathname: '/products',
+                    params: {
+                      filter:
+                        lowStockCount > 0
+                          ? 'Low Stock'
+                          : outOfStockCount > 0
+                          ? 'Out of Stock'
+                          : 'All',
+                    },
+                  } as any);
                 }}
                 onProfilePress={() => setIsProfileModalVisible(true)}
               />
@@ -786,7 +796,17 @@ export default function AuthenticatedDashboardScreen() {
                     handleModuleClick('Inventory', 'Batch 3');
                     return;
                   }
-                  router.push('/products');
+                  router.push({
+                    pathname: '/products',
+                    params: {
+                      filter:
+                        lowStockCount > 0
+                          ? 'Low Stock'
+                          : outOfStockCount > 0
+                          ? 'Out of Stock'
+                          : 'All',
+                    },
+                  } as any);
                 }}
               />
             </Animated.View>
@@ -814,7 +834,15 @@ export default function AuthenticatedDashboardScreen() {
                 <LowStockAlert
                   lowStockCount={lowStockCount}
                   outOfStockCount={outOfStockCount}
-                  onPress={() => router.push('/products')}
+                  onPress={() =>
+                    router.push({
+                      pathname: '/products',
+                      params: {
+                        filter:
+                          lowStockCount > 0 ? 'Low Stock' : 'Out of Stock',
+                      },
+                    } as any)
+                  }
                 />
               </Animated.View>
             ) : null}
