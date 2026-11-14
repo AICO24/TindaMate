@@ -1,7 +1,5 @@
 import React, { useCallback, useState } from 'react';
 import {
-  ActivityIndicator,
-  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -13,8 +11,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 
-import { DashboardErrorBanner } from '@/components/dashboard/DashboardErrorBanner';
 import { TindaMateLoadingView } from '@/components/animated-icon';
+import { DashboardErrorBanner } from '@/components/dashboard/DashboardErrorBanner';
+import {
+  NavUtangIcon,
+  WarningTriangleIcon,
+} from '@/components/dashboard/DashboardNavIcons';
 import { ProductScreenHeader } from '@/components/products/ProductScreenHeader';
 import { CheckIcon } from '@/components/ui/AuthIcons';
 import { TindaMateButton } from '@/components/ui/TindaMateButton';
@@ -33,18 +35,16 @@ import {
   formatSaleTime,
 } from '@/lib/sales';
 import { supabase } from '@/lib/supabase';
-import { Sale, SaleItem, SaleTransactionDetails } from '@/types/sale';
+import { SaleTransactionDetails } from '@/types/sale';
 
 /**
- * TindaMate Individual Sale Details Screen (`/sales/[id]`)
+ * TindaMate Individual Sale Details Screen (`/sales/[id]`) — Batch S-3
  *
- * Implements Batch 7C-2: Historical Sale Details for Single and Multi-Item POS transactions:
- * - Displays complete itemized list of purchased products from `public.sale_items`
- * - Each item shows: product name, quantity, unit, historical snapshot price, and subtotal
- * - Server-authoritative transaction total amount from `public.sales`
- * - Preserves historical pricing even if product prices changed or products were deleted
- * - Transaction metadata: timestamp (date/time), reference ID, total units, line count
- * - Honest loading, error, and not-found states
+ * Receipt-style historical transaction record:
+ * - Clean human-readable Reference (#XXXXXXXX), Date, Time, and Cash vs Utang status
+ * - Itemized `sale_items` breakdown with historical unit prices and tabular-nums subtotals
+ * - Honest Cash vs Utang payment classification (never misrepresents Utang as paid)
+ * - Removes raw database UUIDs & idempotency keys from the normal user-facing UI
  */
 export default function SaleDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -62,6 +62,7 @@ export default function SaleDetailsScreen() {
   const items = transactionDetails?.items ?? [];
   const isMultiItem = (sale?.item_count ?? items.length) > 1;
   const isUtang = sale?.payment_method === 'credit';
+  const refCode = sale ? `#${sale.id.slice(0, 8).toUpperCase()}` : '';
 
   const loadSaleDetails = useCallback(
     async (showRefresh = false) => {
@@ -136,8 +137,8 @@ export default function SaleDetailsScreen() {
           title="Sale Details"
           subtitle={
             sale
-              ? `${sale.product_name} · ${formatPesoCurrency(sale.total_amount)}`
-              : 'Transaction details'
+              ? `Ref ${refCode} · ${formatPesoCurrency(sale.total_amount)}`
+              : 'Transaction receipt'
           }
           showBack={true}
           onBack={handleBack}
@@ -157,7 +158,11 @@ export default function SaleDetailsScreen() {
               progressBackgroundColor={Colors.surface}
             />
           }>
-          <View style={styles.bodyContainer}>
+          <View
+            style={[
+              styles.bodyContainer,
+              isCompactPhone && styles.bodyContainerCompact,
+            ]}>
             {/* Error Banner */}
             {errorMessage && sale ? (
               <DashboardErrorBanner
@@ -170,13 +175,20 @@ export default function SaleDetailsScreen() {
             {/* 1. Loading State */}
             {isLoading ? (
               <View style={styles.stateCard}>
-                <TindaMateLoadingView compact message="Loading Sale Details..." />
+                <TindaMateLoadingView
+                  compact
+                  message="Loading Sale Details..."
+                />
               </View>
             ) : !sale ? (
               /* 2. Error / Not Found State */
               <View style={styles.stateCard}>
                 <View style={styles.errorIconCircle}>
-                  <Text style={styles.errorIconText}>!</Text>
+                  <WarningTriangleIcon
+                    size={22}
+                    bgColor={Colors.error}
+                    fgColor={Colors.textInverse}
+                  />
                 </View>
                 <Text style={styles.stateTitle}>Sale Not Found</Text>
                 <Text style={styles.stateSubtitle}>
@@ -199,24 +211,25 @@ export default function SaleDetailsScreen() {
                 </View>
               </View>
             ) : (
-              /* 3. Populated Historical Sale Details */
+              /* 3. Populated Historical Sale Receipt */
               <>
-                {/* Hero / Overview Card */}
+                {/* Receipt Hero / Overview Card */}
                 <View style={styles.heroCard}>
                   <View style={styles.badgeRow}>
-                    <View style={styles.completedBadge}>
-                      <View style={styles.checkDot}>
-                        <CheckIcon size={12} color={Colors.textInverse} />
+                    {isUtang ? (
+                      <View style={styles.utangStatusBadge}>
+                        <NavUtangIcon size={13} color={Colors.textInverse} />
+                        <Text style={styles.utangStatusBadgeText}>
+                          UNPAID · UTANG
+                        </Text>
                       </View>
-                      <Text style={styles.completedBadgeText}>
-                        Completed Sale
-                      </Text>
-                    </View>
-
-                    {isUtang && (
-                      <View style={styles.utangBadge}>
-                        <Text style={styles.utangBadgeText}>
-                          {sale.customer_name ? `Utang: ${sale.customer_name}` : 'Utang (Credit)'}
+                    ) : (
+                      <View style={styles.completedBadge}>
+                        <View style={styles.checkDot}>
+                          <CheckIcon size={11} color={Colors.textInverse} />
+                        </View>
+                        <Text style={styles.completedBadgeText}>
+                          PAID · CASH SALE
                         </Text>
                       </View>
                     )}
@@ -228,20 +241,22 @@ export default function SaleDetailsScreen() {
                         </Text>
                       </View>
                     )}
+                  </View>
 
-                    <Text style={styles.historicalSnapshotNote}>
-                      Historical Record
+                  <View style={styles.heroMetaHeader}>
+                    <Text
+                      style={styles.productTitle}
+                      accessibilityRole="header"
+                      maxFontSizeMultiplier={1.3}>
+                      Receipt {refCode}
+                    </Text>
+                    <Text style={styles.heroDateTime}>
+                      {formatSaleDate(sale.created_at)} •{' '}
+                      {formatSaleTime(sale.created_at)}
                     </Text>
                   </View>
 
-                  <Text
-                    style={styles.productTitle}
-                    accessibilityRole="header"
-                    maxFontSizeMultiplier={1.3}>
-                    {sale.product_name}
-                  </Text>
-
-                  {/* Total Amount Big Callout */}
+                  {/* Total Amount Callout */}
                   <View
                     style={[
                       styles.totalAmountBox,
@@ -252,20 +267,26 @@ export default function SaleDetailsScreen() {
                         styles.totalAmountLabel,
                         isUtang && styles.totalAmountLabelUtang,
                       ]}>
-                      {isUtang ? 'Total Credit Amount (Utang)' : 'Total Amount Paid'}
+                      {isUtang
+                        ? 'Total Utang Amount (Store Credit)'
+                        : 'Total Amount Paid'}
                     </Text>
                     <Text
                       style={[
                         styles.totalAmountValue,
+                        isCompactPhone && styles.totalAmountValueCompact,
                         isUtang && styles.totalAmountValueUtang,
                       ]}
                       adjustsFontSizeToFit
-                      minimumFontScale={0.85}
+                      minimumFontScale={0.8}
                       numberOfLines={1}>
                       {formatPesoCurrency(sale.total_amount)}
                     </Text>
                     <Text style={styles.totalAmountSub}>
-                      {items.length} {items.length === 1 ? 'product line' : 'product lines'} · {sale.quantity} {sale.quantity === 1 ? 'unit' : 'units'} sold
+                      {items.length}{' '}
+                      {items.length === 1 ? 'product line' : 'product lines'} ·{' '}
+                      {sale.quantity} {sale.quantity === 1 ? 'unit' : 'units'}{' '}
+                      sold
                     </Text>
                   </View>
                 </View>
@@ -279,7 +300,8 @@ export default function SaleDetailsScreen() {
                       Purchased Items ({items.length})
                     </Text>
                     <Text style={styles.itemCountSub}>
-                      {sale.quantity} {sale.quantity === 1 ? 'unit' : 'units'} total
+                      {sale.quantity} {sale.quantity === 1 ? 'unit' : 'units'}{' '}
+                      total
                     </Text>
                   </View>
 
@@ -301,7 +323,8 @@ export default function SaleDetailsScreen() {
                           <Text
                             style={styles.itemCalculation}
                             maxFontSizeMultiplier={1.2}>
-                            {item.quantity} {item.unit} × {formatPesoCurrency(item.unit_price)}
+                            {item.quantity} {item.unit} ×{' '}
+                            {formatPesoCurrency(item.unit_price)}
                           </Text>
                         </View>
                         <Text
@@ -326,13 +349,20 @@ export default function SaleDetailsScreen() {
                   </View>
                 </View>
 
-                {/* Date & Time Metadata Card */}
+                {/* Payment & Transaction Summary Card (Human-Readable Only) */}
                 <View style={styles.metadataCard}>
                   <Text
                     style={styles.sectionHeading}
                     accessibilityRole="header">
-                    Transaction Details
+                    Payment &amp; Record Summary
                   </Text>
+
+                  <View style={styles.metaRow}>
+                    <Text style={styles.metaLabel}>Reference No.</Text>
+                    <Text style={styles.metaValue}>{refCode}</Text>
+                  </View>
+
+                  <View style={styles.metaDivider} />
 
                   <View style={styles.metaRow}>
                     <Text style={styles.metaLabel}>Date</Text>
@@ -353,15 +383,6 @@ export default function SaleDetailsScreen() {
                   <View style={styles.metaDivider} />
 
                   <View style={styles.metaRow}>
-                    <Text style={styles.metaLabel}>Reference No.</Text>
-                    <Text style={styles.metaValue}>
-                      #{sale.id.slice(0, 8).toUpperCase()}
-                    </Text>
-                  </View>
-
-                  <View style={styles.metaDivider} />
-
-                  <View style={styles.metaRow}>
                     <Text style={styles.metaLabel}>Payment Method</Text>
                     <Text
                       style={[
@@ -372,44 +393,42 @@ export default function SaleDetailsScreen() {
                     </Text>
                   </View>
 
+                  <View style={styles.metaDivider} />
+
+                  <View style={styles.metaRow}>
+                    <Text style={styles.metaLabel}>Status</Text>
+                    <Text
+                      style={[
+                        styles.metaValue,
+                        isUtang ? styles.metaValueUtang : styles.metaValueCash,
+                      ]}>
+                      {isUtang ? 'Unpaid Store Credit' : 'Paid'}
+                    </Text>
+                  </View>
+
                   {isUtang && sale.customer_name && (
                     <>
                       <View style={styles.metaDivider} />
                       <View style={styles.metaRow}>
                         <Text style={styles.metaLabel}>Customer</Text>
-                        <Text style={[styles.metaValue, styles.metaValueUtang]}>
+                        <Text
+                          style={[styles.metaValue, styles.metaValueUtang]}
+                          numberOfLines={1}>
                           {sale.customer_name}
                         </Text>
                       </View>
                     </>
                   )}
 
-                  <View style={styles.metaDivider} />
-
-                  <View style={styles.metaRow}>
-                    <Text style={styles.metaLabel}>Transaction ID</Text>
-                    <Text
-                      style={[styles.metaValue, styles.monospaceId]}
-                      numberOfLines={1}
-                      ellipsizeMode="middle">
-                      {sale.id}
-                    </Text>
-                  </View>
-
-                  {sale.idempotency_key && (
-                    <>
-                      <View style={styles.metaDivider} />
-                      <View style={styles.metaRow}>
-                        <Text style={styles.metaLabel}>Idempotency Key</Text>
-                        <Text
-                          style={[styles.metaValue, styles.monospaceId]}
-                          numberOfLines={1}
-                          ellipsizeMode="middle">
-                          {sale.idempotency_key}
-                        </Text>
-                      </View>
-                    </>
-                  )}
+                  {isUtang ? (
+                    <View style={styles.utangLedgerNote}>
+                      <Text style={styles.utangLedgerNoteText}>
+                        Recorded as store credit (Utang). Any subsequent
+                        customer payments are tracked separately in the Utang
+                        ledger and do not change this original sale record.
+                      </Text>
+                    </View>
+                  ) : null}
                 </View>
 
                 {/* Primary Actions */}
@@ -457,7 +476,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   scrollContent: {
-    paddingBottom: Spacing.six,
+    paddingBottom: Spacing.five,
   },
   bodyContainer: {
     width: '100%',
@@ -465,7 +484,11 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     paddingHorizontal: Spacing.three,
     paddingTop: Spacing.three,
-    gap: Spacing.three,
+    gap: Spacing.twoHalf,
+  },
+  bodyContainerCompact: {
+    paddingHorizontal: Spacing.twoHalf,
+    gap: Spacing.two,
   },
   stateCard: {
     backgroundColor: Colors.surface,
@@ -505,82 +528,94 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  errorIconText: {
-    fontSize: Typography.sizes.lg,
-    fontWeight: Typography.weights.extraBold,
-    color: Colors.error,
-  },
   heroCard: {
     backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.lg,
+    borderRadius: BorderRadius.card,
     borderWidth: 1,
     borderColor: Colors.border,
-    padding: Spacing.threeHalf,
+    padding: Spacing.three,
     gap: Spacing.twoHalf,
-    ...Shadows.xs,
+    ...Shadows.sm,
   },
   badgeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Spacing.two,
     flexWrap: 'wrap',
+    gap: Spacing.two,
   },
   completedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: Colors.successLight,
+    backgroundColor: Colors.primarySoft,
     borderWidth: 1,
     borderColor: Colors.primaryBorder,
+    borderRadius: BorderRadius.full,
     paddingHorizontal: Spacing.twoHalf,
     paddingVertical: 4,
-    borderRadius: BorderRadius.full,
   },
   checkDot: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
     backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   completedBadgeText: {
-    fontSize: Typography.sizes.caption,
+    fontSize: 11,
     fontWeight: Typography.weights.extraBold,
-    color: Colors.successText,
+    color: Colors.primaryDark,
+    letterSpacing: 0.4,
   },
-  utangBadge: {
-    backgroundColor: Colors.accentLight,
-    borderWidth: 1,
-    borderColor: Colors.accentBorder,
+  utangStatusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: Colors.accent,
+    borderRadius: BorderRadius.full,
     paddingHorizontal: Spacing.twoHalf,
     paddingVertical: 4,
+  },
+  utangStatusBadgeText: {
+    fontSize: 11,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.textInverse,
+    letterSpacing: 0.4,
+  },
+  multiItemBadge: {
+    backgroundColor: Colors.surfaceSubtle,
+    borderWidth: 1,
+    borderColor: Colors.border,
     borderRadius: BorderRadius.full,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: 4,
   },
-  utangBadgeText: {
-    fontSize: Typography.sizes.caption,
+  multiItemBadgeText: {
+    fontSize: 11,
     fontWeight: Typography.weights.bold,
-    color: Colors.accent,
+    color: Colors.textSecondary,
   },
-  historicalSnapshotNote: {
-    fontSize: Typography.sizes.caption,
-    fontWeight: Typography.weights.medium,
-    color: Colors.textMuted,
+  heroMetaHeader: {
+    gap: 2,
   },
   productTitle: {
-    fontSize: Typography.sizes.xl,
+    fontSize: Typography.sizes.lg,
     fontWeight: Typography.weights.extraBold,
     color: Colors.textPrimary,
-    lineHeight: Typography.lineHeights.heading,
+  },
+  heroDateTime: {
+    fontSize: Typography.sizes.caption,
+    fontWeight: Typography.weights.medium,
+    color: Colors.textSecondary,
   },
   totalAmountBox: {
-    backgroundColor: Colors.pastel.green.bg,
+    backgroundColor: Colors.primarySoft,
     borderRadius: BorderRadius.md,
-    borderWidth: 1.5,
-    borderColor: Colors.pastel.green.border,
+    borderWidth: 1,
+    borderColor: Colors.primaryBorder,
     padding: Spacing.three,
-    gap: 2,
+    gap: 4,
   },
   totalAmountBoxUtang: {
     backgroundColor: Colors.accentLight,
@@ -590,74 +625,63 @@ const styles = StyleSheet.create({
     fontSize: Typography.sizes.caption,
     fontWeight: Typography.weights.bold,
     color: Colors.primaryDark,
-    textTransform: 'uppercase',
-    letterSpacing: 0.3,
   },
   totalAmountLabelUtang: {
-    color: Colors.accent,
+    color: Colors.accentDark,
   },
   totalAmountValue: {
-    fontSize: Typography.sizes.displaySm,
+    fontSize: 30,
     fontWeight: Typography.weights.extraBold,
     color: Colors.primaryDark,
+    fontVariant: ['tabular-nums'],
+    letterSpacing: -0.5,
+  },
+  totalAmountValueCompact: {
+    fontSize: 26,
   },
   totalAmountValueUtang: {
-    color: Colors.accent,
+    color: Colors.accentDark,
   },
   totalAmountSub: {
     fontSize: Typography.sizes.caption,
-    color: Colors.primaryDark,
-    marginTop: 2,
-  },
-  multiItemBadge: {
-    backgroundColor: Colors.pastel.blue.bg,
-    borderWidth: 1,
-    borderColor: Colors.pastel.blue.border,
-    paddingHorizontal: Spacing.two,
-    paddingVertical: 2,
-    borderRadius: BorderRadius.xs,
-  },
-  multiItemBadgeText: {
-    fontSize: Typography.sizes.caption,
-    fontWeight: Typography.weights.bold,
-    color: Colors.pastel.blue.accent,
-    textTransform: 'uppercase',
+    color: Colors.textSecondary,
+    fontWeight: Typography.weights.medium,
   },
   sectionCard: {
     backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.lg,
+    borderRadius: BorderRadius.card,
     borderWidth: 1,
     borderColor: Colors.border,
     padding: Spacing.three,
-    gap: Spacing.twoHalf,
+    gap: Spacing.two,
     ...Shadows.xs,
-  },
-  sectionHeading: {
-    fontSize: Typography.sizes.base,
-    fontWeight: Typography.weights.extraBold,
-    color: Colors.textBrand,
   },
   sectionHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingBottom: Spacing.xs,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.borderSubtle,
+    gap: Spacing.two,
+  },
+  sectionHeading: {
+    fontSize: Typography.sizes.base,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.textPrimary,
   },
   itemCountSub: {
     fontSize: Typography.sizes.caption,
-    color: Colors.textMuted,
-    fontWeight: Typography.weights.medium,
+    fontWeight: Typography.weights.semiBold,
+    color: Colors.textSecondary,
   },
   itemsList: {
-    gap: Spacing.xs,
+    borderTopWidth: 1,
+    borderTopColor: Colors.borderSubtle,
   },
   itemRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
-    paddingVertical: 6,
+    paddingVertical: Spacing.two,
+    gap: Spacing.two,
   },
   itemRowDivider: {
     borderBottomWidth: 1,
@@ -665,89 +689,98 @@ const styles = StyleSheet.create({
   },
   itemInfoCol: {
     flex: 1,
-    paddingRight: Spacing.twoHalf,
+    gap: 2,
   },
   itemName: {
     fontSize: Typography.sizes.bodySm,
     fontWeight: Typography.weights.semiBold,
     color: Colors.textPrimary,
-    lineHeight: 18,
+    lineHeight: 19,
   },
   itemCalculation: {
-    fontSize: Typography.sizes.xs,
-    color: Colors.textMuted,
-    marginTop: 2,
+    fontSize: Typography.sizes.caption,
+    color: Colors.textSecondary,
+    fontVariant: ['tabular-nums'],
   },
   itemSubtotal: {
     fontSize: Typography.sizes.bodySm,
     fontWeight: Typography.weights.bold,
     color: Colors.textPrimary,
+    fontVariant: ['tabular-nums'],
     textAlign: 'right',
   },
   receiptTotalFooter: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: Colors.pastel.green.bg,
-    borderWidth: 1,
-    borderColor: Colors.pastel.green.border,
-    borderRadius: BorderRadius.sm,
-    paddingHorizontal: Spacing.twoHalf,
-    paddingVertical: Spacing.two,
-    marginTop: Spacing.xs,
+    paddingTop: Spacing.two,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
   },
   receiptTotalFooterLabel: {
-    fontSize: Typography.sizes.caption,
+    fontSize: Typography.sizes.bodySm,
     fontWeight: Typography.weights.bold,
-    color: Colors.primaryDark,
-    textTransform: 'uppercase',
-    letterSpacing: 0.3,
+    color: Colors.textSecondary,
   },
   receiptTotalFooterValue: {
     fontSize: Typography.sizes.base,
     fontWeight: Typography.weights.extraBold,
     color: Colors.primaryDark,
+    fontVariant: ['tabular-nums'],
   },
   metadataCard: {
     backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.lg,
+    borderRadius: BorderRadius.card,
     borderWidth: 1,
     borderColor: Colors.border,
     padding: Spacing.three,
-    gap: Spacing.twoHalf,
+    gap: Spacing.two,
     ...Shadows.xs,
   },
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: Spacing.two,
+    gap: Spacing.three,
+    paddingVertical: 2,
   },
   metaLabel: {
-    fontSize: Typography.sizes.xs,
-    color: Colors.textMuted,
+    fontSize: Typography.sizes.bodySm,
+    color: Colors.textSecondary,
     fontWeight: Typography.weights.medium,
   },
   metaValue: {
-    fontSize: Typography.sizes.xs,
+    fontSize: Typography.sizes.bodySm,
     color: Colors.textPrimary,
     fontWeight: Typography.weights.bold,
+    textAlign: 'right',
+    flexShrink: 1,
+  },
+  metaValueCash: {
+    color: Colors.primaryDark,
   },
   metaValueUtang: {
-    color: Colors.accent,
-  },
-  monospaceId: {
-    maxWidth: '55%',
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
-    color: Colors.textSecondary,
+    color: Colors.accentDark,
   },
   metaDivider: {
     height: 1,
     backgroundColor: Colors.borderSubtle,
+  },
+  utangLedgerNote: {
+    backgroundColor: Colors.accentLight,
+    borderWidth: 1,
+    borderColor: Colors.accentBorder,
+    borderRadius: BorderRadius.sm,
+    padding: Spacing.twoHalf,
+    marginTop: Spacing.one,
+  },
+  utangLedgerNoteText: {
+    fontSize: Typography.sizes.caption,
+    color: Colors.accentDark,
+    lineHeight: 17,
   },
   actionsBlock: {
     gap: Spacing.two,
     marginTop: Spacing.one,
   },
 });
-

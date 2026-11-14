@@ -1,32 +1,34 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { router, useFocusEffect, usePathname } from 'expo-router';
 
+import { TindaMateLoadingView } from '@/components/animated-icon';
 import {
   DashboardBottomNav,
   NavTab,
   resolveActiveNavTab,
 } from '@/components/dashboard/DashboardBottomNav';
 import { DashboardErrorBanner } from '@/components/dashboard/DashboardErrorBanner';
-import { TindaMateLoadingView } from '@/components/animated-icon';
 import {
-  CalendarFilterIcon,
   DashboardBadgeVectorIcon,
   TrendChartVectorIcon,
+  WarningTriangleIcon,
 } from '@/components/dashboard/DashboardNavIcons';
 import { ProductScreenHeader } from '@/components/products/ProductScreenHeader';
 import { SaleHistoryItemCard } from '@/components/sales/SaleHistoryItemCard';
+import { FilterChipItem, FilterChipRow } from '@/components/ui/FilterChipRow';
 import { TindaMateButton } from '@/components/ui/TindaMateButton';
+import { TindaMateSearchBar } from '@/components/ui/TindaMateSearchBar';
 import {
   BorderRadius,
   Colors,
@@ -36,34 +38,58 @@ import {
   Typography,
 } from '@/constants/theme';
 import { formatPesoCurrency } from '@/lib/products';
-import { fetchStoreSales, groupSalesByDate } from '@/lib/sales';
+import {
+  fetchStoreSales,
+  formatSaleDate,
+  groupSalesByDate,
+} from '@/lib/sales';
 import { supabase } from '@/lib/supabase';
 import { Sale } from '@/types/sale';
 
-type HistoryPeriodFilter = 'This Week' | 'This Month' | 'Custom';
+type HistoryPeriodFilter = 'Today' | 'This Week' | 'This Month' | 'All Time';
+type PaymentMethodFilter = 'all' | 'cash' | 'credit';
 
 const PERIOD_FILTERS: HistoryPeriodFilter[] = [
+  'Today',
   'This Week',
   'This Month',
-  'Custom',
+  'All Time',
 ];
 
+function isSaleUtang(sale: Sale): boolean {
+  return sale.payment_method === 'credit';
+}
+
+function sumSaleAmounts(items: Sale[]): number {
+  const sum = items.reduce(
+    (acc, item) => acc + (Number(item.total_amount) || 0),
+    0
+  );
+  return Number(sum.toFixed(2));
+}
+
 /**
- * TindaMate Sales History Screen (`/sales/history`) — Design 2.0
+ * TindaMate Sales History Screen (`/sales/history`) — Batch S-3
  *
- * Clean transaction-history pattern matching the Design 2.0 reference:
- * - Deep Green Header ("Sales History" + Trend Chart Icon + "+ New Sale")
- * - Period Filter Chips ("This Week", "This Month", "Today", "All")
- * - Total Sales Summary & Trend Card
- * - Chronological transaction cards with receipt badge, Date • Time, Peso amount, item count & "View ›" pill
+ * Clean retail transaction management interface:
+ * - Deep Green ProductScreenHeader with embedded TindaMateSearchBar
+ * - Local-midnight period filters (Today, This Week, This Month, All Time)
+ * - Payment method filters (All, Cash, Utang) with live counts
+ * - Honest Recorded Sales summary with Cash vs Utang breakdown
+ * - Scannable grouped transaction cards linking to `/sales/[id]`
  */
 export default function SalesHistoryScreen() {
   const pathname = usePathname();
   const activeTab = resolveActiveNavTab(pathname);
+  const { width: windowWidth } = useWindowDimensions();
+  const isCompactPhone = windowWidth < 360;
 
   const [sales, setSales] = useState<Sale[]>([]);
   const [selectedPeriod, setSelectedPeriod] =
     useState<HistoryPeriodFilter>('This Week');
+  const [selectedPayment, setSelectedPayment] =
+    useState<PaymentMethodFilter>('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -147,9 +173,9 @@ export default function SalesHistoryScreen() {
     });
   };
 
-  // Filter sales by selected period
-  const filteredSales = useMemo(() => {
-    if (selectedPeriod === 'Custom') {
+  // 1. Filter by local-midnight calendar period
+  const periodFilteredSales = useMemo(() => {
+    if (selectedPeriod === 'All Time') {
       return sales;
     }
     const now = new Date();
@@ -159,6 +185,9 @@ export default function SalesHistoryScreen() {
       now.getDate()
     );
 
+    if (selectedPeriod === 'Today') {
+      return sales.filter((s) => new Date(s.created_at) >= startOfToday);
+    }
     if (selectedPeriod === 'This Week') {
       const sevenDaysAgo = new Date(startOfToday);
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
@@ -171,13 +200,75 @@ export default function SalesHistoryScreen() {
     return sales;
   }, [sales, selectedPeriod]);
 
-  const periodTotalAmount = useMemo(() => {
-    const sum = filteredSales.reduce(
-      (acc, item) => acc + (Number(item.total_amount) || 0),
-      0
-    );
-    return Number(sum.toFixed(2));
-  }, [filteredSales]);
+  // 2. Period Cash vs Utang counts & totals
+  const periodMetrics = useMemo(() => {
+    const cashSales = periodFilteredSales.filter((s) => !isSaleUtang(s));
+    const utangSales = periodFilteredSales.filter((s) => isSaleUtang(s));
+    return {
+      totalCount: periodFilteredSales.length,
+      totalAmount: sumSaleAmounts(periodFilteredSales),
+      cashCount: cashSales.length,
+      cashAmount: sumSaleAmounts(cashSales),
+      utangCount: utangSales.length,
+      utangAmount: sumSaleAmounts(utangSales),
+    };
+  }, [periodFilteredSales]);
+
+  // 3. Payment filter chips with live period counts
+  const paymentFilterItems: FilterChipItem<PaymentMethodFilter>[] = useMemo(
+    () => [
+      { id: 'all', label: 'All', count: periodMetrics.totalCount },
+      { id: 'cash', label: 'Cash', count: periodMetrics.cashCount },
+      { id: 'credit', label: 'Utang', count: periodMetrics.utangCount },
+    ],
+    [periodMetrics]
+  );
+
+  // 4. Filter by payment method & search query
+  const filteredSales = useMemo(() => {
+    const paymentMatches =
+      selectedPayment === 'all'
+        ? periodFilteredSales
+        : selectedPayment === 'credit'
+        ? periodFilteredSales.filter((s) => isSaleUtang(s))
+        : periodFilteredSales.filter((s) => !isSaleUtang(s));
+
+    const trimmedQuery = searchQuery.trim().toLowerCase();
+    if (!trimmedQuery) {
+      return paymentMatches;
+    }
+
+    return paymentMatches.filter((sale) => {
+      const shortRef = `#${sale.id.slice(0, 8).toUpperCase()}`.toLowerCase();
+      const rawId = sale.id.toLowerCase();
+      const customerName = (sale.customer_name ?? '').toLowerCase();
+      const productName = (sale.product_name ?? '').toLowerCase();
+      const saleDate = formatSaleDate(sale.created_at).toLowerCase();
+      return (
+        shortRef.includes(trimmedQuery) ||
+        rawId.includes(trimmedQuery) ||
+        customerName.includes(trimmedQuery) ||
+        productName.includes(trimmedQuery) ||
+        saleDate.includes(trimmedQuery)
+      );
+    });
+  }, [periodFilteredSales, selectedPayment, searchQuery]);
+
+  const filteredTotalAmount = useMemo(
+    () => sumSaleAmounts(filteredSales),
+    [filteredSales]
+  );
+
+  const hasActiveFilters =
+    selectedPeriod !== 'All Time' ||
+    selectedPayment !== 'all' ||
+    searchQuery.trim().length > 0;
+
+  const handleResetFilters = () => {
+    setSelectedPeriod('All Time');
+    setSelectedPayment('all');
+    setSearchQuery('');
+  };
 
   // Compute 6-bar mini sparkline heights from filteredSales
   const miniTrendBars = useMemo(() => {
@@ -201,31 +292,34 @@ export default function SalesHistoryScreen() {
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <StatusBar style="light" />
       <View style={styles.mainContainer}>
-        {/* Deep Green Top Screen Header */}
-        <View style={styles.heroHeaderZone}>
-          <ProductScreenHeader
-            title="Sales History"
-            showBack={true}
-            onBack={handleBack}
-            leftIcon={
-              <TrendChartVectorIcon color={Colors.textInverse} size={20} />
-            }
-            rightElement={
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Select date filter"
-                onPress={() => setSelectedPeriod('Custom')}
-                style={styles.calendarIconBtn}>
-                <CalendarFilterIcon color={Colors.textInverse} size={18} />
-              </Pressable>
-            }
-          />
-        </View>
+        {/* Deep Green Top Screen Header + Embedded Search */}
+        <ProductScreenHeader
+          title="Sales History"
+          subtitle={
+            !isInitialLoading
+              ? `${sales.length} recorded ${sales.length === 1 ? 'sale' : 'sales'}`
+              : 'Loading transactions...'
+          }
+          showBack={true}
+          onBack={handleBack}
+          leftIcon={
+            <TrendChartVectorIcon color={Colors.textInverse} size={20} />
+          }>
+          {!isInitialLoading && sales.length > 0 ? (
+            <TindaMateSearchBar
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholder="Search ref #, customer, or item..."
+              accessibilityLabel="Search sales transactions"
+            />
+          ) : null}
+        </ProductScreenHeader>
 
         {/* Scrollable Content */}
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -237,36 +331,6 @@ export default function SalesHistoryScreen() {
             />
           }>
           <View style={styles.bodyContainer}>
-            {/* Period Filter Strip */}
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.periodStrip}>
-              {PERIOD_FILTERS.map((period) => {
-                const isSelected = selectedPeriod === period;
-                return (
-                  <Pressable
-                    key={period}
-                    accessibilityRole="tab"
-                    accessibilityState={{ selected: isSelected }}
-                    accessibilityLabel={`Filter sales by ${period}`}
-                    onPress={() => setSelectedPeriod(period)}
-                    style={[
-                      styles.periodChip,
-                      isSelected && styles.periodChipActive,
-                    ]}>
-                    <Text
-                      style={[
-                        styles.periodChipText,
-                        isSelected && styles.periodChipTextActive,
-                      ]}>
-                      {period}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-
             {/* Error Banner */}
             {errorMessage ? (
               <DashboardErrorBanner
@@ -288,7 +352,11 @@ export default function SalesHistoryScreen() {
               /* 2. Full Error State */
               <View style={styles.stateCard}>
                 <View style={styles.errorIconCircle}>
-                  <Text style={styles.errorIconText}>!</Text>
+                  <WarningTriangleIcon
+                    size={22}
+                    bgColor={Colors.error}
+                    fgColor={Colors.textInverse}
+                  />
                 </View>
                 <Text style={styles.stateTitle}>
                   Could Not Load Sales History
@@ -346,60 +414,152 @@ export default function SalesHistoryScreen() {
                 </View>
               </View>
             ) : (
-              /* 4. Populated State: Total Sales Summary + Chronological List */
+              /* 4. Populated State: Filters + Summary + Chronological List */
               <>
-                {/* Period Total Sales KPI & Trend Visual Card */}
-                <View style={styles.summaryHeroCard}>
-                  <View style={styles.summaryLeftCol}>
-                    <Text style={styles.summaryLabel}>Total Sales</Text>
-                    <Text
-                      style={styles.summaryBigAmount}
-                      adjustsFontSizeToFit
-                      minimumFontScale={0.8}
-                      numberOfLines={1}>
-                      {formatPesoCurrency(periodTotalAmount)}
-                    </Text>
-                    <View style={styles.summaryBadgePill}>
-                      <Text style={styles.summaryBadgeText}>
-                        No comparison yet
+                {/* Period Filter Strip */}
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.periodStrip}>
+                  {PERIOD_FILTERS.map((period) => {
+                    const isSelected = selectedPeriod === period;
+                    return (
+                      <Pressable
+                        key={period}
+                        accessibilityRole="tab"
+                        accessibilityState={{ selected: isSelected }}
+                        accessibilityLabel={`Filter sales by ${period}`}
+                        onPress={() => setSelectedPeriod(period)}
+                        style={[
+                          styles.periodChip,
+                          isSelected && styles.periodChipActive,
+                        ]}>
+                        <Text
+                          style={[
+                            styles.periodChipText,
+                            isSelected && styles.periodChipTextActive,
+                          ]}>
+                          {period}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+
+                {/* Payment Method Filter Chips */}
+                <FilterChipRow
+                  items={paymentFilterItems}
+                  selectedId={selectedPayment}
+                  onSelect={setSelectedPayment}
+                  contentContainerStyle={styles.paymentChipStrip}
+                  accessibilityLabelPrefix="Payment filter"
+                />
+
+                {/* Recorded Sales Summary Card */}
+                <View
+                  style={[
+                    styles.summaryHeroCard,
+                    isCompactPhone && styles.summaryHeroCardCompact,
+                  ]}>
+                  <View style={styles.summaryTopRow}>
+                    <View style={styles.summaryLeftCol}>
+                      <Text style={styles.summaryLabel}>
+                        {selectedPayment === 'cash'
+                          ? `${selectedPeriod} · Cash Sales`
+                          : selectedPayment === 'credit'
+                          ? `${selectedPeriod} · Utang Recorded`
+                          : `${selectedPeriod} · Recorded Sales`}
                       </Text>
+                      <Text
+                        style={[
+                          styles.summaryBigAmount,
+                          isCompactPhone && styles.summaryBigAmountCompact,
+                        ]}
+                        adjustsFontSizeToFit
+                        minimumFontScale={0.75}
+                        numberOfLines={1}>
+                        {formatPesoCurrency(filteredTotalAmount)}
+                      </Text>
+                      <View style={styles.summaryBadgePill}>
+                        <Text style={styles.summaryBadgeText}>
+                          {filteredSales.length}{' '}
+                          {filteredSales.length === 1
+                            ? 'transaction'
+                            : 'transactions'}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* Mini Trend Graphic */}
+                    <View style={styles.lineChartBox}>
+                      <View style={styles.chartFillArea}>
+                        {miniTrendBars.map((ratio, index) => (
+                          <View
+                            key={index}
+                            style={[
+                              styles.chartColumnBar,
+                              {
+                                height: Math.max(14, Math.round(ratio * 48)),
+                                opacity:
+                                  0.2 + (index / miniTrendBars.length) * 0.5,
+                              },
+                            ]}
+                          />
+                        ))}
+                      </View>
+                      <View style={styles.chartLineAccent} />
                     </View>
                   </View>
 
-                  {/* Sleek Ascending Trend Graphic */}
-                  <View style={styles.lineChartBox}>
-                    <View style={styles.chartFillArea}>
-                      {miniTrendBars.map((ratio, index) => (
-                        <View
-                          key={index}
-                          style={[
-                            styles.chartColumnBar,
-                            {
-                              height: Math.max(14, Math.round(ratio * 52)),
-                              opacity: 0.18 + (index / miniTrendBars.length) * 0.45,
-                            },
-                          ]}
-                        />
-                      ))}
+                  {/* Cash vs Utang Breakdown for the Selected Period */}
+                  <View style={styles.breakdownRow}>
+                    <View style={styles.breakdownPillCash}>
+                      <Text style={styles.breakdownLabelCash}>
+                        Cash ({periodMetrics.cashCount})
+                      </Text>
+                      <Text style={styles.breakdownValueCash} numberOfLines={1}>
+                        {formatPesoCurrency(periodMetrics.cashAmount)}
+                      </Text>
                     </View>
-                    <View style={styles.chartLineAccent} />
+                    <View style={styles.breakdownPillUtang}>
+                      <Text style={styles.breakdownLabelUtang}>
+                        Utang ({periodMetrics.utangCount})
+                      </Text>
+                      <Text
+                        style={styles.breakdownValueUtang}
+                        numberOfLines={1}>
+                        {formatPesoCurrency(periodMetrics.utangAmount)}
+                      </Text>
+                    </View>
                   </View>
                 </View>
 
                 {filteredSales.length === 0 ? (
                   <View style={styles.stateCard}>
                     <Text style={styles.stateTitle}>
-                      No sales in &ldquo;{selectedPeriod}&rdquo;
+                      No matching transactions
                     </Text>
                     <Text style={styles.stateSubtitle}>
-                      Switch to &ldquo;Custom&rdquo; to view all {sales.length}{' '}
-                      recorded store transactions.
+                      {searchQuery.trim().length > 0
+                        ? `No sales matched "${searchQuery.trim()}" in ${selectedPeriod}.`
+                        : `No ${
+                            selectedPayment === 'credit'
+                              ? 'Utang'
+                              : selectedPayment === 'cash'
+                              ? 'Cash'
+                              : ''
+                          } sales recorded in ${selectedPeriod}.`}
                     </Text>
-                    <TindaMateButton
-                      title="Show All Sales"
-                      variant="secondary"
-                      onPress={() => setSelectedPeriod('Custom')}
-                    />
+                    {hasActiveFilters ? (
+                      <View style={styles.stateActionWrap}>
+                        <TindaMateButton
+                          title="Reset Filters"
+                          variant="secondary"
+                          onPress={handleResetFilters}
+                          accessibilityLabel="Reset period, payment, and search filters"
+                        />
+                      </View>
+                    ) : null}
                   </View>
                 ) : (
                   <View style={styles.groupedContainer}>
@@ -453,13 +613,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
     justifyContent: 'space-between',
   },
-  heroHeaderZone: {
-    backgroundColor: Colors.primaryDark,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    paddingBottom: Spacing.one,
-    ...Shadows.sm,
-  },
   scrollView: {
     flex: 1,
     backgroundColor: Colors.background,
@@ -472,17 +625,17 @@ const styles = StyleSheet.create({
     maxWidth: DashboardMaxContentWidth,
     alignSelf: 'center',
     paddingHorizontal: Spacing.three,
-    paddingTop: Spacing.three,
-    gap: Spacing.three,
+    paddingTop: Spacing.twoHalf,
+    gap: Spacing.twoHalf,
   },
   periodStrip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: Spacing.two,
     paddingVertical: 2,
   },
   periodChip: {
-    paddingHorizontal: 18,
+    paddingHorizontal: Spacing.three,
     paddingVertical: 8,
     borderRadius: BorderRadius.full,
     backgroundColor: Colors.surface,
@@ -502,19 +655,27 @@ const styles = StyleSheet.create({
   periodChipTextActive: {
     color: Colors.textInverse,
   },
+  paymentChipStrip: {
+    paddingVertical: 2,
+  },
   // Period Total Sales Summary Hero Card
   summaryHeroCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.heroCard,
+    borderWidth: 1,
+    borderColor: Colors.borderSubtle,
+    padding: Spacing.three,
+    gap: Spacing.twoHalf,
+    ...Shadows.sm,
+  },
+  summaryHeroCardCompact: {
+    padding: Spacing.twoHalf,
+  },
+  summaryTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.xxl,
-    borderWidth: 1,
-    borderColor: Colors.borderSubtle,
-    paddingVertical: 18,
-    paddingHorizontal: Spacing.four,
-    gap: 14,
-    ...Shadows.sm,
+    gap: Spacing.twoHalf,
   },
   summaryLeftCol: {
     flex: 1,
@@ -526,36 +687,32 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
   summaryBigAmount: {
-    fontSize: 30,
+    fontSize: 28,
     fontWeight: Typography.weights.extraBold,
-    color: Colors.textPrimary,
+    color: Colors.primaryDark,
+    fontVariant: ['tabular-nums'],
     letterSpacing: -0.5,
+  },
+  summaryBigAmountCompact: {
+    fontSize: 24,
   },
   summaryBadgePill: {
     alignSelf: 'flex-start',
-    backgroundColor: '#DCFCE7',
-    paddingHorizontal: 10,
+    backgroundColor: Colors.primarySoft,
+    borderWidth: 1,
+    borderColor: Colors.primaryBorder,
+    paddingHorizontal: Spacing.two,
     paddingVertical: 3,
     borderRadius: BorderRadius.full,
   },
-  calendarIconBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.25)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   summaryBadgeText: {
     fontSize: 11,
-    fontWeight: Typography.weights.extraBold,
+    fontWeight: Typography.weights.bold,
     color: Colors.primaryDark,
   },
   lineChartBox: {
-    width: 100,
-    height: 60,
+    width: 88,
+    height: 54,
     position: 'relative',
     justifyContent: 'flex-end',
   },
@@ -568,7 +725,7 @@ const styles = StyleSheet.create({
     paddingBottom: 2,
   },
   chartColumnBar: {
-    width: 12,
+    width: 10,
     borderRadius: 3,
     backgroundColor: Colors.primary,
   },
@@ -578,9 +735,58 @@ const styles = StyleSheet.create({
     right: 0,
     top: 8,
     height: 2.5,
-    backgroundColor: '#10B981',
+    backgroundColor: Colors.primary,
     borderRadius: 2,
     transform: [{ rotate: '-14deg' }],
+  },
+  breakdownRow: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+    paddingTop: Spacing.two,
+    borderTopWidth: 1,
+    borderTopColor: Colors.borderSubtle,
+  },
+  breakdownPillCash: {
+    flex: 1,
+    backgroundColor: Colors.primarySoft,
+    borderWidth: 1,
+    borderColor: Colors.primaryBorder,
+    borderRadius: BorderRadius.md,
+    paddingHorizontal: Spacing.twoHalf,
+    paddingVertical: Spacing.one + 2,
+    gap: 2,
+  },
+  breakdownLabelCash: {
+    fontSize: 11,
+    fontWeight: Typography.weights.bold,
+    color: Colors.primaryDark,
+  },
+  breakdownValueCash: {
+    fontSize: Typography.sizes.bodySm,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.primaryDark,
+    fontVariant: ['tabular-nums'],
+  },
+  breakdownPillUtang: {
+    flex: 1,
+    backgroundColor: Colors.accentLight,
+    borderWidth: 1,
+    borderColor: Colors.accentBorder,
+    borderRadius: BorderRadius.md,
+    paddingHorizontal: Spacing.twoHalf,
+    paddingVertical: Spacing.one + 2,
+    gap: 2,
+  },
+  breakdownLabelUtang: {
+    fontSize: 11,
+    fontWeight: Typography.weights.bold,
+    color: Colors.accentDark,
+  },
+  breakdownValueUtang: {
+    fontSize: Typography.sizes.bodySm,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.accentDark,
+    fontVariant: ['tabular-nums'],
   },
   stateCard: {
     backgroundColor: Colors.surface,
@@ -591,7 +797,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: Spacing.two,
-    marginTop: Spacing.two,
+    marginTop: Spacing.one,
     ...Shadows.xs,
   },
   stateTitle: {
@@ -620,11 +826,6 @@ const styles = StyleSheet.create({
     borderColor: Colors.errorBorder,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  errorIconText: {
-    fontSize: Typography.sizes.lg,
-    fontWeight: Typography.weights.extraBold,
-    color: Colors.error,
   },
   emptyCard: {
     backgroundColor: Colors.primarySoft,
@@ -671,10 +872,10 @@ const styles = StyleSheet.create({
     marginTop: Spacing.two,
   },
   groupedContainer: {
-    gap: Spacing.threeHalf,
+    gap: Spacing.three,
   },
   groupSection: {
-    gap: 10,
+    gap: Spacing.two,
   },
   dateHeaderRow: {
     flexDirection: 'row',
@@ -695,6 +896,6 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
   },
   itemsList: {
-    gap: 10,
+    gap: Spacing.two,
   },
 });
