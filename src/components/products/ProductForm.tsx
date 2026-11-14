@@ -162,7 +162,7 @@ export function ProductForm({
         const msg =
           uploadErr instanceof Error
             ? uploadErr.message
-            : 'Hindi mai-upload ang litrato sa storage. Pakisuri ang internet connection.';
+            : 'Could not upload product photo to storage. Please check your internet connection and try again.';
         setPhotoUploadError(msg);
         setIsUploadingPhoto(false);
         return;

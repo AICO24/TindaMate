@@ -34,6 +34,89 @@ interface ProductImagePickerProps {
   disabled?: boolean;
 }
 
+function CameraVectorIcon({ color = Colors.textInverse, size = 18 }: { color?: string; size?: number }) {
+  return (
+    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }} importantForAccessibility="no">
+      {/* Camera Top Flash Housing */}
+      <View
+        style={{
+          width: size * 0.42,
+          height: 3,
+          borderTopLeftRadius: 2,
+          borderTopRightRadius: 2,
+          backgroundColor: color,
+          marginBottom: -1,
+        }}
+      />
+      {/* Camera Body */}
+      <View
+        style={{
+          width: size * 0.92,
+          height: size * 0.68,
+          borderRadius: 3.5,
+          borderWidth: 1.8,
+          borderColor: color,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}>
+        {/* Camera Lens Circle */}
+        <View
+          style={{
+            width: size * 0.34,
+            height: size * 0.34,
+            borderRadius: size * 0.17,
+            borderWidth: 1.6,
+            borderColor: color,
+          }}
+        />
+      </View>
+    </View>
+  );
+}
+
+function GalleryVectorIcon({ color = Colors.primary, size = 18 }: { color?: string; size?: number }) {
+  return (
+    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }} importantForAccessibility="no">
+      {/* Picture Frame */}
+      <View
+        style={{
+          width: size * 0.88,
+          height: size * 0.78,
+          borderRadius: 3.5,
+          borderWidth: 1.8,
+          borderColor: color,
+          overflow: 'hidden',
+          position: 'relative',
+        }}>
+        {/* Sun Dot */}
+        <View
+          style={{
+            position: 'absolute',
+            top: 2.5,
+            left: 3,
+            width: 3.5,
+            height: 3.5,
+            borderRadius: 2,
+            backgroundColor: color,
+          }}
+        />
+        {/* Mountain Peak */}
+        <View
+          style={{
+            position: 'absolute',
+            bottom: -4,
+            right: 1,
+            width: 9,
+            height: 9,
+            backgroundColor: color,
+            transform: [{ rotate: '45deg' }],
+          }}
+        />
+      </View>
+    </View>
+  );
+}
+
 /**
  * ProductImagePicker
  *
@@ -205,9 +288,7 @@ export function ProductImagePicker({
             <ActivityIndicator size="small" color={Colors.textInverse} />
           ) : (
             <>
-              <Text style={styles.actionIcon} importantForAccessibility="no">
-                📷
-              </Text>
+              <CameraVectorIcon color={Colors.textInverse} size={IconSizes.sm} />
               <Text style={styles.cameraButtonText} maxFontSizeMultiplier={1.2}>
                 Take Photo
               </Text>
@@ -228,9 +309,7 @@ export function ProductImagePicker({
             pressed && styles.buttonPressed,
             disabled && styles.buttonDisabled,
           ]}>
-          <Text style={styles.actionIcon} importantForAccessibility="no">
-            🖼️
-          </Text>
+          <GalleryVectorIcon color={Colors.primary} size={IconSizes.sm} />
           <Text style={styles.galleryButtonText} maxFontSizeMultiplier={1.2}>
             Choose from Gallery
           </Text>
