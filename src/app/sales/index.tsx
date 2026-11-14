@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -63,8 +63,11 @@ import {
   updateCartItemQuantity,
 } from '@/lib/sales';
 import {
+  addProductWithQuantityToCart,
+  getCartSnapshot,
   getPersistedCart,
   savePersistedCart,
+  subscribeToCartChanges,
 } from '@/lib/cartStore';
 import { supabase } from '@/lib/supabase';
 import { Product } from '@/types/product';
@@ -114,17 +117,33 @@ export default function SalesScreen() {
   );
 
   // Local Cart State (Batch 7B-1 & Persistent Store)
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [cartItems, setCartItems] = useState<CartItem[]>(() =>
+    getCartSnapshot()
+  );
   const didApplyInitialProductRef = useRef(false);
 
-  // Sync state changes to persistent cart store
-  const updateCartState = useCallback((updater: (prev: CartItem[]) => CartItem[]) => {
-    setCartItems((prev) => {
-      const next = updater(prev);
-      savePersistedCart(next);
-      return next;
+  useEffect(() => {
+    getPersistedCart().then((persisted) => {
+      setCartItems(persisted);
     });
+
+    const unsubscribe = subscribeToCartChanges((latestCart) => {
+      setCartItems(latestCart);
+    });
+
+    return () => unsubscribe();
   }, []);
+
+  // Sync state changes to persistent cart store (pure updater outside setState)
+  const updateCartState = useCallback(
+    (updater: (prev: CartItem[]) => CartItem[]) => {
+      const current = getCartSnapshot();
+      const next = updater(current);
+      setCartItems(next);
+      void savePersistedCart(next);
+    },
+    []
+  );
 
   // Local Checkout Modal State (Batch 7B-2)
   const [isCheckoutVisible, setIsCheckoutVisible] = useState(false);
@@ -272,13 +291,12 @@ export default function SalesScreen() {
         const products = await fetchStoreProducts();
         setAllProducts(products);
 
-        // Load persisted cart if not loaded yet
+        // Always read latest persisted/shared cart as the single source of truth
         const existingPersisted = await getPersistedCart();
 
         // Keep cart synchronized with latest stock counts
-        updateCartState((current) => {
-          const baseCart = current.length > 0 ? current : existingPersisted;
-          let synced = syncCartWithLatestProducts(baseCart, products);
+        updateCartState(() => {
+          let synced = syncCartWithLatestProducts(existingPersisted, products);
 
           // If launched with an initial productId param (e.g. from Product details), add to cart
           if (
@@ -291,16 +309,11 @@ export default function SalesScreen() {
               (item) => item.id === initialProductId && item.stock_quantity > 0
             );
             if (matching) {
-              const withItem = addProductToCart(synced, matching);
-              if (initialQty > 1) {
-                synced = updateCartItemQuantity(
-                  withItem,
-                  matching.id,
-                  initialQty - 1
-                );
-              } else {
-                synced = withItem;
-              }
+              synced = addProductWithQuantityToCart(
+                synced,
+                matching,
+                initialQty
+              );
             }
           }
           return synced;

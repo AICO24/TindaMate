@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Pressable,
   RefreshControl,
@@ -39,8 +39,8 @@ import {
 import {
   addProductWithQuantityToCart,
   getCartSnapshot,
-  getCartTotalItemCount,
   getPersistedCart,
+  getProductCartQuantity,
   savePersistedCart,
   subscribeToCartChanges,
 } from '@/lib/cartStore';
@@ -80,25 +80,50 @@ export default function ProductDetailsScreen() {
 
   const [product, setProduct] = useState<Product | null>(null);
   const [selectedQty, setSelectedQty] = useState<number>(1);
-  const [cartItemCount, setCartItemCount] = useState<number>(0);
+  const [inCartQty, setInCartQty] = useState<number>(() =>
+    getProductCartQuantity(getCartSnapshot(), productId)
+  );
   const [justAdded, setJustAdded] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const addedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    // Hydrate cart count and subscribe to changes across POS & Products
     getPersistedCart().then((cart) => {
-      setCartItemCount(getCartTotalItemCount(cart));
+      setInCartQty(getProductCartQuantity(cart, productId));
     });
 
     const unsubscribe = subscribeToCartChanges((cart) => {
-      setCartItemCount(getCartTotalItemCount(cart));
+      setInCartQty(getProductCartQuantity(cart, productId));
     });
 
-    return () => unsubscribe();
-  }, []);
+    return () => {
+      unsubscribe();
+      if (addedTimerRef.current) {
+        clearTimeout(addedTimerRef.current);
+      }
+    };
+  }, [productId]);
+
+  // Keep selectedQty clamped to remaining available stock not yet in cart
+  const remainingAddable = product
+    ? Math.max(0, product.stock_quantity - inCartQty)
+    : 0;
+  const isMaxInCart =
+    product !== null &&
+    product.stock_quantity > 0 &&
+    inCartQty >= product.stock_quantity;
+
+  useEffect(() => {
+    if (!product) return;
+    if (remainingAddable <= 0) {
+      setSelectedQty(1);
+    } else if (selectedQty > remainingAddable) {
+      setSelectedQty(remainingAddable);
+    }
+  }, [product, remainingAddable, selectedQty]);
 
   const loadProduct = useCallback(
     async (showRefresh = false) => {
@@ -166,12 +191,15 @@ export default function ProductDetailsScreen() {
   const handleAddToCart = async () => {
     try {
       if (!product || product.stock_quantity <= 0) return;
-      const safeQty = Math.min(
-        Math.max(1, selectedQty),
-        product.stock_quantity
-      );
 
-      const currentCart = getCartSnapshot();
+      const currentCart = await getPersistedCart();
+      const currentInCart = getProductCartQuantity(currentCart, product.id);
+      const maxCanAdd = Math.max(0, product.stock_quantity - currentInCart);
+      if (maxCanAdd <= 0) {
+        return;
+      }
+
+      const safeQty = Math.min(Math.max(1, selectedQty), maxCanAdd);
       const updatedCart = addProductWithQuantityToCart(
         currentCart,
         product,
@@ -179,8 +207,12 @@ export default function ProductDetailsScreen() {
       );
       await savePersistedCart(updatedCart);
 
+      setSelectedQty(1);
       setJustAdded(true);
-      setTimeout(() => {
+      if (addedTimerRef.current) {
+        clearTimeout(addedTimerRef.current);
+      }
+      addedTimerRef.current = setTimeout(() => {
         setJustAdded(false);
       }, 1800);
     } catch (err) {
@@ -225,45 +257,10 @@ export default function ProductDetailsScreen() {
               : 'Loading item...'
           }
           onBack={handleBack}
-          rightElement={
-            <View style={styles.headerRightActions}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`Shopping cart with ${cartItemCount} item${cartItemCount === 1 ? '' : 's'}`}
-                onPress={() => router.push('/sales')}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                style={({ pressed }) => [
-                  styles.headerCartButton,
-                  pressed && styles.buttonPressed,
-                ]}>
-                <CartVectorIcon color={Colors.textInverse} size={20} />
-                {cartItemCount > 0 ? (
-                  <View style={styles.headerCartBadge}>
-                    <Text
-                      style={styles.headerCartBadgeText}
-                      numberOfLines={1}
-                      adjustsFontSizeToFit>
-                      {cartItemCount > 99 ? '99+' : cartItemCount}
-                    </Text>
-                  </View>
-                ) : null}
-              </Pressable>
-
-              {product ? (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Edit product details"
-                  onPress={handleEdit}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  style={({ pressed }) => [
-                    styles.headerEditPill,
-                    pressed && styles.buttonPressed,
-                  ]}>
-                  <Text style={styles.headerEditText}>Edit</Text>
-                </Pressable>
-              ) : null}
-            </View>
-          }
+          showCartButton
+          rightActionLabel={product ? 'Edit' : undefined}
+          rightActionAccessibilityLabel="Edit product details"
+          onRightActionPress={product ? handleEdit : undefined}
         />
 
         <ScrollView
@@ -453,63 +450,104 @@ export default function ProductDetailsScreen() {
 
                 <View style={styles.divider} />
 
-                {/* POS Quick Add Row: Stepper + Add to Cart CTA */}
-                <View style={styles.posQuickAddRow}>
-                  <View style={styles.qtyStepper}>
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel="Decrease quantity"
-                      disabled={selectedQty <= 1 || isOut}
-                      onPress={() =>
-                        setSelectedQty((q) => Math.max(1, q - 1))
-                      }
-                      style={({ pressed }) => [
-                        styles.qtyBtn,
-                        (selectedQty <= 1 || isOut) && styles.qtyBtnDisabled,
-                        pressed && styles.buttonPressed,
-                      ]}>
-                      <Text style={styles.qtyBtnText}>−</Text>
-                    </Pressable>
-                    <Text style={styles.qtyDisplay}>{selectedQty}</Text>
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel="Increase quantity"
-                      disabled={isOut || selectedQty >= product.stock_quantity}
-                      onPress={() =>
-                        setSelectedQty((q) =>
-                          Math.min(product.stock_quantity, q + 1)
-                        )
-                      }
-                      style={({ pressed }) => [
-                        styles.qtyBtn,
-                        (isOut || selectedQty >= product.stock_quantity) &&
-                          styles.qtyBtnDisabled,
-                        pressed && styles.buttonPressed,
-                      ]}>
-                      <Text style={styles.qtyBtnText}>+</Text>
-                    </Pressable>
+                {/* POS Quick Add Section: Context Header + Stepper + Add to Cart CTA */}
+                <View style={styles.posQuickAddSection}>
+                  <View style={styles.posQuickAddHeader}>
+                    <Text style={styles.detailsHeading}>Quick Add to Cart</Text>
+                    {inCartQty > 0 ? (
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={`${inCartQty} ${product.unit} in cart. Tap to view cart`}
+                        onPress={() => router.push('/sales')}
+                        style={({ pressed }) => [
+                          styles.inCartStatusPill,
+                          pressed && styles.buttonPressed,
+                        ]}>
+                        <Text style={styles.inCartStatusPillText}>
+                          {inCartQty} in cart • View Cart →
+                        </Text>
+                      </Pressable>
+                    ) : null}
                   </View>
 
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={`Add ${selectedQty} ${product.unit} of ${product.name} to cart`}
-                    disabled={isOut}
-                    onPress={handleAddToCart}
-                    style={({ pressed }) => [
-                      styles.addToCartButton,
-                      justAdded && styles.addToCartButtonSuccess,
-                      isOut && styles.addToCartButtonDisabled,
-                      pressed && !isOut && styles.buttonPressed,
-                    ]}>
-                    <CartVectorIcon color={Colors.textInverse} size={18} />
-                    <Text style={styles.addToCartButtonText}>
-                      {isOut
-                        ? 'Out of Stock'
-                        : justAdded
-                        ? 'Added to Cart ✓'
-                        : 'Add to Cart'}
-                    </Text>
-                  </Pressable>
+                  <View style={styles.posQuickAddRow}>
+                    <View style={styles.qtyStepper}>
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel="Decrease quantity"
+                        disabled={selectedQty <= 1 || isOut || isMaxInCart}
+                        onPress={() =>
+                          setSelectedQty((q) => Math.max(1, q - 1))
+                        }
+                        style={({ pressed }) => [
+                          styles.qtyBtn,
+                          (selectedQty <= 1 || isOut || isMaxInCart) &&
+                            styles.qtyBtnDisabled,
+                          pressed && styles.buttonPressed,
+                        ]}>
+                        <Text style={styles.qtyBtnText}>−</Text>
+                      </Pressable>
+                      <Text style={styles.qtyDisplay}>
+                        {isMaxInCart ? 0 : selectedQty}
+                      </Text>
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel="Increase quantity"
+                        disabled={
+                          isOut || isMaxInCart || selectedQty >= remainingAddable
+                        }
+                        onPress={() =>
+                          setSelectedQty((q) =>
+                            Math.min(remainingAddable, q + 1)
+                          )
+                        }
+                        style={({ pressed }) => [
+                          styles.qtyBtn,
+                          (isOut ||
+                            isMaxInCart ||
+                            selectedQty >= remainingAddable) &&
+                            styles.qtyBtnDisabled,
+                          pressed && styles.buttonPressed,
+                        ]}>
+                        <Text style={styles.qtyBtnText}>+</Text>
+                      </Pressable>
+                    </View>
+
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={
+                        isOut
+                          ? 'Out of stock'
+                          : isMaxInCart
+                          ? `Maximum available stock of ${product.stock_quantity} ${product.unit} already in cart`
+                          : `Add ${selectedQty} ${product.unit} of ${product.name} to cart`
+                      }
+                      disabled={isOut || (isMaxInCart && !justAdded)}
+                      onPress={handleAddToCart}
+                      style={({ pressed }) => [
+                        styles.addToCartButton,
+                        justAdded && styles.addToCartButtonSuccess,
+                        (isOut || (isMaxInCart && !justAdded)) &&
+                          styles.addToCartButtonDisabled,
+                        pressed &&
+                          !isOut &&
+                          !isMaxInCart &&
+                          styles.buttonPressed,
+                      ]}>
+                      <CartVectorIcon color={Colors.textInverse} size={18} />
+                      <Text
+                        style={styles.addToCartButtonText}
+                        numberOfLines={1}>
+                        {isOut
+                          ? 'Out of Stock'
+                          : justAdded
+                          ? 'Added to Cart ✓'
+                          : isMaxInCart
+                          ? 'Max Stock in Cart'
+                          : 'Add to Cart'}
+                      </Text>
+                    </Pressable>
+                  </View>
                 </View>
 
                 {/* Bottom Action Tiles: Edit Product & Stock + Sales History */}
@@ -717,7 +755,31 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     fontWeight: Typography.weights.medium,
   },
-  // POS Quick Add Row
+  // POS Quick Add Section
+  posQuickAddSection: {
+    gap: 10,
+  },
+  posQuickAddHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: Spacing.two,
+  },
+  inCartStatusPill: {
+    backgroundColor: Colors.primarySoft,
+    borderWidth: 1,
+    borderColor: Colors.primaryBorder,
+    borderRadius: BorderRadius.full,
+    paddingHorizontal: Spacing.twoHalf,
+    paddingVertical: 4,
+  },
+  inCartStatusPillText: {
+    fontSize: Typography.sizes.xs,
+    fontWeight: Typography.weights.bold,
+    color: Colors.primaryDark,
+    fontVariant: ['tabular-nums'],
+  },
   posQuickAddRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -776,67 +838,12 @@ const styles = StyleSheet.create({
     ...Shadows.none,
   },
   addToCartButtonSuccess: {
-    backgroundColor: '#059669',
+    backgroundColor: Colors.secondary,
   },
   addToCartButtonText: {
     fontSize: Typography.sizes.body,
     fontWeight: Typography.weights.extraBold,
     color: Colors.textInverse,
-  },
-  // Header Right Actions (Shopping Cart + Edit Pill)
-  headerRightActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  headerCartButton: {
-    width: 38,
-    height: 38,
-    borderRadius: BorderRadius.full,
-    backgroundColor: 'rgba(255, 255, 255, 0.16)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.22)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
-  headerCartBadge: {
-    position: 'absolute',
-    top: -5,
-    right: -5,
-    backgroundColor: Colors.accent,
-    minWidth: 18,
-    height: 18,
-    borderRadius: BorderRadius.full,
-    paddingHorizontal: 4,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: Colors.primaryDark,
-  },
-  headerCartBadgeText: {
-    color: Colors.textInverse,
-    fontWeight: Typography.weights.bold,
-    fontSize: 10,
-    lineHeight: 12,
-    includeFontPadding: false,
-    textAlign: 'center',
-  },
-  headerEditPill: {
-    backgroundColor: 'rgba(255, 255, 255, 0.16)',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 7,
-    borderRadius: BorderRadius.full,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.22)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerEditText: {
-    fontWeight: Typography.weights.semiBold,
-    fontSize: Typography.sizes.sm,
-    color: Colors.textInverse,
-    includeFontPadding: false,
   },
   // Bottom Action Tiles
   bottomTilesRow: {
