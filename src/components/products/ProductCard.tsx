@@ -9,6 +9,7 @@ import {
 import { Image } from 'expo-image';
 
 import { DashboardBadgeVectorIcon } from '@/components/dashboard/DashboardNavIcons';
+import { StockStatusBadge } from '@/components/products/StockStatusBadge';
 import {
   BorderRadius,
   Colors,
@@ -25,13 +26,13 @@ interface ProductCardProps {
 }
 
 /**
- * ProductCard — TindaMate Design 2.0
+ * ProductCard — TindaMate Design 2.0 (3-Zone Retail Layout)
  *
  * Compact, scannable horizontal product row card for TindaMate store inventory:
- * - Left: 56x56 rounded product image container or semantic store icon
- * - Middle: Product name, bold Peso selling price, and semantic stock quantity pill
- *   (Green for healthy stock, warm orange/amber pill for low stock, red pill for out of stock)
- * - Right: Category tag (if set) & navigation chevron
+ * - Left: 56x56 rounded product image container (cover fit) or semantic store icon
+ * - Middle: Product name (15px bold) and category + unit metadata
+ * - Right: Prominent tabular Peso selling price (#064E3B) stacked above a semantic
+ *   StockStatusBadge pill with visible unit ("24 pcs", "Low • 3 pcs", "Out of Stock") + chevron
  */
 export function ProductCard({ product, onPress }: ProductCardProps) {
   const { width: windowWidth } = useWindowDimensions();
@@ -50,12 +51,20 @@ export function ProductCard({ product, onPress }: ProductCardProps) {
   const isOut = status === 'Out of Stock';
   const isLow = status === 'Low Stock';
 
+  const badgeText = isOut
+    ? 'Out of Stock'
+    : isLow
+    ? `Low • ${stockLabel}`
+    : stockLabel;
+
+  const categoryText = product.category?.trim() || 'General';
+
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`${product.name}, ${
         product.category ? `${product.category}, ` : ''
-      }selling price ${formattedSellingPrice}, stock ${stockLabel}, ${status}`}
+      }selling price ${formattedSellingPrice} per ${product.unit}, stock ${stockLabel}, ${status}`}
       accessibilityHint="Opens product details"
       onPress={() => onPress(product)}
       style={({ pressed }) => [
@@ -63,13 +72,13 @@ export function ProductCard({ product, onPress }: ProductCardProps) {
         isCompactPhone && styles.cardCompact,
         pressed && styles.cardPressed,
       ]}>
-      {/* Left: Product Image or Semantic Icon Box */}
+      {/* Left Zone: Product Image or Semantic Icon Box */}
       {hasValidImage ? (
         <View style={styles.imageBox}>
           <Image
             source={{ uri: product.image_url!.trim() }}
             style={styles.productThumbnail}
-            contentFit="contain"
+            contentFit="cover"
             transition={180}
             onError={() => setImageError(true)}
             accessibilityLabel={`${product.name} photo`}
@@ -100,47 +109,53 @@ export function ProductCard({ product, onPress }: ProductCardProps) {
         </View>
       )}
 
-      {/* Middle: Name, Price, Stock Status */}
+      {/* Middle Zone: Product Name & Category / Unit Metadata */}
       <View style={styles.infoColumn}>
         <Text
           style={styles.productName}
           numberOfLines={1}
-          maxFontSizeMultiplier={1.3}>
+          ellipsizeMode="tail"
+          maxFontSizeMultiplier={1.25}>
           {product.name}
-        </Text>
-
-        <Text
-          style={styles.priceValue}
-          numberOfLines={1}
-          maxFontSizeMultiplier={1.3}>
-          {formattedSellingPrice}
         </Text>
 
         <View style={styles.metaRow}>
           <Text
-            style={[
-              styles.stockText,
-              isOut
-                ? styles.stockTextOut
-                : isLow
-                ? styles.stockTextLow
-                : styles.stockTextHealthy,
-            ]}
-            numberOfLines={1}>
-            {isOut
-              ? 'Out of Stock'
-              : `Stock: ${product.stock_quantity}`}
+            style={styles.categorySubtext}
+            numberOfLines={1}
+            ellipsizeMode="tail"
+            maxFontSizeMultiplier={1.2}>
+            {categoryText}
           </Text>
-
-          {product.category ? (
-            <Text style={styles.categorySubtext} numberOfLines={1}>
-              • {product.category}
-            </Text>
-          ) : null}
+          <Text style={styles.metaDot} importantForAccessibility="no">
+            •
+          </Text>
+          <Text
+            style={styles.unitSubtext}
+            numberOfLines={1}
+            maxFontSizeMultiplier={1.2}>
+            per {product.unit}
+          </Text>
         </View>
       </View>
 
-      {/* Right: Chevron */}
+      {/* Right Zone: Tabular Selling Price + Stock Status Pill */}
+      <View style={styles.rightMetricsColumn}>
+        <Text
+          style={styles.priceValue}
+          numberOfLines={1}
+          maxFontSizeMultiplier={1.2}>
+          {formattedSellingPrice}
+        </Text>
+
+        <StockStatusBadge
+          status={status}
+          label={badgeText}
+          size="sm"
+        />
+      </View>
+
+      {/* Far Right: Navigation Chevron */}
       <View style={styles.chevronWrapper} importantForAccessibility="no">
         <Text style={styles.chevron}>›</Text>
       </View>
@@ -153,13 +168,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.xl,
+    borderRadius: BorderRadius.card,
     borderWidth: 1,
-    borderColor: Colors.borderSubtle,
+    borderColor: Colors.border,
     paddingVertical: 12,
     paddingHorizontal: Spacing.three,
-    gap: 14,
-    ...Shadows.sm,
+    gap: 12,
+    ...Shadows.xs,
   },
   cardCompact: {
     paddingVertical: 10,
@@ -172,9 +187,9 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.992 }],
   },
   imageBox: {
-    width: 58,
-    height: 58,
-    borderRadius: BorderRadius.lg,
+    width: 56,
+    height: 56,
+    borderRadius: BorderRadius.md,
     backgroundColor: Colors.surfaceSubtle,
     borderWidth: 1,
     borderColor: Colors.borderSubtle,
@@ -183,13 +198,13 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   productThumbnail: {
-    width: '86%',
-    height: '86%',
+    width: '100%',
+    height: '100%',
   },
   iconBox: {
-    width: 58,
-    height: 58,
-    borderRadius: BorderRadius.lg,
+    width: 56,
+    height: 56,
+    borderRadius: BorderRadius.md,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
@@ -208,49 +223,58 @@ const styles = StyleSheet.create({
   },
   infoColumn: {
     flex: 1,
-    gap: 3,
+    justifyContent: 'center',
+    gap: 5,
+    minWidth: 0,
   },
   productName: {
-    fontSize: Typography.sizes.body,
-    fontWeight: Typography.weights.extraBold,
-    color: Colors.textPrimary,
-  },
-  priceValue: {
-    fontSize: Typography.sizes.bodySm,
+    fontSize: 15,
     fontWeight: Typography.weights.bold,
     color: Colors.textPrimary,
+    letterSpacing: -0.2,
   },
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginTop: 1,
-  },
-  stockText: {
-    fontSize: Typography.sizes.xs,
-    fontWeight: Typography.weights.bold,
-  },
-  stockTextHealthy: {
-    color: Colors.primary,
-  },
-  stockTextLow: {
-    color: Colors.accent,
-  },
-  stockTextOut: {
-    color: Colors.error,
+    gap: 5,
+    minWidth: 0,
   },
   categorySubtext: {
+    flexShrink: 1,
+    fontSize: Typography.sizes.xs,
+    fontWeight: Typography.weights.medium,
+    color: Colors.textSecondary,
+  },
+  metaDot: {
     fontSize: Typography.sizes.xs,
     color: Colors.textMuted,
   },
+  unitSubtext: {
+    fontSize: Typography.sizes.xs,
+    fontWeight: Typography.weights.medium,
+    color: Colors.textMuted,
+  },
+  rightMetricsColumn: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    gap: 5,
+    marginLeft: 2,
+  },
+  priceValue: {
+    fontSize: Typography.sizes.base,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.primaryDark,
+    letterSpacing: -0.3,
+    fontVariant: ['tabular-nums'],
+  },
   chevronWrapper: {
-    paddingLeft: 4,
+    paddingLeft: 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
   chevron: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: Typography.weights.bold,
-    color: Colors.textSecondary,
+    color: Colors.textMuted,
   },
 });

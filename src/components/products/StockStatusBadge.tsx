@@ -11,6 +11,8 @@ import { ProductStockStatus } from '@/types/product';
 
 interface StockStatusBadgeProps {
   status: ProductStockStatus;
+  /** Optional custom label (e.g., "In Stock • 24 pcs" or "Low • 3 pcs") */
+  label?: string;
   size?: 'sm' | 'md';
   style?: StyleProp<ViewStyle>;
 }
@@ -52,16 +54,18 @@ const STATUS_STYLE_MAP: Record<
  */
 export function StockStatusBadge({
   status,
+  label,
   size = 'sm',
   style,
 }: StockStatusBadgeProps) {
   const palette = STATUS_STYLE_MAP[status];
   const isMedium = size === 'md';
+  const displayText = label ?? status;
 
   return (
     <View
       accessibilityRole="text"
-      accessibilityLabel={`Stock status: ${status}`}
+      accessibilityLabel={`Stock status: ${displayText}`}
       style={[
         styles.badge,
         isMedium && styles.badgeMd,
@@ -87,7 +91,7 @@ export function StockStatusBadge({
         ]}
         numberOfLines={1}
         maxFontSizeMultiplier={1.25}>
-        {status}
+        {displayText}
       </Text>
     </View>
   );
@@ -120,13 +124,15 @@ const styles = StyleSheet.create({
     borderRadius: 3.5,
   },
   label: {
-    fontSize: Typography.sizes.caption,
+    fontSize: 11,
     fontWeight: Typography.weights.bold,
     letterSpacing: 0.1,
+    fontVariant: ['tabular-nums'],
   },
   labelMd: {
     fontSize: Typography.sizes.xs,
     fontWeight: Typography.weights.extraBold,
+    fontVariant: ['tabular-nums'],
   },
 });
 
