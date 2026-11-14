@@ -93,6 +93,8 @@ export function TindaMateInput({
       ? 'decimal'
       : keyboardType === 'numeric' || keyboardType === 'number-pad'
       ? 'numeric'
+      : keyboardType === 'phone-pad'
+      ? 'tel'
       : 'text';
 
   const handleContainerPress = () => {

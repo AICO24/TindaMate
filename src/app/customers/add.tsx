@@ -4,6 +4,7 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -28,6 +29,8 @@ import { CreateCustomerInput } from '@/types/customer';
  * Flow: Customers List -> Add Customer -> Save -> Customer Details (`/customers/[id]`).
  */
 export default function AddCustomerScreen() {
+  const { width: windowWidth } = useWindowDimensions();
+  const isCompactPhone = windowWidth < 360;
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -92,7 +95,11 @@ export default function AddCustomerScreen() {
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
-          <View style={styles.bodyContainer}>
+          <View
+            style={[
+              styles.bodyContainer,
+              isCompactPhone && styles.bodyContainerCompact,
+            ]}>
             <CustomerForm
               submitLabel="Save Customer"
               submittingLabel="Saving Customer..."
@@ -128,8 +135,11 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: DashboardMaxContentWidth,
     alignSelf: 'center',
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.four,
+    paddingHorizontal: Spacing.three,
+    paddingTop: Spacing.three,
+  },
+  bodyContainerCompact: {
+    paddingHorizontal: Spacing.twoHalf,
   },
 });
 

@@ -69,6 +69,7 @@ export function CustomerForm({
   });
 
   const [errors, setErrors] = useState<CustomerFormErrors>({});
+  const [isNotesFocused, setIsNotesFocused] = useState(false);
 
   const handleFieldChange = (field: keyof CustomerFormValues, text: string) => {
     setValues((prev) => ({ ...prev, [field]: text }));
@@ -112,13 +113,14 @@ export function CustomerForm({
       ) : null}
 
       {/* Main Form Card */}
-      <View style={styles.card}>
+      <View style={[styles.card, isNarrowPhone && styles.cardCompact]}>
         {/* Customer Name (Required) */}
         <TindaMateInput
-          label="Customer Name"
+          label="Customer Name *"
           value={values.name}
           onChangeText={(t) => handleFieldChange('name', t)}
           placeholder="e.g. Aling Nena or Juan Dela Cruz"
+          autoCapitalize="words"
           accessibilityLabel="Customer Name, required"
           errorMessage={errors.name}
           returnKeyType="next"
@@ -138,7 +140,10 @@ export function CustomerForm({
 
         {/* Notes (Optional Multiline) */}
         <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Notes / Landmark (Optional)</Text>
+          <Text
+            style={[styles.label, isNotesFocused && styles.labelFocused]}>
+            Notes / Landmark (Optional)
+          </Text>
           <TextInput
             value={values.notes}
             onChangeText={(t) => handleFieldChange('notes', t)}
@@ -148,12 +153,20 @@ export function CustomerForm({
             editable={!isSubmitting}
             multiline
             numberOfLines={3}
-            style={styles.notesInput}
+            onFocus={() => setIsNotesFocused(true)}
+            onBlur={() => setIsNotesFocused(false)}
+            style={[
+              styles.notesInput,
+              isNotesFocused && styles.notesInputFocused,
+            ]}
             maxLength={300}
           />
-          <Text style={styles.helperText}>
-            Helpful store notes, location, or customer relationship details.
-          </Text>
+          <View style={styles.helperRow}>
+            <Text style={styles.helperText}>
+              Helpful store notes, location, or relationship details.
+            </Text>
+            <Text style={styles.charCounter}>{values.notes.length}/300</Text>
+          </View>
         </View>
 
         {/* Status Switch (Edit Mode Only) */}
@@ -222,22 +235,41 @@ const styles = StyleSheet.create({
     gap: Spacing.four,
     ...Shadows.xs,
   },
+  cardCompact: {
+    padding: Spacing.three,
+    gap: Spacing.three,
+  },
   fieldGroup: {
     gap: 6,
   },
   label: {
-    fontSize: Typography.sizes.caption,
+    fontSize: Typography.sizes.bodySm,
     fontWeight: Typography.weights.bold,
-    color: Colors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    color: Colors.textPrimary,
+    letterSpacing: 0.1,
+  },
+  labelFocused: {
+    color: Colors.primary,
+  },
+  helperRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: Spacing.two,
   },
   helperText: {
+    flex: 1,
     fontSize: Typography.sizes.xs,
     color: Colors.textMuted,
   },
+  charCounter: {
+    fontSize: Typography.sizes.xs,
+    fontWeight: Typography.weights.semiBold,
+    color: Colors.textMuted,
+    fontVariant: ['tabular-nums'],
+  },
   notesInput: {
-    minHeight: 80,
+    minHeight: 84,
     backgroundColor: Colors.surface,
     borderRadius: BorderRadius.md,
     borderWidth: 1.5,
@@ -247,6 +279,9 @@ const styles = StyleSheet.create({
     fontSize: Typography.sizes.body,
     color: Colors.textPrimary,
     textAlignVertical: 'top',
+  },
+  notesInputFocused: {
+    borderColor: Colors.borderFocused,
   },
   switchRow: {
     flexDirection: 'row',
