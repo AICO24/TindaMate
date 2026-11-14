@@ -76,7 +76,10 @@ export function getCartSnapshot(): CartItem[] {
  * Calculates the total number of items in the cart (sum of quantities).
  */
 export function getCartTotalItemCount(cart: CartItem[]): number {
-  return cart.reduce((sum, item) => sum + (item.quantity > 0 ? item.quantity : 0), 0);
+  return cart.reduce(
+    (sum, item) => sum + (item.quantity > 0 ? item.quantity : 0),
+    0
+  );
 }
 
 /**
@@ -90,7 +93,9 @@ export function addProductWithQuantityToCart(
   if (!product || product.stock_quantity <= 0 || quantityToAdd <= 0) {
     return cart;
   }
+
   const existingIndex = cart.findIndex((item) => item.productId === product.id);
+
   if (existingIndex === -1) {
     const qty = Math.min(quantityToAdd, product.stock_quantity);
     const subtotal = calculateSaleTotal(product.selling_price, qty);
@@ -111,7 +116,10 @@ export function addProductWithQuantityToCart(
   }
 
   const existing = cart[existingIndex];
-  const nextQuantity = Math.min(existing.availableStock, existing.quantity + quantityToAdd);
+  const nextQuantity = Math.min(
+    existing.availableStock,
+    existing.quantity + quantityToAdd
+  );
   const nextSubtotal = calculateSaleTotal(existing.sellingPrice, nextQuantity);
 
   const updatedCart = [...cart];
@@ -120,6 +128,7 @@ export function addProductWithQuantityToCart(
     quantity: nextQuantity,
     subtotal: nextSubtotal,
   };
+
   return updatedCart;
 }
 

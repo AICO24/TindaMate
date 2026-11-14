@@ -164,24 +164,28 @@ export default function ProductDetailsScreen() {
   };
 
   const handleAddToCart = async () => {
-    if (!product || product.stock_quantity <= 0) return;
-    const safeQty = Math.min(
-      Math.max(1, selectedQty),
-      product.stock_quantity
-    );
+    try {
+      if (!product || product.stock_quantity <= 0) return;
+      const safeQty = Math.min(
+        Math.max(1, selectedQty),
+        product.stock_quantity
+      );
 
-    const currentCart = getCartSnapshot();
-    const updatedCart = addProductWithQuantityToCart(
-      currentCart,
-      product,
-      safeQty
-    );
-    await savePersistedCart(updatedCart);
+      const currentCart = getCartSnapshot();
+      const updatedCart = addProductWithQuantityToCart(
+        currentCart,
+        product,
+        safeQty
+      );
+      await savePersistedCart(updatedCart);
 
-    setJustAdded(true);
-    setTimeout(() => {
-      setJustAdded(false);
-    }, 1800);
+      setJustAdded(true);
+      setTimeout(() => {
+        setJustAdded(false);
+      }, 1800);
+    } catch (err) {
+      console.error('[ProductDetails] Error adding to cart:', err);
+    }
   };
 
   const status = product
