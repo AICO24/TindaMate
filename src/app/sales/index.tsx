@@ -1,4 +1,11 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  ComponentRef,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -9,7 +16,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -33,16 +39,16 @@ import { TindaMateLoadingView } from '@/components/animated-icon';
 import {
   CartVectorIcon,
   DashboardBadgeVectorIcon,
-  NavPosIcon,
   NavProductsIcon,
-  SearchVectorIcon,
   TrashVectorIcon,
 } from '@/components/dashboard/DashboardNavIcons';
 import { ProductScreenHeader } from '@/components/products/ProductScreenHeader';
 import { CartItemCard } from '@/components/sales/CartItemCard';
 import { CheckoutModal } from '@/components/sales/CheckoutModal';
 import { SaleSuccessModal } from '@/components/sales/SaleSuccessModal';
+import { FilterChipItem, FilterChipRow } from '@/components/ui/FilterChipRow';
 import { TindaMateButton } from '@/components/ui/TindaMateButton';
+import { TindaMateSearchBar } from '@/components/ui/TindaMateSearchBar';
 import {
   BorderRadius,
   Colors,
@@ -77,8 +83,61 @@ import {
   SalePaymentMethod,
 } from '@/types/sale';
 
+function matchesCategoryFilter(product: Product, selectedCategory: string): boolean {
+  if (selectedCategory === 'All') {
+    return true;
+  }
+
+  const prodCat = (product.category ?? '').trim().toLowerCase();
+  const targetCat = selectedCategory.toLowerCase();
+  if (prodCat === targetCat) {
+    return true;
+  }
+  // Smart keyword matching if store products don't have explicit category set
+  if (!prodCat) {
+    const nameLower = product.name.toLowerCase();
+    if (
+      targetCat === 'drinks' &&
+      (nameLower.includes('cola') ||
+        nameLower.includes('juice') ||
+        nameLower.includes('milo') ||
+        nameLower.includes('coffee') ||
+        nameLower.includes('water') ||
+        nameLower.includes('milk'))
+    ) {
+      return true;
+    }
+    if (
+      targetCat === 'snacks' &&
+      (nameLower.includes('piattos') ||
+        nameLower.includes('chip') ||
+        nameLower.includes('biscuit') ||
+        nameLower.includes('cracker') ||
+        nameLower.includes('bread'))
+    ) {
+      return true;
+    }
+    if (
+      targetCat === 'canned' &&
+      (nameLower.includes('can') ||
+        nameLower.includes('sardine') ||
+        nameLower.includes('tuna') ||
+        nameLower.includes('corned') ||
+        nameLower.includes('lucky me') ||
+        nameLower.includes('noodle') ||
+        nameLower.includes('pancit'))
+    ) {
+      return true;
+    }
+    if (targetCat === 'others') {
+      return true;
+    }
+  }
+  return false;
+}
+
 /**
- * TindaMate POS / Sales Screen (`/sales`) — Design 2.0
+ * TindaMate POS / Sales Screen (`/sales`) — Design 2.0 (Batch S-1)
  *
  * Modern mobile retail POS experience:
  * - Deep Green header ("New Sale") with integrated search bar & quick history/clear actions
@@ -121,6 +180,10 @@ export default function SalesScreen() {
     getCartSnapshot()
   );
   const didApplyInitialProductRef = useRef(false);
+  const scrollViewRef = useRef<ComponentRef<typeof ScrollView> | null>(null);
+  const cartSectionYRef = useRef<number>(0);
+  const [maxStockNotice, setMaxStockNotice] = useState<string | null>(null);
+  const noticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     getPersistedCart().then((persisted) => {
@@ -131,7 +194,12 @@ export default function SalesScreen() {
       setCartItems(latestCart);
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      if (noticeTimerRef.current) {
+        clearTimeout(noticeTimerRef.current);
+      }
+    };
   }, []);
 
   // Sync state changes to persistent cart store (pure updater outside setState)
@@ -196,6 +264,17 @@ export default function SalesScreen() {
     return ['All', ...list];
   }, [sellableProducts]);
 
+  const categoryFilterItems: FilterChipItem<string>[] = useMemo(() => {
+    return categoryOptions.map((cat) => ({
+      id: cat,
+      label: cat,
+      count:
+        cat === 'All'
+          ? sellableProducts.length
+          : sellableProducts.filter((p) => matchesCategoryFilter(p, cat)).length,
+    }));
+  }, [categoryOptions, sellableProducts]);
+
   // Filtered sellable products based on search query & selected category chip
   const filteredProducts = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -209,56 +288,7 @@ export default function SalesScreen() {
         return false;
       }
 
-      if (selectedCategory === 'All') {
-        return true;
-      }
-
-      const prodCat = (product.category ?? '').trim().toLowerCase();
-      const targetCat = selectedCategory.toLowerCase();
-      if (prodCat === targetCat) {
-        return true;
-      }
-      // Smart keyword matching if store products don't have explicit category set
-      if (!prodCat) {
-        const nameLower = product.name.toLowerCase();
-        if (
-          targetCat === 'drinks' &&
-          (nameLower.includes('cola') ||
-            nameLower.includes('juice') ||
-            nameLower.includes('milo') ||
-            nameLower.includes('coffee') ||
-            nameLower.includes('water') ||
-            nameLower.includes('milk'))
-        ) {
-          return true;
-        }
-        if (
-          targetCat === 'snacks' &&
-          (nameLower.includes('piattos') ||
-            nameLower.includes('chip') ||
-            nameLower.includes('biscuit') ||
-            nameLower.includes('cracker') ||
-            nameLower.includes('bread'))
-        ) {
-          return true;
-        }
-        if (
-          targetCat === 'canned' &&
-          (nameLower.includes('can') ||
-            nameLower.includes('sardine') ||
-            nameLower.includes('tuna') ||
-            nameLower.includes('corned') ||
-            nameLower.includes('lucky me') ||
-            nameLower.includes('noodle') ||
-            nameLower.includes('pancit'))
-        ) {
-          return true;
-        }
-        if (targetCat === 'others') {
-          return true;
-        }
-      }
-      return false;
+      return matchesCategoryFilter(product, selectedCategory);
     });
   }, [sellableProducts, searchQuery, selectedCategory]);
 
@@ -348,12 +378,29 @@ export default function SalesScreen() {
       return;
     }
 
-    updateCartState((prev) => {
-      const existing = prev.find((item) => item.productId === product.id);
-      if (existing && existing.quantity >= existing.availableStock) {
-        return prev;
+    const current = getCartSnapshot();
+    const existing = current.find((item) => item.productId === product.id);
+    if (existing && existing.quantity >= existing.availableStock) {
+      setMaxStockNotice(
+        `Max available stock (${existing.availableStock} ${product.unit}) for ${product.name} is already in your cart.`
+      );
+      if (noticeTimerRef.current) {
+        clearTimeout(noticeTimerRef.current);
       }
-      return addProductToCart(prev, product);
+      noticeTimerRef.current = setTimeout(() => {
+        setMaxStockNotice(null);
+      }, 2400);
+      return;
+    }
+
+    setMaxStockNotice(null);
+    updateCartState((prev) => addProductToCart(prev, product));
+  };
+
+  const handleScrollToCart = () => {
+    scrollViewRef.current?.scrollTo({
+      y: Math.max(0, cartSectionYRef.current - Spacing.two),
+      animated: true,
     });
   };
 
@@ -524,75 +571,55 @@ export default function SalesScreen() {
       <KeyboardAvoidingView
         style={styles.mainContainer}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        {/* Top Deep Green POS Header + Search Bar */}
-        <View style={styles.posHeroHeader}>
-          <ProductScreenHeader
-            title="New Sale"
-            showBack={true}
-            onBack={handleBackNavigation}
-            rightElement={
-              <View style={styles.headerRightActions}>
+        {/* Top Deep Green POS Header + Embedded Search Bar */}
+        <ProductScreenHeader
+          title="New Sale"
+          subtitle={
+            !isInitialLoading
+              ? `${sellableProducts.length} ${sellableProducts.length === 1 ? 'item' : 'items'} available`
+              : undefined
+          }
+          showBack={true}
+          onBack={handleBackNavigation}
+          rightElement={
+            <View style={styles.headerRightActions}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="View sales history"
+                onPress={() => router.push('/sales/history')}
+                style={({ pressed }) => [
+                  styles.headerHistoryPill,
+                  pressed && styles.buttonPressed,
+                ]}>
+                <Text style={styles.headerHistoryText}>History</Text>
+              </Pressable>
+              {cartItems.length > 0 ? (
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="View sales history"
-                  onPress={() => router.push('/sales/history')}
+                  accessibilityLabel="Clear cart"
+                  onPress={handleClearCart}
                   style={({ pressed }) => [
-                    styles.headerHistoryPill,
+                    styles.headerIconBtn,
                     pressed && styles.buttonPressed,
                   ]}>
-                  <Text style={styles.headerHistoryText}>History</Text>
+                  <TrashVectorIcon color={Colors.textInverse} size={18} />
                 </Pressable>
-                {cartItems.length > 0 ? (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Clear cart"
-                    onPress={handleClearCart}
-                    style={({ pressed }) => [
-                      styles.headerIconBtn,
-                      pressed && styles.buttonPressed,
-                    ]}>
-                    <TrashVectorIcon color={Colors.textInverse} size={18} />
-                  </Pressable>
-                ) : null}
-              </View>
-            }
-          />
-
-          {/* Search Products Input Bar inside Green Header Zone */}
-          {!isInitialLoading && sellableProducts.length > 0 ? (
-            <View style={styles.searchOuterWrap}>
-              <View style={styles.searchBar}>
-                <SearchVectorIcon color={Colors.textMuted} size={18} />
-                <TextInput
-                  value={searchQuery}
-                  onChangeText={setSearchQuery}
-                  placeholder="Search products..."
-                  placeholderTextColor={Colors.textMuted}
-                  style={styles.searchInput}
-                  returnKeyType="search"
-                  autoCorrect={false}
-                  accessibilityLabel="Search products to add to sale"
-                />
-                {searchQuery.trim().length > 0 ? (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Clear search"
-                    onPress={() => setSearchQuery('')}
-                    style={styles.clearSearchBtn}>
-                    <Text style={styles.clearSearchText}>✕</Text>
-                  </Pressable>
-                ) : (
-                  <View style={styles.scanIconBadge}>
-                    <NavPosIcon color={Colors.primaryDark} />
-                  </View>
-                )}
-              </View>
+              ) : null}
             </View>
+          }>
+          {!isInitialLoading && sellableProducts.length > 0 ? (
+            <TindaMateSearchBar
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholder="Search products..."
+              accessibilityLabel="Search products to add to sale"
+            />
           ) : null}
-        </View>
+        </ProductScreenHeader>
 
         {/* Scrollable POS Workspace */}
         <ScrollView
+          ref={scrollViewRef}
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
@@ -709,35 +736,13 @@ export default function SalesScreen() {
               /* 4. Active POS Layout: Category Chips + 2-Column Product Grid + Integrated Cart */
               <>
                 {/* Category Filter Chips Strip */}
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.categoryChipsScroll}>
-                  {categoryOptions.map((category) => {
-                    const isSelected = selectedCategory === category;
-                    return (
-                      <Pressable
-                        key={category}
-                        accessibilityRole="tab"
-                        accessibilityState={{ selected: isSelected }}
-                        accessibilityLabel={`Filter by ${category}`}
-                        onPress={() => setSelectedCategory(category)}
-                        style={({ pressed }) => [
-                          styles.categoryChip,
-                          isSelected && styles.categoryChipActive,
-                          pressed && styles.buttonPressed,
-                        ]}>
-                        <Text
-                          style={[
-                            styles.categoryChipText,
-                            isSelected && styles.categoryChipTextActive,
-                          ]}>
-                          {category}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </ScrollView>
+                <FilterChipRow
+                  items={categoryFilterItems}
+                  selectedId={selectedCategory}
+                  onSelect={setSelectedCategory}
+                  contentContainerStyle={styles.categoryChipsScroll}
+                  accessibilityLabelPrefix="Category"
+                />
 
                 {outOfStockCount > 0 ? (
                   <View style={styles.hiddenStockNote}>
@@ -745,6 +750,16 @@ export default function SalesScreen() {
                       {outOfStockCount} out-of-stock{' '}
                       {outOfStockCount === 1 ? 'item is' : 'items are'} hidden
                       from POS selection.
+                    </Text>
+                  </View>
+                ) : null}
+
+                {maxStockNotice ? (
+                  <View
+                    style={styles.maxStockNoticeBanner}
+                    accessibilityLiveRegion="polite">
+                    <Text style={styles.maxStockNoticeText}>
+                      {maxStockNotice}
                     </Text>
                   </View>
                 ) : null}
@@ -832,7 +847,7 @@ export default function SalesScreen() {
                             <View style={styles.posTileTextCol}>
                               <Text
                                 style={styles.posProductName}
-                                numberOfLines={1}
+                                numberOfLines={2}
                                 maxFontSizeMultiplier={1.2}>
                                 {product.name}
                               </Text>
@@ -842,7 +857,12 @@ export default function SalesScreen() {
                                 {formatPesoCurrency(product.selling_price)}
                               </Text>
                               <Text
-                                style={styles.posProductStock}
+                                style={[
+                                  styles.posProductStock,
+                                  product.stock_quantity <=
+                                    product.low_stock_threshold &&
+                                    styles.posProductStockLow,
+                                ]}
                                 numberOfLines={1}>
                                 {product.stock_quantity} {product.unit} left
                               </Text>
@@ -865,7 +885,11 @@ export default function SalesScreen() {
                 )}
 
                 {/* Integrated POS Cart Panel */}
-                <View style={styles.integratedCartCard}>
+                <View
+                  style={styles.integratedCartCard}
+                  onLayout={(e) => {
+                    cartSectionYRef.current = e.nativeEvent.layout.y;
+                  }}>
                   <View style={styles.cartHeaderRow}>
                     <View style={styles.cartHeaderLeft}>
                       <Text style={styles.cartHeaderTitle}>
@@ -966,6 +990,44 @@ export default function SalesScreen() {
           </View>
         </ScrollView>
 
+        {/* Sticky Bottom Cart Summary Bar */}
+        {cartItems.length > 0 ? (
+          <View style={styles.stickyCartBar}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`View cart with ${cartSummary.totalItems} items totaling ${formatPesoCurrency(cartSummary.totalAmount)}`}
+              onPress={handleScrollToCart}
+              style={({ pressed }) => [
+                styles.stickyCartInfoBtn,
+                pressed && styles.buttonPressed,
+              ]}>
+              <View style={styles.stickyCartIconBadge}>
+                <CartVectorIcon color={Colors.textInverse} size={18} />
+              </View>
+              <View style={styles.stickyCartTextCol}>
+                <Text style={styles.stickyCartCount} numberOfLines={1}>
+                  {cartSummary.totalItems}{' '}
+                  {cartSummary.totalItems === 1 ? 'item' : 'items'} • View Cart
+                </Text>
+                <Text style={styles.stickyCartTotal} numberOfLines={1}>
+                  {formatPesoCurrency(cartSummary.totalAmount)}
+                </Text>
+              </View>
+            </Pressable>
+
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Checkout with ${cartSummary.totalItems} items for ${formatPesoCurrency(cartSummary.totalAmount)}`}
+              onPress={() => setIsCheckoutVisible(true)}
+              style={({ pressed }) => [
+                styles.stickyCartCheckoutBtn,
+                pressed && styles.buttonPressed,
+              ]}>
+              <Text style={styles.stickyCartCheckoutText}>Checkout →</Text>
+            </Pressable>
+          </View>
+        ) : null}
+
         {/* Persistent Bottom Navigation Bar */}
         <DashboardBottomNav
           activeTab={activeTab}
@@ -1011,13 +1073,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
     justifyContent: 'space-between',
   },
-  posHeroHeader: {
-    backgroundColor: Colors.primaryDark,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    paddingBottom: Spacing.twoHalf,
-    ...Shadows.sm,
-  },
   headerRightActions: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1046,52 +1101,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  searchOuterWrap: {
-    width: '100%',
-    maxWidth: DashboardMaxContentWidth,
-    alignSelf: 'center',
-    paddingHorizontal: Spacing.three,
-    marginTop: 2,
-  },
-  searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.full,
-    paddingLeft: Spacing.threeHalf,
-    paddingRight: 8,
-    minHeight: 46,
-    gap: 10,
-    ...Shadows.xs,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: Typography.sizes.bodySm,
-    fontWeight: Typography.weights.medium,
-    color: Colors.textPrimary,
-    paddingVertical: 8,
-  },
-  clearSearchBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: Colors.surfaceSubtle,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  clearSearchText: {
-    fontSize: 12,
-    fontWeight: Typography.weights.bold,
-    color: Colors.textSecondary,
-  },
-  scanIconBadge: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: Colors.primarySoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   scrollView: {
     flex: 1,
     backgroundColor: Colors.background,
@@ -1109,31 +1118,7 @@ const styles = StyleSheet.create({
   },
   // Category Filter Chips
   categoryChipsScroll: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
     paddingVertical: 2,
-  },
-  categoryChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: BorderRadius.full,
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    ...Shadows.xs,
-  },
-  categoryChipActive: {
-    backgroundColor: Colors.primaryDark,
-    borderColor: Colors.primaryDark,
-  },
-  categoryChipText: {
-    fontSize: Typography.sizes.xs,
-    fontWeight: Typography.weights.bold,
-    color: Colors.textSecondary,
-  },
-  categoryChipTextActive: {
-    color: Colors.textInverse,
   },
   hiddenStockNote: {
     backgroundColor: Colors.warningLight,
@@ -1148,6 +1133,19 @@ const styles = StyleSheet.create({
     color: Colors.warningText,
     fontWeight: Typography.weights.semiBold,
   },
+  maxStockNoticeBanner: {
+    backgroundColor: Colors.warningLight,
+    borderColor: Colors.accentBorder,
+    borderWidth: 1,
+    borderRadius: BorderRadius.md,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+  },
+  maxStockNoticeText: {
+    fontSize: Typography.sizes.caption,
+    color: Colors.warningText,
+    fontWeight: Typography.weights.semiBold,
+  },
   // 2-Column POS Product Grid
   posGridContainer: {
     flexDirection: 'row',
@@ -1158,20 +1156,20 @@ const styles = StyleSheet.create({
   posProductTile: {
     width: '48.2%',
     backgroundColor: Colors.surface,
-    borderRadius: 22,
+    borderRadius: BorderRadius.heroCard,
     borderWidth: 1,
-    borderColor: '#EDF2EE',
-    padding: 12,
-    gap: 8,
+    borderColor: Colors.borderSubtle,
+    padding: Spacing.twoHalf,
+    gap: Spacing.two,
     ...Shadows.sm,
   },
   posProductTileCompact: {
     width: '100%',
   },
   posProductTileInCart: {
-    borderColor: '#10B981',
+    borderColor: Colors.primary,
     borderWidth: 1.5,
-    backgroundColor: '#FCFDFC',
+    backgroundColor: Colors.primarySoft,
   },
   posProductTilePressed: {
     opacity: 0.92,
@@ -1180,8 +1178,8 @@ const styles = StyleSheet.create({
   posImageStage: {
     width: '100%',
     height: 104,
-    borderRadius: 16,
-    backgroundColor: '#F8FAF7',
+    borderRadius: BorderRadius.md,
+    backgroundColor: Colors.surfaceSubtle,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
@@ -1231,22 +1229,28 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: Typography.weights.bold,
     color: Colors.textPrimary,
+    lineHeight: 17,
   },
   posProductPrice: {
     fontSize: 15,
     fontWeight: Typography.weights.extraBold,
-    color: Colors.textPrimary,
+    color: Colors.primaryDark,
+    fontVariant: ['tabular-nums'],
   },
   posProductStock: {
     fontSize: 11,
     fontWeight: Typography.weights.medium,
     color: Colors.textMuted,
   },
+  posProductStockLow: {
+    color: Colors.warningText,
+    fontWeight: Typography.weights.semiBold,
+  },
   posAddCircleBtn: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#0D7A4D',
+    backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     ...Shadows.xs,
@@ -1370,8 +1374,66 @@ const styles = StyleSheet.create({
   cartTotalValue: {
     fontSize: 22,
     fontWeight: Typography.weights.extraBold,
-    color: '#064E3B',
+    color: Colors.primaryDark,
     letterSpacing: -0.4,
+    fontVariant: ['tabular-nums'],
+  },
+  stickyCartBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.twoHalf,
+    backgroundColor: Colors.primaryDark,
+    borderTopLeftRadius: BorderRadius.heroCard,
+    borderTopRightRadius: BorderRadius.heroCard,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.twoHalf,
+    ...Shadows.md,
+  },
+  stickyCartInfoBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.twoHalf,
+    minHeight: 44,
+  },
+  stickyCartIconBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.16)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stickyCartTextCol: {
+    flex: 1,
+    gap: 1,
+  },
+  stickyCartCount: {
+    fontSize: Typography.sizes.caption,
+    fontWeight: Typography.weights.semiBold,
+    color: Colors.primaryBorder,
+  },
+  stickyCartTotal: {
+    fontSize: Typography.sizes.base,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.textInverse,
+    fontVariant: ['tabular-nums'],
+  },
+  stickyCartCheckoutBtn: {
+    backgroundColor: Colors.accent,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: 11,
+    borderRadius: BorderRadius.full,
+    minHeight: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...Shadows.sm,
+  },
+  stickyCartCheckoutText: {
+    fontSize: Typography.sizes.bodySm,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.textInverse,
   },
   emptyCartInner: {
     alignItems: 'center',

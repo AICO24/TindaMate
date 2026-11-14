@@ -8,7 +8,10 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 
-import { DashboardBadgeVectorIcon } from '@/components/dashboard/DashboardNavIcons';
+import {
+  DashboardBadgeVectorIcon,
+  TrashVectorIcon,
+} from '@/components/dashboard/DashboardNavIcons';
 import {
   BorderRadius,
   Colors,
@@ -27,12 +30,11 @@ interface CartItemCardProps {
 }
 
 /**
- * CartItemCard (TindaMate Design 2.0)
+ * CartItemCard (TindaMate Design 2.0 — Batch S-1)
  *
- * Compact, high-density retail POS cart line item row:
- * - Left: Product thumbnail or icon badge
- * - Middle: Product name, unit price, and max-stock warning pill
- * - Right: Compact (− qty +) stepper, bold line subtotal (₱), and quick remove button
+ * Ergonomic two-tier retail POS cart line item card:
+ * - Top row: Product thumbnail/icon, full 2-line product name, unit price, and explicit Remove button (`TrashVectorIcon`)
+ * - Bottom row: Stock / max-stock indicator, accessible 34x34 quantity stepper (`− qty +`), and aligned `tabular-nums` line subtotal
  */
 export function CartItemCard({
   item,
@@ -49,8 +51,8 @@ export function CartItemCard({
 
   return (
     <View style={[styles.card, isCompactPhone && styles.cardCompact]}>
-      <View style={styles.mainRow}>
-        {/* Left Thumbnail / Icon */}
+      {/* Top Section: Thumbnail + Product Name + Unit Price + Remove Button */}
+      <View style={styles.topRow}>
         {item.imageUrl ? (
           <Image
             source={{ uri: item.imageUrl }}
@@ -68,11 +70,10 @@ export function CartItemCard({
           </View>
         )}
 
-        {/* Product Name & Unit Price */}
         <View style={styles.infoCol}>
           <Text
             style={styles.productName}
-            numberOfLines={1}
+            numberOfLines={2}
             maxFontSizeMultiplier={1.25}>
             {item.productName}
           </Text>
@@ -82,62 +83,90 @@ export function CartItemCard({
           </Text>
         </View>
 
-        {/* Compact Stepper (−  qty  +) */}
-        <View style={styles.stepperContainer}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Decrease quantity for ${item.productName}`}
-            accessibilityHint={
-              item.quantity === 1
-                ? 'Decreasing will remove item from cart'
-                : 'Decreases quantity by 1'
-            }
-            onPress={() => onDecrement(item.productId)}
-            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-            style={({ pressed }) => [
-              styles.stepperButton,
-              pressed && styles.stepperButtonPressed,
-            ]}>
-            <Text style={styles.stepperButtonText}>−</Text>
-          </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Remove ${item.productName} from cart`}
+          accessibilityHint="Removes this item completely from the current sale"
+          onPress={() => onRemove(item.productId)}
+          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          style={({ pressed }) => [
+            styles.removeButton,
+            pressed && styles.removeButtonPressed,
+          ]}>
+          <TrashVectorIcon color={Colors.error} size={16} />
+        </Pressable>
+      </View>
 
-          <Text
-            style={styles.quantityText}
-            numberOfLines={1}
-            maxFontSizeMultiplier={1.2}>
-            {item.quantity}
-          </Text>
-
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Increase quantity for ${item.productName}`}
-            accessibilityHint={
-              isAtMaxStock
-                ? 'Cannot increase, stock limit reached'
-                : 'Increases quantity by 1'
-            }
-            disabled={isAtMaxStock}
-            onPress={() => onIncrement(item.productId)}
-            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-            style={({ pressed }) => [
-              styles.stepperButton,
-              styles.stepperButtonPlus,
-              isAtMaxStock && styles.stepperButtonDisabled,
-              pressed && !isAtMaxStock && styles.stepperButtonPressed,
-            ]}>
-            <Text
-              style={[
-                styles.stepperButtonText,
-                styles.stepperButtonPlusText,
-                isAtMaxStock && styles.stepperButtonTextDisabled,
-              ]}>
-              +
+      {/* Bottom Section: Stock Indicator + Stepper + Line Subtotal */}
+      <View style={styles.bottomRow}>
+        <View style={styles.stockStatusCol}>
+          {isAtMaxStock ? (
+            <View style={styles.maxStockPill}>
+              <Text style={styles.maxStockText} numberOfLines={1}>
+                Max stock ({item.availableStock} {item.unit})
+              </Text>
+            </View>
+          ) : (
+            <Text style={styles.availableStockText} numberOfLines={1}>
+              {item.availableStock} {item.unit} in stock
             </Text>
-          </Pressable>
+          )}
         </View>
 
-        {/* Line Subtotal */}
-        <View style={styles.rightCol}>
+        <View style={styles.controlsRightGroup}>
+          <View style={styles.stepperContainer}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Decrease quantity for ${item.productName}`}
+              accessibilityHint={
+                item.quantity === 1
+                  ? 'Decreasing will remove item from cart'
+                  : 'Decreases quantity by 1'
+              }
+              onPress={() => onDecrement(item.productId)}
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+              style={({ pressed }) => [
+                styles.stepperButton,
+                pressed && styles.stepperButtonPressed,
+              ]}>
+              <Text style={styles.stepperButtonText}>−</Text>
+            </Pressable>
+
+            <Text
+              style={styles.quantityText}
+              numberOfLines={1}
+              maxFontSizeMultiplier={1.2}>
+              {item.quantity}
+            </Text>
+
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Increase quantity for ${item.productName}`}
+              accessibilityHint={
+                isAtMaxStock
+                  ? 'Cannot increase, stock limit reached'
+                  : 'Increases quantity by 1'
+              }
+              disabled={isAtMaxStock}
+              onPress={() => onIncrement(item.productId)}
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+              style={({ pressed }) => [
+                styles.stepperButton,
+                styles.stepperButtonPlus,
+                isAtMaxStock && styles.stepperButtonDisabled,
+                pressed && !isAtMaxStock && styles.stepperButtonPressed,
+              ]}>
+              <Text
+                style={[
+                  styles.stepperButtonText,
+                  styles.stepperButtonPlusText,
+                  isAtMaxStock && styles.stepperButtonTextDisabled,
+                ]}>
+                +
+              </Text>
+            </Pressable>
+          </View>
+
           <Text
             style={styles.subtotalValue}
             numberOfLines={1}
@@ -148,90 +177,137 @@ export function CartItemCard({
           </Text>
         </View>
       </View>
-
-      {isAtMaxStock ? (
-        <View style={styles.maxStockBanner}>
-          <Text style={styles.maxStockText}>
-            Max stock reached ({item.availableStock} {item.unit} available)
-          </Text>
-        </View>
-      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#FAFCFA',
-    borderRadius: 14,
+    backgroundColor: Colors.surfaceSubtle,
+    borderRadius: BorderRadius.md,
     borderWidth: 1,
-    borderColor: '#EDF2EE',
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    gap: 4,
+    borderColor: Colors.border,
+    padding: Spacing.twoHalf,
+    gap: Spacing.two,
   },
   cardCompact: {
-    paddingHorizontal: 8,
+    padding: Spacing.two,
+    gap: Spacing.one + 2,
   },
-  mainRow: {
+  topRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 10,
+    alignItems: 'flex-start',
+    gap: Spacing.twoHalf,
   },
   thumbnail: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
+    width: 42,
+    height: 42,
+    borderRadius: BorderRadius.sm,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: Colors.border,
     backgroundColor: Colors.surface,
   },
   iconBox: {
-    width: 38,
-    height: 38,
+    width: 42,
+    height: 42,
     borderRadius: BorderRadius.sm,
     borderWidth: 1,
-    borderColor: Colors.pastel.green.border,
-    backgroundColor: Colors.pastel.green.bg,
+    borderColor: Colors.primaryBorder,
+    backgroundColor: Colors.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
   infoCol: {
     flex: 1,
-    gap: 1,
+    gap: 2,
+    justifyContent: 'center',
   },
   productName: {
     fontSize: Typography.sizes.bodySm,
     fontWeight: Typography.weights.extraBold,
     color: Colors.textPrimary,
+    lineHeight: 18,
   },
   unitPriceText: {
     fontSize: Typography.sizes.caption,
     fontWeight: Typography.weights.semiBold,
     color: Colors.textSecondary,
+    fontVariant: ['tabular-nums'],
   },
   unitSuffix: {
     fontSize: Typography.sizes.caption,
     fontWeight: Typography.weights.regular,
     color: Colors.textMuted,
   },
+  removeButton: {
+    width: 34,
+    height: 34,
+    borderRadius: BorderRadius.sm,
+    backgroundColor: Colors.errorLight,
+    borderWidth: 1,
+    borderColor: Colors.errorBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  removeButtonPressed: {
+    opacity: 0.75,
+    transform: [{ scale: 0.94 }],
+  },
+  bottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.two,
+    paddingTop: Spacing.one,
+    borderTopWidth: 1,
+    borderTopColor: Colors.borderSubtle,
+  },
+  stockStatusCol: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  availableStockText: {
+    fontSize: Typography.sizes.caption,
+    fontWeight: Typography.weights.medium,
+    color: Colors.textMuted,
+    fontVariant: ['tabular-nums'],
+  },
+  maxStockPill: {
+    alignSelf: 'flex-start',
+    backgroundColor: Colors.warningLight,
+    borderColor: Colors.accentBorder,
+    borderWidth: 1,
+    borderRadius: BorderRadius.xs,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: 2,
+  },
+  maxStockText: {
+    fontSize: 11,
+    color: Colors.warningText,
+    fontWeight: Typography.weights.bold,
+    fontVariant: ['tabular-nums'],
+  },
+  controlsRightGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.twoHalf,
+  },
   stepperContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: Colors.backgroundAlt,
+    backgroundColor: Colors.surface,
     borderRadius: BorderRadius.full,
     borderWidth: 1,
     borderColor: Colors.border,
-    paddingHorizontal: 4,
+    paddingHorizontal: 3,
     paddingVertical: 3,
   },
   stepperButton: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: Colors.surface,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: Colors.backgroundAlt,
     borderWidth: 1,
     borderColor: Colors.border,
     alignItems: 'center',
@@ -242,8 +318,8 @@ const styles = StyleSheet.create({
     borderColor: Colors.primaryBorder,
   },
   stepperButtonPressed: {
-    transform: [{ scale: 0.92 }],
-    opacity: 0.8,
+    transform: [{ scale: 0.93 }],
+    opacity: 0.85,
   },
   stepperButtonDisabled: {
     backgroundColor: Colors.backgroundAlt,
@@ -263,48 +339,19 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
   },
   quantityText: {
-    minWidth: 20,
+    minWidth: 22,
     textAlign: 'center',
     fontSize: Typography.sizes.bodySm,
     fontWeight: Typography.weights.extraBold,
     color: Colors.textPrimary,
-  },
-  rightCol: {
-    alignItems: 'flex-end',
-    justifyContent: 'center',
-    minWidth: 64,
-    gap: 2,
+    fontVariant: ['tabular-nums'],
   },
   subtotalValue: {
-    fontSize: Typography.sizes.body,
+    minWidth: 68,
+    textAlign: 'right',
+    fontSize: Typography.sizes.base,
     fontWeight: Typography.weights.extraBold,
-    color: Colors.textPrimary,
-  },
-  removeLink: {
-    paddingHorizontal: 4,
-    paddingVertical: 1,
-  },
-  removeLinkPressed: {
-    opacity: 0.65,
-  },
-  removeLinkText: {
-    fontSize: 10,
-    fontWeight: Typography.weights.bold,
-    color: Colors.error,
-  },
-  maxStockBanner: {
-    backgroundColor: Colors.warningLight,
-    borderColor: Colors.accentBorder,
-    borderWidth: 1,
-    borderRadius: BorderRadius.xs,
-    paddingHorizontal: Spacing.two,
-    paddingVertical: 3,
-    marginTop: 2,
-  },
-  maxStockText: {
-    fontSize: 10,
-    color: Colors.warningText,
-    fontWeight: Typography.weights.semiBold,
+    color: Colors.primaryDark,
+    fontVariant: ['tabular-nums'],
   },
 });
-
