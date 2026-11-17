@@ -41,6 +41,8 @@ import { QuickActionItem } from '@/components/dashboard/QuickActionTile';
 import { RecentActivitySection } from '@/components/dashboard/RecentActivitySection';
 import { UtangOverviewCard } from '@/components/dashboard/UtangOverviewCard';
 import { ExpenseOverviewCard } from '@/components/dashboard/ExpenseOverviewCard';
+import { AlertCircleIcon } from '@/components/ui/AuthIcons';
+import { SectionHeader } from '@/components/ui/SectionHeader';
 import { TindaMateButton } from '@/components/ui/TindaMateButton';
 import { LogoutConfirmModal } from '@/components/ui/LogoutConfirmModal';
 import {
@@ -67,6 +69,7 @@ import { StoreProductSummary } from '@/types/product';
 import { Sale, TodaySalesSummary } from '@/types/sale';
 import { DashboardUtangSummary } from '@/types/customer';
 import { DashboardExpenseSummary } from '@/types/expense';
+import { COGSSummary } from '@/types/profit';
 
 /**
  * TindaMate Main Dashboard Screen
@@ -105,7 +108,9 @@ export default function AuthenticatedDashboardScreen() {
   });
   const [recentSales, setRecentSales] = useState<Sale[]>([]);
   const [allStoreSales, setAllStoreSales] = useState<Sale[]>([]);
-  const [todayGrossProfit, setTodayGrossProfit] = useState<number | null>(null);
+  const [todayCogsSummary, setTodayCogsSummary] = useState<COGSSummary | null>(
+    null
+  );
   const [utangSummary, setUtangSummary] = useState<DashboardUtangSummary>({
     totalOutstandingUtang: 0,
     customersWithBalanceCount: 0,
@@ -155,7 +160,18 @@ export default function AuthenticatedDashboardScreen() {
       });
       setRecentSales([]);
       setAllStoreSales([]);
-      setTodayGrossProfit(0);
+      setTodayCogsSummary({
+        revenue: 0,
+        cogs: 0,
+        grossProfit: 0,
+        saleItemCount: 0,
+        trackedCostItemCount: 0,
+        untrackedCostItemCount: 0,
+        untrackedQuantity: 0,
+        hasIncompleteCosts: false,
+        startDate: null,
+        endDate: null,
+      });
       setUtangSummary({
         totalOutstandingUtang: 0,
         customersWithBalanceCount: 0,
@@ -171,17 +187,7 @@ export default function AuthenticatedDashboardScreen() {
     }
 
     try {
-      const now = new Date();
-      const startOfToday = new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        now.getDate(),
-        0,
-        0,
-        0,
-        0
-      );
-
+      const todayRange = getReportingPeriodRange('today');
       const weekRange = getReportingPeriodRange('week');
 
       const [productRes, salesRes, utangRes, expenseRes, allSalesRes, cogsRes] =
@@ -194,7 +200,10 @@ export default function AuthenticatedDashboardScreen() {
             weekRange.startTimestampISO,
             weekRange.endTimestampISO
           ),
-          fetchStoreCOGSSummary({ startDate: startOfToday }),
+          fetchStoreCOGSSummary({
+            startDate: todayRange.startTimestampISO,
+            endDate: todayRange.endTimestampISO,
+          }),
         ]);
 
       if (productRes.status === 'fulfilled') {
@@ -215,9 +224,9 @@ export default function AuthenticatedDashboardScreen() {
       }
 
       if (cogsRes.status === 'fulfilled') {
-        setTodayGrossProfit(cogsRes.value.grossProfit);
+        setTodayCogsSummary(cogsRes.value);
       } else {
-        setTodayGrossProfit(null);
+        setTodayCogsSummary(null);
       }
 
       if (utangRes.status === 'fulfilled') {
@@ -534,6 +543,14 @@ export default function AuthenticatedDashboardScreen() {
       user?.email?.split('@')[0] ||
       'Store Partner';
 
+  const storeName = isGuestMode
+    ? 'Store Open'
+    : (typeof user?.user_metadata?.store_name === 'string' &&
+        user.user_metadata.store_name.trim()) ||
+      (typeof user?.user_metadata?.business_name === 'string' &&
+        user.user_metadata.business_name.trim()) ||
+      'Store Open';
+
   // Real store product counts from Supabase (centralized stock-status rule)
   const lowStockCount: number = isGuestMode ? 0 : productSummary.lowStockCount;
   const outOfStockCount: number = isGuestMode ? 0 : productSummary.outOfStockCount;
@@ -569,23 +586,24 @@ export default function AuthenticatedDashboardScreen() {
     1
   );
 
-  // Compute real comparison badge text from weeklyBars (today vs yesterday)
+  // Compute real comparison badge text from weeklyBars (only compare within current week Tue..Sun)
   const todayBarAmount =
     weeklyBars[todayBucketIdx]?.amount ?? todaySalesSummary.totalAmount;
-  const yesterdayBucketIdx = (todayBucketIdx + 6) % 7;
-  const yesterdayBarAmount = weeklyBars[yesterdayBucketIdx]?.amount ?? 0;
+  const yesterdayBarAmount =
+    todayBucketIdx > 0 ? (weeklyBars[todayBucketIdx - 1]?.amount ?? 0) : 0;
   let salesComparisonLabel = `${todaySalesSummary.transactionCount} ${
     todaySalesSummary.transactionCount === 1 ? 'sale' : 'sales'
   }`;
-  if (yesterdayBarAmount > 0 && todayBarAmount >= 0) {
-    const pctDiff = ((todayBarAmount - yesterdayBarAmount) / yesterdayBarAmount) * 100;
+  if (todayBucketIdx > 0 && yesterdayBarAmount > 0 && todayBarAmount >= 0) {
+    const pctDiff =
+      ((todayBarAmount - yesterdayBarAmount) / yesterdayBarAmount) * 100;
     const arrow = pctDiff >= 0 ? '↑' : '↓';
     const sign = pctDiff >= 0 ? '+' : '-';
     salesComparisonLabel = `${arrow} ${sign}${Math.abs(pctDiff).toFixed(1)}%`;
-  } else if (todayBarAmount > 0) {
-    salesComparisonLabel = `↑ ${todaySalesSummary.transactionCount} ${
+  } else if (todaySalesSummary.transactionCount > 0) {
+    salesComparisonLabel = `${todaySalesSummary.transactionCount} ${
       todaySalesSummary.transactionCount === 1 ? 'sale' : 'sales'
-    }`;
+    } today`;
   }
 
   // Dynamic Y-Axis labels for Sales Overview chart
@@ -596,11 +614,32 @@ export default function AuthenticatedDashboardScreen() {
     ? `${(Math.ceil(maxWeeklyAmount / 1000) / 2).toFixed(maxWeeklyAmount >= 2000 ? 0 : 1)}k`
     : `${Math.round(maxWeeklyAmount / 2)}`;
 
+  // Truthful Profit & COGS calculations (never equate Gross Sales Revenue to Profit)
+  const hasIncompleteCosts = Boolean(
+    !isGuestMode && todayCogsSummary?.hasIncompleteCosts
+  );
+  const profitTileLabel = hasIncompleteCosts ? 'Est. Profit*' : 'Gross Profit';
   const profitValueDisplay = isGuestMode
     ? '₱0.00'
-    : formatPesoCurrency(todayGrossProfit ?? todaySalesSummary.totalAmount);
+    : todayCogsSummary === null
+    ? '—'
+    : hasIncompleteCosts
+    ? `~${formatPesoCurrency(todayCogsSummary.grossProfit)}`
+    : formatPesoCurrency(todayCogsSummary.grossProfit);
 
-  // Four Quick Action Tiles
+  const todayNetProfit: number | null = isGuestMode
+    ? 0
+    : todayCogsSummary !== null && !expenseError
+    ? Number(
+        (
+          (Math.round(todayCogsSummary.grossProfit * 100) -
+            Math.round(expenseSummary.totalExpenses * 100)) /
+          100
+        ).toFixed(2)
+      )
+    : null;
+
+  // Four Direct Quick Action Tiles
   const quickActions: QuickActionItem[] = [
     {
       id: 'record_sale',
@@ -630,29 +669,29 @@ export default function AuthenticatedDashboardScreen() {
       },
     },
     {
-      id: 'record_utang',
-      labelLine1: 'Utang',
-      labelLine2: '',
-      theme: 'green',
-      onPress: () => {
-        if (isGuestMode) {
-          handleModuleClick('Customers & Utang', 'Batch 8');
-          return;
-        }
-        router.push('/customers' as any);
-      },
-    },
-    {
       id: 'add_expense',
-      labelLine1: 'Expense',
-      labelLine2: '',
-      theme: 'neutral',
+      labelLine1: 'Add',
+      labelLine2: 'Expense',
+      theme: 'green',
       onPress: () => {
         if (isGuestMode) {
           handleModuleClick('Add Expense', 'Batch 9A');
           return;
         }
-        router.push('/expenses' as any);
+        router.push('/expenses/add' as any);
+      },
+    },
+    {
+      id: 'view_reports',
+      labelLine1: 'View',
+      labelLine2: 'Reports',
+      theme: 'blue',
+      onPress: () => {
+        if (isGuestMode) {
+          handleModuleClick('Reports & Analytics', 'Batch 9');
+          return;
+        }
+        router.push('/reports' as any);
       },
     },
   ];
@@ -741,16 +780,16 @@ export default function AuthenticatedDashboardScreen() {
             ) : null}
 
             {/* 2A. Open Greeting + Overlapping Marketplace Illustration */}
-            <Animated.View entering={FadeInDown.duration(400).delay(80)}>
+            <Animated.View entering={FadeInDown.duration(320).delay(40)}>
               <DashboardHeroBanner
                 displayName={displayName}
-                storeName="TindaMate Store"
+                storeName={storeName}
                 onStorePress={() => setIsProfileModalVisible(true)}
               />
             </Animated.View>
 
             {/* 3. Main KPI Card: Today's Sales (Primary Visual Anchor with Orange & Emerald Waves) */}
-            <Animated.View entering={FadeInDown.duration(420).delay(160).springify().damping(18)}>
+            <Animated.View entering={FadeInDown.duration(340).delay(80)}>
               <TodaySalesCard
                 amount={todaySalesSummary.totalAmount}
                 transactionCount={todaySalesSummary.transactionCount}
@@ -766,16 +805,20 @@ export default function AuthenticatedDashboardScreen() {
               />
             </Animated.View>
 
-            {/* 4. Supporting KPIs Row (3 Compact Tiles: Total Sales, Profit, Low Stock) */}
-            <Animated.View entering={FadeInDown.duration(420).delay(240).springify().damping(18)}>
+            {/* 4. Supporting KPIs Row (3 Compact Tiles: Week's Sales, Gross Profit, Stock Alerts) */}
+            <Animated.View entering={FadeInDown.duration(340).delay(110)}>
               <DashboardKpiRow
                 totalSalesCount={
                   allStoreSales.length > 0
                     ? allStoreSales.length
                     : todaySalesSummary.transactionCount
                 }
+                salesLabel={
+                  allStoreSales.length > 0 ? "Week's Sales" : "Today's Sales"
+                }
                 profitDisplay={profitValueDisplay}
-                lowStockCount={lowStockCount}
+                profitLabel={profitTileLabel}
+                stockAlertCount={alertProductCount}
                 isNarrow={isNarrowPhone}
                 onTotalSalesPress={() => {
                   if (isGuestMode) {
@@ -812,7 +855,7 @@ export default function AuthenticatedDashboardScreen() {
             </Animated.View>
 
             {/* 5. Sales Overview Section (Real Data Bar Chart with Tooltip Pointer) */}
-            <Animated.View entering={FadeInDown.duration(420).delay(320)}>
+            <Animated.View entering={FadeInDown.duration(340).delay(140)}>
               <SalesOverviewCard
                 weeklyBars={weeklyBars}
                 maxWeeklyAmount={maxWeeklyAmount}
@@ -830,7 +873,7 @@ export default function AuthenticatedDashboardScreen() {
 
             {/* 6. Operational Low-Stock Alert Banner (Conditional) */}
             {isLowStockWarning ? (
-              <Animated.View entering={FadeInDown.duration(380).delay(380)}>
+              <Animated.View entering={FadeInDown.duration(320).delay(160)}>
                 <LowStockAlert
                   lowStockCount={lowStockCount}
                   outOfStockCount={outOfStockCount}
@@ -848,7 +891,7 @@ export default function AuthenticatedDashboardScreen() {
             ) : null}
 
             {/* 7. Recent Activity Section (Positioned in First Viewport matching Reference) */}
-            <Animated.View entering={FadeInDown.duration(420).delay(440)}>
+            <Animated.View entering={FadeInDown.duration(340).delay(180)}>
               <RecentActivitySection
                 sales={recentSales}
                 isLoading={isCardLoading}
@@ -875,45 +918,148 @@ export default function AuthenticatedDashboardScreen() {
             </Animated.View>
 
             {/* 8. Quick Actions Strip */}
-            <Animated.View entering={FadeInDown.duration(420).delay(500)}>
+            <Animated.View entering={FadeInDown.duration(340).delay(200)}>
               <QuickActionsSection
                 actions={quickActions}
                 isNarrow={isNarrowPhone}
               />
             </Animated.View>
 
-            {/* 9. Store Finances: Utang & Expenses (Scrolled Below-the-Fold Dual Summary) */}
+            {/* 9. Store Finances: Today's Profit/COGS Breakdown + Utang & Expenses */}
             <Animated.View
-              entering={FadeInDown.duration(420).delay(560)}
-              style={styles.storeFinancesRow}>
-              <UtangOverviewCard
-                summary={utangSummary}
-                isLoading={isCardLoading}
-                error={utangError}
-                onRetry={loadDashboardData}
-                onViewCustomers={() => {
+              entering={FadeInDown.duration(340).delay(220)}
+              style={styles.storeFinancesSection}>
+              <SectionHeader
+                title="Store Finances"
+                actionLabel="Reports"
+                onActionPress={() => {
                   if (isGuestMode) {
-                    handleModuleClick('Customers & Utang', 'Batch 8');
+                    handleModuleClick('Reports & Analytics', 'Batch 9');
                     return;
                   }
-                  router.push('/customers' as any);
+                  router.push('/reports' as any);
                 }}
-                compact
               />
-              <ExpenseOverviewCard
-                summary={expenseSummary}
-                isLoading={isCardLoading}
-                error={expenseError}
-                onRetry={loadDashboardData}
-                onViewExpenses={() => {
+
+              {/* Today's Net Profit, COGS & Expenses Breakdown Card */}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Today's Profit and COGS summary. Tap to open full financial reports."
+                onPress={() => {
                   if (isGuestMode) {
-                    handleModuleClick('Expense Management', 'Batch 9A');
+                    handleModuleClick('Reports & Analytics', 'Batch 9');
                     return;
                   }
-                  router.push('/expenses' as any);
+                  router.push('/reports' as any);
                 }}
-                compact
-              />
+                style={({ pressed }) => [
+                  styles.profitSummaryCard,
+                  pressed && styles.cardPressed,
+                ]}>
+                <View style={styles.profitTopRow}>
+                  <View style={styles.profitTitleCol}>
+                    <Text style={styles.profitCardLabel}>
+                      {hasIncompleteCosts
+                        ? "Today's Est. Net Profit*"
+                        : "Today's Net Profit"}
+                    </Text>
+                    <Text style={styles.profitCardSub}>
+                      Gross Profit minus Today&apos;s Expenses
+                    </Text>
+                  </View>
+                  <Text
+                    style={[
+                      styles.profitNetAmount,
+                      todayNetProfit !== null &&
+                        todayNetProfit < 0 &&
+                        styles.profitNetNegative,
+                    ]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.75}>
+                    {todayNetProfit === null
+                      ? '—'
+                      : hasIncompleteCosts
+                      ? `~${formatPesoCurrency(todayNetProfit)}`
+                      : formatPesoCurrency(todayNetProfit)}
+                  </Text>
+                </View>
+
+                <View style={styles.profitMetricsGrid}>
+                  <View style={styles.profitMetricCell}>
+                    <Text style={styles.profitMetricLabel}>Tracked COGS</Text>
+                    <Text style={styles.profitMetricValue}>
+                      {todayCogsSummary === null
+                        ? '—'
+                        : formatPesoCurrency(todayCogsSummary.cogs)}
+                    </Text>
+                  </View>
+                  <View style={styles.profitMetricDivider} />
+                  <View style={styles.profitMetricCell}>
+                    <Text style={styles.profitMetricLabel}>
+                      {hasIncompleteCosts ? 'Est. Gross' : 'Gross Profit'}
+                    </Text>
+                    <Text style={styles.profitMetricValue}>
+                      {todayCogsSummary === null
+                        ? '—'
+                        : formatPesoCurrency(todayCogsSummary.grossProfit)}
+                    </Text>
+                  </View>
+                  <View style={styles.profitMetricDivider} />
+                  <View style={styles.profitMetricCell}>
+                    <Text style={styles.profitMetricLabel}>Expenses</Text>
+                    <Text style={styles.profitMetricValue}>
+                      {expenseError
+                        ? '—'
+                        : formatPesoCurrency(expenseSummary.totalExpenses)}
+                    </Text>
+                  </View>
+                </View>
+
+                {hasIncompleteCosts && todayCogsSummary ? (
+                  <View style={styles.incompleteCostBanner}>
+                    <AlertCircleIcon size={14} color={Colors.warningText} />
+                    <Text style={styles.incompleteCostText} numberOfLines={2}>
+                      {todayCogsSummary.untrackedCostItemCount}{' '}
+                      {todayCogsSummary.untrackedCostItemCount === 1
+                        ? 'sold item is'
+                        : 'sold items are'}{' '}
+                      missing a cost price today — profit is estimated.
+                    </Text>
+                  </View>
+                ) : null}
+              </Pressable>
+
+              <View style={styles.storeFinancesRow}>
+                <UtangOverviewCard
+                  summary={utangSummary}
+                  isLoading={isCardLoading}
+                  error={utangError}
+                  onRetry={loadDashboardData}
+                  onViewCustomers={() => {
+                    if (isGuestMode) {
+                      handleModuleClick('Customers & Utang', 'Batch 8');
+                      return;
+                    }
+                    router.push('/customers' as any);
+                  }}
+                  compact
+                />
+                <ExpenseOverviewCard
+                  summary={expenseSummary}
+                  isLoading={isCardLoading}
+                  error={expenseError}
+                  onRetry={loadDashboardData}
+                  onViewExpenses={() => {
+                    if (isGuestMode) {
+                      handleModuleClick('Expense Management', 'Batch 9A');
+                      return;
+                    }
+                    router.push('/expenses' as any);
+                  }}
+                  compact
+                />
+              </View>
             </Animated.View>
           </View>
         </ScrollView>
@@ -1070,7 +1216,7 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: '#FDF7EB',
+    backgroundColor: Colors.backgroundWarm,
     alignItems: 'stretch',
     justifyContent: 'center',
   },
@@ -1118,7 +1264,97 @@ const styles = StyleSheet.create({
     opacity: 0.92,
     transform: [{ scale: 0.985 }],
   },
-  // 9. Store Finances Row (Utang & Expense dual cards)
+  // 9. Store Finances Section & Profit Summary Card
+  storeFinancesSection: {
+    gap: Spacing.two,
+  },
+  profitSummaryCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingVertical: Spacing.three,
+    paddingHorizontal: Spacing.threeHalf,
+    gap: Spacing.twoHalf,
+    ...Shadows.xs,
+  },
+  profitTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.two,
+  },
+  profitTitleCol: {
+    flex: 1,
+    gap: 1,
+  },
+  profitCardLabel: {
+    fontSize: Typography.sizes.bodySm,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.textPrimary,
+  },
+  profitCardSub: {
+    fontSize: 11,
+    color: Colors.textSecondary,
+    fontWeight: Typography.weights.medium,
+  },
+  profitNetAmount: {
+    fontSize: Typography.sizes.xl,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.primary,
+    fontVariant: ['tabular-nums'],
+    letterSpacing: -0.4,
+  },
+  profitNetNegative: {
+    color: Colors.error,
+  },
+  profitMetricsGrid: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.surfaceSubtle,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: Colors.borderSubtle,
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.two,
+  },
+  profitMetricCell: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 2,
+  },
+  profitMetricDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: Colors.border,
+  },
+  profitMetricLabel: {
+    fontSize: 10.5,
+    fontWeight: Typography.weights.semiBold,
+    color: Colors.textMuted,
+  },
+  profitMetricValue: {
+    fontSize: Typography.sizes.sm,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.textPrimary,
+    fontVariant: ['tabular-nums'],
+  },
+  incompleteCostBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: Colors.warningLight,
+    borderRadius: BorderRadius.sm,
+    paddingHorizontal: Spacing.twoHalf,
+    paddingVertical: 6,
+  },
+  incompleteCostText: {
+    flex: 1,
+    fontSize: 11,
+    fontWeight: Typography.weights.semiBold,
+    color: Colors.warningText,
+    lineHeight: 15,
+  },
   storeFinancesRow: {
     flexDirection: 'row',
     gap: Spacing.twoHalf,
