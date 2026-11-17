@@ -108,7 +108,7 @@ export default function EditCustomerScreen() {
       });
 
       // Navigate back to the customer details screen
-      router.replace(`/customers/${customer.id}` as any);
+      router.replace(`/customers/${customer.id}?status=updated` as any);
     } catch (err: unknown) {
       const msg =
         err instanceof Error
@@ -248,7 +248,8 @@ const styles = StyleSheet.create({
   stateCard: {
     backgroundColor: Colors.surface,
     borderRadius: BorderRadius.xl,
-    padding: Spacing.six,
+    paddingVertical: Spacing.five,
+    paddingHorizontal: Spacing.four,
     alignItems: 'center',
     gap: Spacing.twoHalf,
     borderWidth: 1,

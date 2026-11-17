@@ -90,6 +90,7 @@ export function CustomerCard({ customer, onPress }: CustomerCardProps) {
       onPress={() => onPress(customer)}
       style={({ pressed }) => [
         styles.card,
+        hasUtang && customer.is_active && styles.cardUtang,
         isCompactPhone && styles.cardCompact,
         !customer.is_active && styles.cardInactive,
         pressed && styles.cardPressed,
@@ -107,13 +108,14 @@ export function CustomerCard({ customer, onPress }: CustomerCardProps) {
             style={[
               styles.avatarText,
               isCompactPhone && styles.avatarTextCompact,
+              hasUtang ? styles.avatarTextUtang : styles.avatarTextSettled,
               !customer.is_active && styles.avatarTextInactive,
             ]}>
             {initials}
           </Text>
         </View>
 
-        {/* Center: Name, Inactive Badge, Phone & Last Activity */}
+        {/* Center: Name, Inactive Badge, Phone/Activity & Optional Notes */}
         <View style={styles.infoCol}>
           <View style={styles.nameHeaderRow}>
             <Text
@@ -150,6 +152,16 @@ export function CustomerCard({ customer, onPress }: CustomerCardProps) {
               No transactions yet
             </Text>
           )}
+
+          {customer.notes ? (
+            <Text
+              style={styles.notesSnippet}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+              maxFontSizeMultiplier={1.15}>
+              {customer.notes}
+            </Text>
+          ) : null}
         </View>
 
         {/* Right: Financial Balance / PAID Status + Chevron */}
@@ -173,9 +185,20 @@ export function CustomerCard({ customer, onPress }: CustomerCardProps) {
                 </View>
               </>
             ) : (
-              <View style={styles.paidPill}>
-                <Text style={styles.paidPillText}>PAID</Text>
-              </View>
+              <>
+                <Text
+                  style={[
+                    styles.settledAmountText,
+                    isCompactPhone && styles.balanceAmountTextCompact,
+                  ]}
+                  numberOfLines={1}
+                  maxFontSizeMultiplier={1.25}>
+                  {formattedBalance}
+                </Text>
+                <View style={styles.paidPill}>
+                  <Text style={styles.paidPillText}>PAID</Text>
+                </View>
+              </>
             )}
           </View>
 
@@ -191,12 +214,15 @@ export function CustomerCard({ customer, onPress }: CustomerCardProps) {
 const styles = StyleSheet.create({
   card: {
     backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.xl,
+    borderRadius: BorderRadius.card,
     paddingVertical: 14,
     paddingHorizontal: Spacing.threeHalf,
     borderWidth: 1,
-    borderColor: Colors.borderSubtle,
-    ...Shadows.sm,
+    borderColor: Colors.border,
+    ...Shadows.xs,
+  },
+  cardUtang: {
+    borderColor: Colors.pastel.orange.border,
   },
   cardCompact: {
     paddingVertical: 12,
@@ -226,7 +252,7 @@ const styles = StyleSheet.create({
     borderRadius: 23,
     alignItems: 'center',
     justifyContent: 'center',
-    ...Shadows.xs,
+    borderWidth: 1.5,
   },
   avatarCircleCompact: {
     width: 42,
@@ -234,25 +260,33 @@ const styles = StyleSheet.create({
     borderRadius: 21,
   },
   avatarCircleUtang: {
-    backgroundColor: Colors.accentDark,
+    backgroundColor: Colors.pastel.orange.bg,
+    borderColor: Colors.pastel.orange.border,
   },
   avatarCircleSettled: {
-    backgroundColor: Colors.primary,
+    backgroundColor: Colors.pastel.green.bg,
+    borderColor: Colors.pastel.green.border,
   },
   avatarCircleInactive: {
-    backgroundColor: Colors.pastel.neutral.iconBg,
+    backgroundColor: Colors.backgroundAlt,
+    borderColor: Colors.border,
   },
   avatarText: {
     fontSize: 15,
     fontWeight: Typography.weights.extraBold,
-    color: Colors.textInverse,
     letterSpacing: 0.3,
   },
   avatarTextCompact: {
     fontSize: 14,
   },
+  avatarTextUtang: {
+    color: Colors.pastel.orange.accent,
+  },
+  avatarTextSettled: {
+    color: Colors.pastel.green.accent,
+  },
   avatarTextInactive: {
-    color: Colors.textInverse,
+    color: Colors.textMuted,
   },
   infoCol: {
     flex: 1,
@@ -297,6 +331,11 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     fontWeight: Typography.weights.medium,
   },
+  notesSnippet: {
+    fontSize: 11,
+    color: Colors.textMuted,
+    fontWeight: Typography.weights.regular,
+  },
   rightCluster: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -311,6 +350,12 @@ const styles = StyleSheet.create({
     fontSize: Typography.sizes.base,
     fontWeight: Typography.weights.extraBold,
     color: Colors.accentDark,
+    fontVariant: ['tabular-nums'],
+  },
+  settledAmountText: {
+    fontSize: Typography.sizes.bodySm,
+    fontWeight: Typography.weights.bold,
+    color: Colors.pastel.green.accent,
     fontVariant: ['tabular-nums'],
   },
   balanceAmountTextCompact: {

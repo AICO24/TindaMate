@@ -124,6 +124,7 @@ export function CustomerForm({
           accessibilityLabel="Customer Name, required"
           errorMessage={errors.name}
           returnKeyType="next"
+          style={styles.inputField}
         />
 
         {/* Contact Phone (Optional) */}
@@ -136,6 +137,7 @@ export function CustomerForm({
           accessibilityLabel="Customer phone number"
           errorMessage={errors.phone}
           returnKeyType="next"
+          style={styles.inputField}
         />
 
         {/* Notes (Optional Multiline) */}
@@ -232,8 +234,11 @@ const styles = StyleSheet.create({
     padding: Spacing.four,
     borderWidth: 1,
     borderColor: Colors.border,
-    gap: Spacing.four,
+    gap: Spacing.threeHalf,
     ...Shadows.xs,
+  },
+  inputField: {
+    marginBottom: 0,
   },
   cardCompact: {
     padding: Spacing.three,
