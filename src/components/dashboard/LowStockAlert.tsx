@@ -41,6 +41,7 @@ export function LowStockAlert({
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`${totalAlertCount} products running low or out of stock. Tap to check inventory.`}
+      accessibilityHint="Opens products filtered by stock alerts"
       onPress={onPress}
       onHoverIn={() => setIsHovered(true)}
       onHoverOut={() => setIsHovered(false)}
@@ -97,6 +98,7 @@ const styles = StyleSheet.create({
   },
   cardPressed: {
     opacity: 0.9,
+    transform: [{ scale: 0.985 }],
   },
   rightWaveOuter: {
     position: 'absolute',

@@ -22,6 +22,7 @@ interface DashboardKpiRowProps {
 
 interface InteractiveKpiTileProps {
   accessibilityLabel: string;
+  accessibilityHint?: string;
   value: string | number;
   label: string;
   minimumFontScale?: number;
@@ -30,10 +31,11 @@ interface InteractiveKpiTileProps {
 }
 
 /**
- * Individual KPI Tile with Crisp Black Corner/Border Line on Hover
+ * Individual KPI Tile with Crisp Border Feedback
  */
 function InteractiveKpiTile({
   accessibilityLabel,
+  accessibilityHint,
   value,
   label,
   minimumFontScale = 0.8,
@@ -47,6 +49,7 @@ function InteractiveKpiTile({
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={accessibilityLabel}
+        accessibilityHint={accessibilityHint}
         onPress={onPress}
         onHoverIn={() => setIsHovered(true)}
         onHoverOut={() => setIsHovered(false)}
@@ -101,6 +104,7 @@ export function DashboardKpiRow({
       {/* Tile 1: Weekly Sales Count */}
       <InteractiveKpiTile
         accessibilityLabel={`${salesLabel}: ${totalSalesCount} transactions. Tap to view sales history.`}
+        accessibilityHint="Opens sales history"
         value={totalSalesCount}
         label={salesLabel}
         onPress={onTotalSalesPress}>
@@ -110,6 +114,7 @@ export function DashboardKpiRow({
       {/* Tile 2: Today's Gross Profit */}
       <InteractiveKpiTile
         accessibilityLabel={`${profitLabel}: ${profitDisplay}. Tap to open reports.`}
+        accessibilityHint="Opens financial reports"
         value={profitDisplay}
         label={profitLabel}
         minimumFontScale={0.7}
@@ -120,6 +125,7 @@ export function DashboardKpiRow({
       {/* Tile 3: Stock Alerts (Low Stock + Out of Stock) */}
       <InteractiveKpiTile
         accessibilityLabel={`Stock Alerts: ${stockAlertCount} items low or out of stock. Tap to check inventory.`}
+        accessibilityHint="Opens products inventory"
         value={stockAlertCount}
         label="Stock Alerts"
         onPress={onLowStockPress}>
@@ -161,6 +167,7 @@ const styles = StyleSheet.create({
   },
   cardPressed: {
     opacity: 0.9,
+    transform: [{ scale: 0.98 }],
   },
   iconContainer: {
     alignItems: 'center',

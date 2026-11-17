@@ -39,6 +39,7 @@ export function TodaySalesCard({
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`Today's Sales: ${displayAmount}, ${transactionCount} transactions today. Tap to view sales history.`}
+      accessibilityHint="Navigates to sales history"
       onPress={onPress}
       onHoverIn={() => setIsHovered(true)}
       onHoverOut={() => setIsHovered(false)}
@@ -108,6 +109,7 @@ const styles = StyleSheet.create({
   },
   cardPressed: {
     opacity: 0.92,
+    transform: [{ scale: 0.985 }],
   },
   // Layered Bottom-Right Corner Ribbons matching reference
   leafGreenWave: {
