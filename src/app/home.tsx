@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Modal,
@@ -111,6 +111,8 @@ export default function AuthenticatedDashboardScreen() {
   const [todayCogsSummary, setTodayCogsSummary] = useState<COGSSummary | null>(
     null
   );
+  const [cogsError, setCogsError] = useState<string | null>(null);
+  const activeRequestIdRef = useRef(0);
   const [utangSummary, setUtangSummary] = useState<DashboardUtangSummary>({
     totalOutstandingUtang: 0,
     customersWithBalanceCount: 0,
@@ -172,6 +174,7 @@ export default function AuthenticatedDashboardScreen() {
         startDate: null,
         endDate: null,
       });
+      setCogsError(null);
       setUtangSummary({
         totalOutstandingUtang: 0,
         customersWithBalanceCount: 0,
@@ -183,10 +186,14 @@ export default function AuthenticatedDashboardScreen() {
         expenseCount: 0,
       });
       setExpenseError(null);
+      setErrorMessage(null);
       return;
     }
 
+    const requestId = ++activeRequestIdRef.current;
+
     try {
+      setErrorMessage(null);
       const todayRange = getReportingPeriodRange('today');
       const weekRange = getReportingPeriodRange('week');
 
@@ -205,6 +212,10 @@ export default function AuthenticatedDashboardScreen() {
             endDate: todayRange.endTimestampISO,
           }),
         ]);
+
+      if (requestId !== activeRequestIdRef.current) {
+        return;
+      }
 
       if (productRes.status === 'fulfilled') {
         setProductSummary(productRes.value);
@@ -225,8 +236,15 @@ export default function AuthenticatedDashboardScreen() {
 
       if (cogsRes.status === 'fulfilled') {
         setTodayCogsSummary(cogsRes.value);
+        setCogsError(null);
       } else {
+        console.warn('[Dashboard COGS Error]:', cogsRes.reason);
         setTodayCogsSummary(null);
+        setCogsError(
+          cogsRes.reason instanceof Error
+            ? cogsRes.reason.message
+            : 'Could not load COGS and profit summary.'
+        );
       }
 
       if (utangRes.status === 'fulfilled') {
@@ -253,19 +271,29 @@ export default function AuthenticatedDashboardScreen() {
         );
       }
 
-      if (
-        productRes.status === 'rejected' &&
-        salesRes.status === 'rejected' &&
-        utangRes.status === 'rejected' &&
-        expenseRes.status === 'rejected'
-      ) {
+      if (salesRes.status === 'rejected') {
+        const msg =
+          salesRes.reason instanceof Error
+            ? salesRes.reason.message
+            : 'Could not load sales data. Tap Retry to try again.';
+        setErrorMessage(msg);
+      } else if (productRes.status === 'rejected') {
         const msg =
           productRes.reason instanceof Error
             ? productRes.reason.message
-            : 'Unable to load store dashboard data.';
+            : 'Could not load inventory summary. Tap Retry to try again.';
         setErrorMessage(msg);
+      } else if (
+        allSalesRes.status === 'rejected' &&
+        utangRes.status === 'rejected' &&
+        expenseRes.status === 'rejected'
+      ) {
+        setErrorMessage('Unable to sync all store dashboard data. Tap Retry.');
       }
     } catch (err: unknown) {
+      if (requestId !== activeRequestIdRef.current) {
+        return;
+      }
       const msg =
         err instanceof Error
           ? err.message
@@ -370,6 +398,7 @@ export default function AuthenticatedDashboardScreen() {
    * Re-validates active session, clears errors, and refreshes real store product & sales metrics
    */
   const handleRefresh = async () => {
+    if (isRefreshing) return;
     try {
       setIsRefreshing(true);
       setIsCardLoading(true);
@@ -446,30 +475,33 @@ export default function AuthenticatedDashboardScreen() {
   /**
    * Module click handler: in guest preview mode, guides user to log in; otherwise shows batch roadmap notice
    */
-  const handleModuleClick = (moduleName: string, batchNote: string) => {
-    if (isGuestMode) {
-      const message = `${moduleName} is part of the full TindaMate store manager. Would you like to log in or create an account to start managing your store?`;
-      if (Platform.OS === 'web') {
-        const wantsAuth = window.confirm(message);
-        if (wantsAuth) {
-          router.push('/login');
+  const handleModuleClick = useCallback(
+    (moduleName: string, batchNote: string) => {
+      if (isGuestMode) {
+        const message = `${moduleName} is part of the full TindaMate store manager. Would you like to log in or create an account to start managing your store?`;
+        if (Platform.OS === 'web') {
+          const wantsAuth = window.confirm(message);
+          if (wantsAuth) {
+            router.push('/login');
+          }
+        } else {
+          Alert.alert('Guest Preview', message, [
+            { text: 'Explore More', style: 'cancel' },
+            { text: 'Log In', onPress: () => router.push('/login') },
+          ]);
         }
-      } else {
-        Alert.alert('Guest Preview', message, [
-          { text: 'Explore More', style: 'cancel' },
-          { text: 'Log In', onPress: () => router.push('/login') },
-        ]);
+        return;
       }
-      return;
-    }
 
-    const message = `${moduleName} will be connected to your Supabase store database in ${batchNote}!`;
-    if (Platform.OS === 'web') {
-      window.alert(message);
-    } else {
-      Alert.alert(moduleName, message, [{ text: 'Got it!' }]);
-    }
-  };
+      const message = `${moduleName} will be connected to your Supabase store database in ${batchNote}!`;
+      if (Platform.OS === 'web') {
+        window.alert(message);
+      } else {
+        Alert.alert(moduleName, message, [{ text: 'Got it!' }]);
+      }
+    },
+    [isGuestMode]
+  );
 
   /**
    * Handle bottom tab switching
@@ -519,24 +551,6 @@ export default function AuthenticatedDashboardScreen() {
     }
   };
 
-  if (isLoading) {
-    if (isSplashActive) {
-      // Root AnimatedSplashOverlay is running the launch animation;
-      // keep screen quiet so no duplicate logo is rendered underneath.
-      return (
-        <View style={styles.loadingContainer}>
-          <StatusBar style="light" />
-        </View>
-      );
-    }
-    return (
-      <View style={styles.loadingContainer}>
-        <StatusBar style="light" />
-        <TindaMateLoadingView message="Loading TindaMate Dashboard..." />
-      </View>
-    );
-  }
-
   const displayName = isGuestMode
     ? 'Guest Vendor'
     : user?.user_metadata?.full_name ||
@@ -558,61 +572,84 @@ export default function AuthenticatedDashboardScreen() {
   const isLowStockWarning = alertProductCount > 0;
 
   // Compute Monday-to-Sunday (Mon..Sun) sales bars strictly in Philippine Standard Time
-  const weekRange = getReportingPeriodRange('week');
-  const weeklyBuckets = computeSalesBuckets(
-    allStoreSales,
-    'week',
-    {
-      start: weekRange.startTimestampISO,
-      end: weekRange.endTimestampISO,
-    },
-    new Date()
-  );
+  const {
+    weeklyBars,
+    maxWeeklyAmount,
+    topYAxisValue,
+    midYAxisValue,
+    salesComparisonLabel,
+  } = useMemo(() => {
+    const weekRange = getReportingPeriodRange('week');
+    const weeklyBuckets = computeSalesBuckets(
+      allStoreSales,
+      'week',
+      {
+        start: weekRange.startTimestampISO,
+        end: weekRange.endTimestampISO,
+      },
+      new Date()
+    );
 
-  const phtParts = getPHTParts(new Date());
-  // dowSun: 0 = Sun, 1 = Mon, ..., 6 = Sat -> Mon=0 .. Sat=5, Sun=6
-  const todayBucketIdx = phtParts.dowSun === 0 ? 6 : phtParts.dowSun - 1;
+    const phtParts = getPHTParts(new Date());
+    // dowSun: 0 = Sun, 1 = Mon, ..., 6 = Sat -> Mon=0 .. Sat=5, Sun=6
+    const todayBucketIdx = phtParts.dowSun === 0 ? 6 : phtParts.dowSun - 1;
 
-  const weeklyBars: { label: string; amount: number; isToday: boolean }[] =
-    weeklyBuckets.map((bucket, idx) => ({
-      label: bucket.label,
-      amount: bucket.amount,
-      isToday: idx === todayBucketIdx,
-    }));
+    const bars: { label: string; amount: number; isToday: boolean }[] =
+      weeklyBuckets.map((bucket, idx) => ({
+        label: bucket.label,
+        amount: bucket.amount,
+        isToday: idx === todayBucketIdx,
+      }));
 
-  const maxWeeklyAmount = Math.max(
-    ...weeklyBars.map((b) => b.amount),
-    todaySalesSummary.totalAmount,
-    1
-  );
+    const maxAmount = Math.max(
+      ...bars.map((b) => b.amount),
+      todaySalesSummary.totalAmount,
+      1
+    );
 
-  // Compute real comparison badge text from weeklyBars (only compare within current week Tue..Sun)
-  const todayBarAmount =
-    weeklyBars[todayBucketIdx]?.amount ?? todaySalesSummary.totalAmount;
-  const yesterdayBarAmount =
-    todayBucketIdx > 0 ? (weeklyBars[todayBucketIdx - 1]?.amount ?? 0) : 0;
-  let salesComparisonLabel = `${todaySalesSummary.transactionCount} ${
-    todaySalesSummary.transactionCount === 1 ? 'sale' : 'sales'
-  }`;
-  if (todayBucketIdx > 0 && yesterdayBarAmount > 0 && todayBarAmount >= 0) {
-    const pctDiff =
-      ((todayBarAmount - yesterdayBarAmount) / yesterdayBarAmount) * 100;
-    const arrow = pctDiff >= 0 ? '↑' : '↓';
-    const sign = pctDiff >= 0 ? '+' : '-';
-    salesComparisonLabel = `${arrow} ${sign}${Math.abs(pctDiff).toFixed(1)}%`;
-  } else if (todaySalesSummary.transactionCount > 0) {
-    salesComparisonLabel = `${todaySalesSummary.transactionCount} ${
+    // Compute real comparison badge text from weeklyBars (only compare within current week Tue..Sun)
+    const todayBarAmount =
+      bars[todayBucketIdx]?.amount ?? todaySalesSummary.totalAmount;
+    const yesterdayBarAmount =
+      todayBucketIdx > 0 ? (bars[todayBucketIdx - 1]?.amount ?? 0) : 0;
+    let comparisonLabel = `${todaySalesSummary.transactionCount} ${
       todaySalesSummary.transactionCount === 1 ? 'sale' : 'sales'
-    } today`;
-  }
+    }`;
+    if (todayBucketIdx > 0 && yesterdayBarAmount > 0 && todayBarAmount >= 0) {
+      const pctDiff =
+        ((todayBarAmount - yesterdayBarAmount) / yesterdayBarAmount) * 100;
+      const arrow = pctDiff >= 0 ? '↑' : '↓';
+      const sign = pctDiff >= 0 ? '+' : '-';
+      comparisonLabel = `${arrow} ${sign}${Math.abs(pctDiff).toFixed(1)}%`;
+    } else if (todaySalesSummary.transactionCount > 0) {
+      comparisonLabel = `${todaySalesSummary.transactionCount} ${
+        todaySalesSummary.transactionCount === 1 ? 'sale' : 'sales'
+      } today`;
+    }
 
-  // Dynamic Y-Axis labels for Sales Overview chart
-  const topYAxisValue = maxWeeklyAmount >= 1000
-    ? `${Math.ceil(maxWeeklyAmount / 1000)}k`
-    : `${Math.ceil(maxWeeklyAmount)}`;
-  const midYAxisValue = maxWeeklyAmount >= 1000
-    ? `${(Math.ceil(maxWeeklyAmount / 1000) / 2).toFixed(maxWeeklyAmount >= 2000 ? 0 : 1)}k`
-    : `${Math.round(maxWeeklyAmount / 2)}`;
+    const topY =
+      maxAmount >= 1000
+        ? `${Math.ceil(maxAmount / 1000)}k`
+        : `${Math.ceil(maxAmount)}`;
+    const midY =
+      maxAmount >= 1000
+        ? `${(Math.ceil(maxAmount / 1000) / 2).toFixed(
+            maxAmount >= 2000 ? 0 : 1
+          )}k`
+        : `${Math.round(maxAmount / 2)}`;
+
+    return {
+      weeklyBars: bars,
+      maxWeeklyAmount: maxAmount,
+      topYAxisValue: topY,
+      midYAxisValue: midY,
+      salesComparisonLabel: comparisonLabel,
+    };
+  }, [
+    allStoreSales,
+    todaySalesSummary.totalAmount,
+    todaySalesSummary.transactionCount,
+  ]);
 
   // Truthful Profit & COGS calculations (never equate Gross Sales Revenue to Profit)
   const hasIncompleteCosts = Boolean(
@@ -640,63 +677,84 @@ export default function AuthenticatedDashboardScreen() {
     : null;
 
   // Four Direct Quick Action Tiles
-  const quickActions: QuickActionItem[] = [
-    {
-      id: 'record_sale',
-      labelLine1: 'New',
-      labelLine2: 'Sale',
-      theme: 'orange',
-      isPrimary: true,
-      onPress: () => {
-        if (isGuestMode) {
-          handleModuleClick('Record Sale', 'Batch 4');
-          return;
-        }
-        router.push('/sales' as any);
+  const quickActions: QuickActionItem[] = useMemo(
+    () => [
+      {
+        id: 'record_sale',
+        labelLine1: 'New',
+        labelLine2: 'Sale',
+        theme: 'orange',
+        isPrimary: true,
+        onPress: () => {
+          if (isGuestMode) {
+            handleModuleClick('Record Sale', 'Batch 4');
+            return;
+          }
+          router.push('/sales' as any);
+        },
       },
-    },
-    {
-      id: 'add_product',
-      labelLine1: 'Add',
-      labelLine2: 'Product',
-      theme: 'green',
-      onPress: () => {
-        if (isGuestMode) {
-          handleModuleClick('Add Product', 'Batch 3');
-          return;
-        }
-        router.push('/products/add');
+      {
+        id: 'add_product',
+        labelLine1: 'Add',
+        labelLine2: 'Product',
+        theme: 'green',
+        onPress: () => {
+          if (isGuestMode) {
+            handleModuleClick('Add Product', 'Batch 3');
+            return;
+          }
+          router.push('/products/add');
+        },
       },
-    },
-    {
-      id: 'add_expense',
-      labelLine1: 'Add',
-      labelLine2: 'Expense',
-      theme: 'green',
-      onPress: () => {
-        if (isGuestMode) {
-          handleModuleClick('Add Expense', 'Batch 9A');
-          return;
-        }
-        router.push('/expenses/add' as any);
+      {
+        id: 'add_expense',
+        labelLine1: 'Add',
+        labelLine2: 'Expense',
+        theme: 'green',
+        onPress: () => {
+          if (isGuestMode) {
+            handleModuleClick('Add Expense', 'Batch 9A');
+            return;
+          }
+          router.push('/expenses/add' as any);
+        },
       },
-    },
-    {
-      id: 'view_reports',
-      labelLine1: 'View',
-      labelLine2: 'Reports',
-      theme: 'blue',
-      onPress: () => {
-        if (isGuestMode) {
-          handleModuleClick('Reports & Analytics', 'Batch 9');
-          return;
-        }
-        router.push('/reports' as any);
+      {
+        id: 'view_reports',
+        labelLine1: 'View',
+        labelLine2: 'Reports',
+        theme: 'blue',
+        onPress: () => {
+          if (isGuestMode) {
+            handleModuleClick('Reports & Analytics', 'Batch 9');
+            return;
+          }
+          router.push('/reports' as any);
+        },
       },
-    },
-  ];
+    ],
+    [isGuestMode, handleModuleClick]
+  );
 
   const activeNavTab: NavTab = isProfileModalVisible ? 'more' : routeTab;
+
+  if (isLoading) {
+    if (isSplashActive) {
+      // Root AnimatedSplashOverlay is running the launch animation;
+      // keep screen quiet so no duplicate logo is rendered underneath.
+      return (
+        <View style={styles.loadingContainer}>
+          <StatusBar style="light" />
+        </View>
+      );
+    }
+    return (
+      <View style={styles.loadingContainer}>
+        <StatusBar style="light" />
+        <TindaMateLoadingView message="Loading TindaMate Dashboard..." />
+      </View>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['left', 'right']}>
@@ -945,6 +1003,7 @@ export default function AuthenticatedDashboardScreen() {
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="Today's Profit and COGS summary. Tap to open full financial reports."
+                accessibilityHint="Opens Reports & Analytics for detailed COGS and profit breakdown"
                 onPress={() => {
                   if (isGuestMode) {
                     handleModuleClick('Reports & Analytics', 'Batch 9');
@@ -1016,7 +1075,21 @@ export default function AuthenticatedDashboardScreen() {
                   </View>
                 </View>
 
-                {hasIncompleteCosts && todayCogsSummary ? (
+                {!isGuestMode && isCardLoading && todayCogsSummary === null ? (
+                  <View style={styles.profitLoadingBanner}>
+                    <Text style={styles.profitLoadingText}>
+                      Refreshing profit &amp; COGS summary...
+                    </Text>
+                  </View>
+                ) : !isGuestMode && cogsError ? (
+                  <View style={styles.incompleteCostBanner}>
+                    <AlertCircleIcon size={14} color={Colors.warningText} />
+                    <Text style={styles.incompleteCostText} numberOfLines={2}>
+                      Profit &amp; COGS data unavailable — pull down or tap Retry
+                      above.
+                    </Text>
+                  </View>
+                ) : hasIncompleteCosts && todayCogsSummary ? (
                   <View style={styles.incompleteCostBanner}>
                     <AlertCircleIcon size={14} color={Colors.warningText} />
                     <Text style={styles.incompleteCostText} numberOfLines={2}>
@@ -1080,7 +1153,12 @@ export default function AuthenticatedDashboardScreen() {
         <Pressable
           style={styles.modalOverlay}
           onPress={handleCloseProfileModal}>
-          <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
+          <Pressable
+            style={[
+              styles.modalCard,
+              { paddingBottom: Math.max(Spacing.four, insets.bottom + Spacing.three) },
+            ]}
+            onPress={(e) => e.stopPropagation()}>
             {/* Modal Header */}
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle} accessibilityRole="header">
@@ -1091,7 +1169,8 @@ export default function AuthenticatedDashboardScreen() {
                 accessibilityLabel="Close Store Account modal"
                 accessibilityHint="Dismisses store account modal"
                 onPress={handleCloseProfileModal}
-                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                style={({ pressed }) => pressed && { opacity: 0.6 }}>
                 <Text style={styles.modalCloseText}>✕</Text>
               </Pressable>
             </View>
@@ -1111,7 +1190,9 @@ export default function AuthenticatedDashboardScreen() {
               </View>
               <View style={styles.userInfoText}>
                 <Text style={styles.userFullName} maxFontSizeMultiplier={1.3}>
-                  {displayName}
+                  {storeName !== 'Store Open'
+                    ? `${displayName} • ${storeName}`
+                    : displayName}
                 </Text>
                 <Text style={styles.userEmailText} maxFontSizeMultiplier={1.3}>
                   {isGuestMode ? 'Browsing as Guest' : user?.email}
@@ -1354,6 +1435,18 @@ const styles = StyleSheet.create({
     fontWeight: Typography.weights.semiBold,
     color: Colors.warningText,
     lineHeight: 15,
+  },
+  profitLoadingBanner: {
+    backgroundColor: Colors.surfaceSubtle,
+    borderRadius: BorderRadius.sm,
+    paddingHorizontal: Spacing.twoHalf,
+    paddingVertical: 6,
+    alignItems: 'center',
+  },
+  profitLoadingText: {
+    fontSize: 11,
+    fontWeight: Typography.weights.medium,
+    color: Colors.textSecondary,
   },
   storeFinancesRow: {
     flexDirection: 'row',

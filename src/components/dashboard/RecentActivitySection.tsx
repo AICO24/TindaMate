@@ -40,6 +40,7 @@ interface RecentActivitySectionProps {
  */
 export function RecentActivitySection({
   sales,
+  isLoading = false,
   onViewAll,
   onSalePress,
   hasActivity = false,
@@ -84,7 +85,23 @@ export function RecentActivitySection({
         ) : null}
       </View>
 
-      {hasSales && sales ? (
+      {isLoading && !hasSales ? (
+        /* Compact Skeleton Rows during initial/refresh loading when no cached rows exist */
+        <View
+          style={styles.rowsContainer}
+          accessibilityLabel="Loading recent sales activity">
+          {[0, 1].map((idx) => (
+            <View key={idx} style={styles.salePillRow}>
+              <View style={styles.skeletonCircle} />
+              <View style={styles.saleInfoCol}>
+                <View style={styles.skeletonLinePrimary} />
+                <View style={styles.skeletonLineSecondary} />
+              </View>
+              <View style={styles.skeletonAmount} />
+            </View>
+          ))}
+        </View>
+      ) : hasSales && sales ? (
         /* Compact Floating Pill Rows matching reference */
         <View style={styles.rowsContainer}>
           {sales.slice(0, 3).map((sale) => {
@@ -320,5 +337,30 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: Typography.weights.medium,
     color: '#475569',
+  },
+  skeletonCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: Colors.border,
+  },
+  skeletonLinePrimary: {
+    width: '62%',
+    height: 12,
+    borderRadius: BorderRadius.xs,
+    backgroundColor: Colors.border,
+  },
+  skeletonLineSecondary: {
+    width: '40%',
+    height: 10,
+    borderRadius: BorderRadius.xs,
+    backgroundColor: Colors.borderSubtle,
+    marginTop: 4,
+  },
+  skeletonAmount: {
+    width: 54,
+    height: 14,
+    borderRadius: BorderRadius.xs,
+    backgroundColor: Colors.border,
   },
 });
