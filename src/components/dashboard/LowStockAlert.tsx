@@ -31,7 +31,9 @@ export function LowStockAlert({
   if (totalAlertCount <= 0) return null;
 
   const titleText =
-    lowStockCount > 0
+    lowStockCount > 0 && outOfStockCount > 0
+      ? `${lowStockCount} Low Stock • ${outOfStockCount} Out of Stock`
+      : lowStockCount > 0
       ? `${lowStockCount} ${lowStockCount === 1 ? 'Product Running Low' : 'Products Running Low'}`
       : `${outOfStockCount} ${outOfStockCount === 1 ? 'Product Out of Stock' : 'Products Out of Stock'}`;
 
@@ -91,7 +93,7 @@ const styles = StyleSheet.create({
     ...Shadows.sm,
   },
   cardHovered: {
-    borderColor: '#000000',
+    borderColor: '#F59E0B',
   },
   cardPressed: {
     opacity: 0.9,

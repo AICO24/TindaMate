@@ -6,12 +6,14 @@ import {
   KpiLowStockBoxIcon,
   KpiProfitCoinIcon,
 } from './DashboardNavIcons';
-import { Shadows, Spacing, Typography } from '@/constants/theme';
+import { Colors, Shadows, Spacing, Typography } from '@/constants/theme';
 
 interface DashboardKpiRowProps {
   totalSalesCount: number;
+  salesLabel?: string;
   profitDisplay: string;
-  lowStockCount: number;
+  profitLabel?: string;
+  stockAlertCount: number;
   onTotalSalesPress?: () => void;
   onProfitPress?: () => void;
   onLowStockPress?: () => void;
@@ -85,8 +87,10 @@ function InteractiveKpiTile({
  */
 export function DashboardKpiRow({
   totalSalesCount,
+  salesLabel = "Week's Sales",
   profitDisplay,
-  lowStockCount,
+  profitLabel = 'Gross Profit',
+  stockAlertCount,
   onTotalSalesPress,
   onProfitPress,
   onLowStockPress,
@@ -94,30 +98,30 @@ export function DashboardKpiRow({
 }: DashboardKpiRowProps) {
   return (
     <View style={[styles.row, isNarrow && styles.rowNarrow]}>
-      {/* Tile 1: Total Sales Count */}
+      {/* Tile 1: Weekly Sales Count */}
       <InteractiveKpiTile
-        accessibilityLabel={`Total Sales: ${totalSalesCount} transactions. Tap to view sales history.`}
+        accessibilityLabel={`${salesLabel}: ${totalSalesCount} transactions. Tap to view sales history.`}
         value={totalSalesCount}
-        label="Total Sales"
+        label={salesLabel}
         onPress={onTotalSalesPress}>
         <KpiCartCheckIcon size={25} />
       </InteractiveKpiTile>
 
-      {/* Tile 2: Gross Profit */}
+      {/* Tile 2: Today's Gross Profit */}
       <InteractiveKpiTile
-        accessibilityLabel={`Profit: ${profitDisplay}. Tap to open reports.`}
+        accessibilityLabel={`${profitLabel}: ${profitDisplay}. Tap to open reports.`}
         value={profitDisplay}
-        label="Profit"
+        label={profitLabel}
         minimumFontScale={0.7}
         onPress={onProfitPress}>
         <KpiProfitCoinIcon size={25} />
       </InteractiveKpiTile>
 
-      {/* Tile 3: Low Stock Count */}
+      {/* Tile 3: Stock Alerts (Low Stock + Out of Stock) */}
       <InteractiveKpiTile
-        accessibilityLabel={`Low Stock: ${lowStockCount} items. Tap to check inventory.`}
-        value={lowStockCount}
-        label="Low Stock"
+        accessibilityLabel={`Stock Alerts: ${stockAlertCount} items low or out of stock. Tap to check inventory.`}
+        value={stockAlertCount}
+        label="Stock Alerts"
         onPress={onLowStockPress}>
         <KpiLowStockBoxIcon size={25} />
       </InteractiveKpiTile>
@@ -153,7 +157,7 @@ const styles = StyleSheet.create({
     ...Shadows.sm,
   },
   cardHovered: {
-    borderColor: '#000000',
+    borderColor: Colors.primaryBorder,
   },
   cardPressed: {
     opacity: 0.9,
@@ -168,6 +172,7 @@ const styles = StyleSheet.create({
     color: '#0F172A',
     letterSpacing: -0.4,
     lineHeight: 24,
+    fontVariant: ['tabular-nums'],
   },
   label: {
     fontSize: 12,

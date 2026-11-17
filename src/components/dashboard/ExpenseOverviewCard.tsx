@@ -7,7 +7,7 @@ import {
   View,
 } from 'react-native';
 
-import { NavMoreIcon } from './DashboardNavIcons';
+import { DashboardBadgeVectorIcon } from './DashboardNavIcons';
 import {
   BorderRadius,
   Colors,
@@ -57,7 +57,7 @@ export function ExpenseOverviewCard({
         }`;
 
   const outlayStatusLabel = hasExpenses
-    ? 'Operating outlay'
+    ? 'Today outlay'
     : 'Zero outlay';
 
   // Compact card presentation (for side-by-side Store Finances row)
@@ -65,7 +65,7 @@ export function ExpenseOverviewCard({
     return (
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`Expenses summary: ${formatPesoCurrency(summary.totalExpenses)}, ${expenseCountLabel}. Tap to view expenses.`}
+        accessibilityLabel={`Today's Expenses summary: ${formatPesoCurrency(summary.totalExpenses)}, ${expenseCountLabel}. Tap to view expenses.`}
         onPress={isLoading ? undefined : onViewExpenses}
         onHoverIn={() => setIsHovered(true)}
         onHoverOut={() => setIsHovered(false)}
@@ -78,10 +78,10 @@ export function ExpenseOverviewCard({
         <View style={styles.compactTopRow}>
           <View style={styles.compactHeaderLeft}>
             <View style={styles.compactIconCircle}>
-              <NavMoreIcon size={13} color="#EF4444" />
+              <DashboardBadgeVectorIcon type="add_expense" color="#EF4444" />
             </View>
             <Text style={styles.compactTitleText} numberOfLines={1}>
-              Expenses
+              Today&apos;s Expenses
             </Text>
           </View>
 
@@ -138,7 +138,7 @@ export function ExpenseOverviewCard({
       <View style={styles.topRow}>
         <View style={styles.headerLeft}>
           <View style={styles.iconCircle}>
-            <NavMoreIcon size={18} color="#EF4444" />
+            <DashboardBadgeVectorIcon type="add_expense" color="#EF4444" />
           </View>
           <View>
             <Text style={styles.sectionTitle} accessibilityRole="header">
@@ -274,7 +274,7 @@ const styles = StyleSheet.create({
     ...Shadows.xs,
   },
   compactCardHovered: {
-    borderColor: '#000000',
+    borderColor: Colors.primaryBorder,
   },
   compactCardPressed: {
     opacity: 0.9,
@@ -456,6 +456,7 @@ const styles = StyleSheet.create({
     ...Typography.presets.heroValue,
     color: Colors.textPrimary,
     letterSpacing: -0.5,
+    fontVariant: ['tabular-nums'],
   },
   totalExpenseAmountNarrow: {
     fontSize: Typography.sizes.xl,
