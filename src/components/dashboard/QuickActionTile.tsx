@@ -7,7 +7,10 @@ import {
   View,
 } from 'react-native';
 
-import { DashboardBadgeVectorIcon } from './DashboardNavIcons';
+import {
+  DashboardBadgeVectorIcon,
+  TrendChartVectorIcon,
+} from './DashboardNavIcons';
 import {
   BorderRadius,
   Colors,
@@ -37,6 +40,7 @@ const ACTION_VECTOR_IDS = new Set([
   'record_sale',
   'add_expense',
   'record_utang',
+  'view_reports',
 ]);
 
 /**
@@ -88,7 +92,9 @@ export function QuickActionTile({ item }: QuickActionTileProps) {
           ]}
           accessible={false}
           importantForAccessibility="no-hide-descendants">
-          {hasVectorIcon ? (
+          {item.id === 'view_reports' ? (
+            <TrendChartVectorIcon size={16} color={Colors.textInverse} />
+          ) : hasVectorIcon ? (
             <DashboardBadgeVectorIcon
               type={
                 item.id as
@@ -149,7 +155,7 @@ const styles = StyleSheet.create({
     borderColor: '#E2E8F0',
   },
   tileHovered: {
-    borderColor: '#000000',
+    borderColor: Colors.primaryBorder,
   },
   tilePressed: {
     opacity: 0.9,

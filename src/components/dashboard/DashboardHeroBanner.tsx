@@ -9,9 +9,11 @@ import {
 
 import { DashboardMarketIllustration } from './DashboardMarketIllustration';
 import {
+  Colors,
   Spacing,
   Typography,
 } from '@/constants/theme';
+import { getPHTParts } from '@/lib/pht';
 
 interface DashboardHeroBannerProps {
   displayName?: string;
@@ -47,12 +49,13 @@ export function getFriendlyFirstName(rawName?: string | null): string {
  * - Right: Front-facing 3D Sari-Sari Store House illustration
  */
 export function DashboardHeroBanner({
+  storeName = 'Store Open',
   onStorePress,
 }: DashboardHeroBannerProps) {
   const [isPillHovered, setIsPillHovered] = useState(false);
 
   const getGreeting = () => {
-    const hour = new Date().getHours();
+    const { hour } = getPHTParts(new Date());
     if (hour < 12) return 'Good morning,';
     if (hour < 18) return 'Good afternoon,';
     return 'Good evening,';
@@ -100,7 +103,7 @@ export function DashboardHeroBanner({
               style={styles.greetingSubtext}
               numberOfLines={1}
               maxFontSizeMultiplier={1.15}>
-              Store Open • Today&apos;s summary
+              {storeName} • Today&apos;s summary
             </Text>
           </Pressable>
         </View>
@@ -165,7 +168,7 @@ const styles = StyleSheet.create({
   },
   statusPillHovered: {
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderColor: '#000000',
+    borderColor: Colors.primaryBorder,
   },
   statusPillPressed: {
     opacity: 0.85,

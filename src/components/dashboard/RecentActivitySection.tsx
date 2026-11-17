@@ -87,14 +87,24 @@ export function RecentActivitySection({
       {hasSales && sales ? (
         /* Compact Floating Pill Rows matching reference */
         <View style={styles.rowsContainer}>
-          {sales.slice(0, 2).map((sale) => {
+          {sales.slice(0, 3).map((sale) => {
             const formattedTotal = formatPesoCurrency(sale.total_amount);
             const formattedTime = formatRecentSaleTime(sale.created_at);
             const isCredit = sale.payment_method === 'credit';
             const titleLabel = sale.product_name || 'New Sale';
             const isHovered = hoveredSaleId === sale.id;
 
-            const accessibilityLabel = `Sale: ${titleLabel}, total ${formattedTotal}, ${formattedTime}`;
+            const metaParts: string[] = [];
+            if ((sale.item_count ?? 1) > 1) {
+              metaParts.push(`${sale.item_count} items`);
+            }
+            if (isCredit && sale.customer_name) {
+              metaParts.push(`Utang • ${sale.customer_name}`);
+            }
+            metaParts.push(formattedTime);
+            const metaLine = metaParts.join(' · ');
+
+            const accessibilityLabel = `Sale: ${titleLabel}, total ${formattedTotal}, ${metaLine}`;
 
             return (
               <Pressable
@@ -127,37 +137,37 @@ export function RecentActivitySection({
                   )}
                 </View>
 
-                {/* Middle: Single-line "New Sale • ₱850" format */}
-                <View style={styles.saleInlineRow}>
+                {/* Middle: Title + Context Meta */}
+                <View style={styles.saleInfoCol}>
+                  <View style={styles.saleTitleRow}>
+                    <Text
+                      style={styles.saleInlinePrimary}
+                      numberOfLines={1}
+                      ellipsizeMode="tail"
+                      maxFontSizeMultiplier={1.2}>
+                      {titleLabel}
+                    </Text>
+                    {isCredit && (
+                      <View style={styles.utangBadge}>
+                        <Text style={styles.utangBadgeText}>Utang</Text>
+                      </View>
+                    )}
+                  </View>
                   <Text
-                    style={styles.saleInlinePrimary}
+                    style={styles.saleTimeText}
                     numberOfLines={1}
                     ellipsizeMode="tail"
-                    maxFontSizeMultiplier={1.2}>
-                    {titleLabel}
+                    maxFontSizeMultiplier={1.15}>
+                    {metaLine}
                   </Text>
-                  <Text style={styles.saleInlineBullet} importantForAccessibility="no">
-                    •
-                  </Text>
-                  <Text
-                    style={styles.saleInlineAmount}
-                    numberOfLines={1}
-                    maxFontSizeMultiplier={1.2}>
-                    {formattedTotal}
-                  </Text>
-                  {isCredit && (
-                    <View style={styles.utangBadge}>
-                      <Text style={styles.utangBadgeText}>Utang</Text>
-                    </View>
-                  )}
                 </View>
 
-                {/* Right: Relative Timestamp */}
+                {/* Right: Tabular Peso Amount */}
                 <Text
-                  style={styles.saleTimeText}
+                  style={styles.saleInlineAmount}
                   numberOfLines={1}
-                  maxFontSizeMultiplier={1.15}>
-                  {formattedTime}
+                  maxFontSizeMultiplier={1.2}>
+                  {formattedTotal}
                 </Text>
               </Pressable>
             );
@@ -233,7 +243,7 @@ const styles = StyleSheet.create({
     ...Shadows.xs,
   },
   salePillRowHovered: {
-    borderColor: '#000000',
+    borderColor: Colors.primaryBorder,
   },
   saleRowPressed: {
     backgroundColor: '#F8FAFC',
@@ -250,29 +260,28 @@ const styles = StyleSheet.create({
   saleIconCircleCredit: {
     backgroundColor: '#FFEDD5',
   },
-  saleInlineRow: {
+  saleInfoCol: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
+    gap: 2,
     overflow: 'hidden',
   },
+  saleTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   saleInlinePrimary: {
-    fontSize: 14,
+    fontSize: 13.5,
     fontWeight: Typography.weights.bold,
     color: '#0F172A',
     flexShrink: 1,
-  },
-  saleInlineBullet: {
-    fontSize: 13,
-    fontWeight: Typography.weights.bold,
-    color: '#334155',
   },
   saleInlineAmount: {
     fontSize: 14,
     fontWeight: Typography.weights.extraBold,
     color: '#0F172A',
     fontVariant: ['tabular-nums'],
+    flexShrink: 0,
   },
   utangBadge: {
     backgroundColor: '#FEF3C7',
@@ -286,7 +295,7 @@ const styles = StyleSheet.create({
     color: '#D97706',
   },
   saleTimeText: {
-    fontSize: 12.5,
+    fontSize: 11.5,
     color: '#475569',
     fontWeight: Typography.weights.medium,
   },
