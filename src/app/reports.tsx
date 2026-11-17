@@ -1,5 +1,6 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -100,22 +101,38 @@ export default function ReportsScreen() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isPeriodSwitching, setIsPeriodSwitching] = useState(false);
+  const [isSalesUnavailable, setIsSalesUnavailable] = useState(false);
+  const [isProductsUnavailable, setIsProductsUnavailable] = useState(false);
+  const [isTopProductsUnavailable, setIsTopProductsUnavailable] =
+    useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const activeRequestIdRef = React.useRef(0);
+  const activeRequestIdRef = useRef(0);
+  const hasLoadedOnceRef = useRef(false);
+  const selectedPeriodRef = useRef<ReportPeriod>(selectedPeriod);
+  const productsRef = useRef<Product[]>([]);
 
   const loadAnalytics = useCallback(
-    async (period: ReportPeriod = selectedPeriod, showRefresh = false) => {
+    async (
+      period: ReportPeriod,
+      mode: 'initial' | 'period' | 'refresh' = 'initial'
+    ) => {
       const requestId = ++activeRequestIdRef.current;
       try {
-        if (showRefresh) {
+        if (mode === 'refresh') {
           setIsRefreshing(true);
+        } else if (mode === 'period') {
+          setIsPeriodSwitching(true);
         } else {
           setIsLoading(true);
         }
         setErrorMessage(null);
 
         const { data: sessionData } = await supabase.auth.getSession();
+        if (requestId !== activeRequestIdRef.current) {
+          return;
+        }
         if (!sessionData?.session) {
           router.replace('/');
           return;
@@ -124,13 +141,13 @@ export default function ReportsScreen() {
         const periodRange = getReportingPeriodRange(period);
 
         const [
-          salesData,
-          productsData,
-          cogsData,
-          utangData,
-          expenseData,
-          topProductsData,
-        ] = await Promise.all([
+          salesRes,
+          productsRes,
+          cogsRes,
+          utangRes,
+          expenseRes,
+          topProductsRes,
+        ] = await Promise.allSettled([
           fetchStoreSales(
             periodRange.startTimestampISO,
             periodRange.endTimestampISO
@@ -140,7 +157,7 @@ export default function ReportsScreen() {
             startDate: periodRange.startTimestampISO,
             endDate: periodRange.endTimestampISO,
           }),
-          fetchDashboardUtangSummary().catch(() => null),
+          fetchDashboardUtangSummary(),
           fetchStoreExpenseSummaryForRange(
             periodRange.startDateDateOnly,
             periodRange.endDateDateOnly
@@ -157,28 +174,100 @@ export default function ReportsScreen() {
           return;
         }
 
-        // Enrich top products with real product image URLs
-        const productImageMap = new Map<string, string | null>();
-        productsData.forEach((p) => {
-          productImageMap.set(p.id, p.image_url);
-          productImageMap.set(p.name.toLowerCase(), p.image_url);
-        });
+        const failedDomains: string[] = [];
 
-        const enrichedTopProducts = topProductsData.map((item) => ({
-          ...item,
-          imageUrl:
-            item.imageUrl ||
-            productImageMap.get(item.id) ||
-            productImageMap.get(item.name.toLowerCase()) ||
-            null,
-        }));
+        // Global domain: Products (preserve existing valid cache if already loaded)
+        let activeProducts = productsRef.current;
+        if (productsRes.status === 'fulfilled') {
+          activeProducts = productsRes.value;
+          productsRef.current = productsRes.value;
+          setProducts(productsRes.value);
+          setIsProductsUnavailable(false);
+        } else {
+          console.warn('[Reports Products Error]:', productsRes.reason);
+          failedDomains.push('Inventory');
+          if (!hasLoadedOnceRef.current) {
+            setIsProductsUnavailable(true);
+          }
+        }
 
-        setSales(salesData);
-        setProducts(productsData);
-        setCogsSummary(cogsData);
-        setUtangSummary(utangData);
-        setExpenseSummary(expenseData);
-        setTopProducts(enrichedTopProducts);
+        // Global domain: Utang (never silently swallowed; preserve cache if loaded)
+        if (utangRes.status === 'fulfilled') {
+          setUtangSummary(utangRes.value);
+        } else {
+          console.warn('[Reports Utang Error]:', utangRes.reason);
+          failedDomains.push('Utang');
+        }
+
+        // Period-dependent domain: Sales (never display stale period sales or fake ₱0.00)
+        if (salesRes.status === 'fulfilled') {
+          setSales(salesRes.value);
+          setIsSalesUnavailable(false);
+        } else {
+          console.warn('[Reports Sales Error]:', salesRes.reason);
+          failedDomains.push('Sales');
+          setSales([]);
+          setIsSalesUnavailable(true);
+        }
+
+        // Period-dependent domain: COGS (reset to null on failure to prevent stale period figures)
+        if (cogsRes.status === 'fulfilled') {
+          setCogsSummary(cogsRes.value);
+        } else {
+          console.warn('[Reports COGS Error]:', cogsRes.reason);
+          failedDomains.push('COGS');
+          setCogsSummary(null);
+        }
+
+        // Period-dependent domain: Expenses (reset to null on failure)
+        if (expenseRes.status === 'fulfilled') {
+          setExpenseSummary(expenseRes.value);
+        } else {
+          console.warn('[Reports Expenses Error]:', expenseRes.reason);
+          failedDomains.push('Expenses');
+          setExpenseSummary(null);
+        }
+
+        // Period-dependent domain: Top Products (reset to [] on failure)
+        if (topProductsRes.status === 'fulfilled') {
+          const productImageMap = new Map<string, string | null>();
+          activeProducts.forEach((p) => {
+            productImageMap.set(p.id, p.image_url);
+            productImageMap.set(p.name.toLowerCase(), p.image_url);
+          });
+
+          const enrichedTopProducts = topProductsRes.value.map((item) => ({
+            ...item,
+            imageUrl:
+              item.imageUrl ||
+              productImageMap.get(item.id) ||
+              productImageMap.get(item.name.toLowerCase()) ||
+              null,
+          }));
+          setTopProducts(enrichedTopProducts);
+          setIsTopProductsUnavailable(false);
+        } else {
+          console.warn('[Reports Top Products Error]:', topProductsRes.reason);
+          failedDomains.push('Top Products');
+          setTopProducts([]);
+          setIsTopProductsUnavailable(true);
+        }
+
+        if (failedDomains.length < 6) {
+          hasLoadedOnceRef.current = true;
+        }
+
+        if (failedDomains.length === 6) {
+          setErrorMessage(
+            'Could not load store analytics. Please check your connection and try again.'
+          );
+        } else if (failedDomains.length > 0) {
+          setErrorMessage(
+            `Some report data failed to load (${failedDomains.join(', ')}). Tap Retry to refresh.`
+          );
+        } else {
+          setErrorMessage(null);
+        }
       } catch (err: unknown) {
         if (requestId !== activeRequestIdRef.current) {
           return;
@@ -192,23 +281,33 @@ export default function ReportsScreen() {
         if (requestId === activeRequestIdRef.current) {
           setIsLoading(false);
           setIsRefreshing(false);
+          setIsPeriodSwitching(false);
         }
       }
     },
-    [selectedPeriod]
+    []
   );
 
   const handlePeriodChange = (period: ReportPeriod) => {
     if (period === selectedPeriod) return;
+    selectedPeriodRef.current = period;
     setSelectedBarIdx(null);
     setSelectedPeriod(period);
-    loadAnalytics(period, false);
+    loadAnalytics(period, hasLoadedOnceRef.current ? 'period' : 'initial');
   };
+
+  const handleRefresh = useCallback(() => {
+    if (isRefreshing || isLoading) return;
+    loadAnalytics(selectedPeriodRef.current, 'refresh');
+  }, [isRefreshing, isLoading, loadAnalytics]);
 
   useFocusEffect(
     useCallback(() => {
-      loadAnalytics(selectedPeriod, false);
-    }, [loadAnalytics, selectedPeriod])
+      loadAnalytics(
+        selectedPeriodRef.current,
+        hasLoadedOnceRef.current ? 'period' : 'initial'
+      );
+    }, [loadAnalytics])
   );
 
   const handleTabPress = (tab: NavTab) => {
@@ -284,6 +383,11 @@ export default function ReportsScreen() {
     };
   }, [products]);
 
+  const hasIncompleteInventoryCosts =
+    !isProductsUnavailable &&
+    productSummary.totalProducts > 0 &&
+    inventoryValuation.trackedCostProducts < productSummary.totalProducts;
+
   const periodRange = useMemo(
     () => getReportingPeriodRange(selectedPeriod),
     [selectedPeriod]
@@ -348,21 +452,37 @@ export default function ReportsScreen() {
       };
     }
     if (selectedTab === 'Inventory') {
+      if (isProductsUnavailable) {
+        return {
+          amount: '—',
+          label: 'Inventory Retail Value',
+          badge: 'Inventory unavailable',
+        };
+      }
       return {
         amount: formatPesoCurrency(inventoryValuation.retailValue),
         label: 'Inventory Retail Value',
-        badge: `${productSummary.totalProducts} products · ${
-          productSummary.lowStockCount + productSummary.outOfStockCount
-        } alerts`,
+        badge: hasIncompleteInventoryCosts
+          ? `~${formatPesoCurrency(inventoryValuation.costValue)} cost (${inventoryValuation.trackedCostProducts}/${productSummary.totalProducts} tracked)`
+          : `${productSummary.totalProducts} products · ${
+              productSummary.lowStockCount + productSummary.outOfStockCount
+            } alerts`,
       };
     }
     if (selectedTab === 'Utang') {
       return {
         amount: totalUtang !== null ? formatPesoCurrency(totalUtang) : '—',
         label: 'Total Outstanding Utang',
-        badge: `${
-          utangSummary?.customersWithBalanceCount ?? 0
-        } customers with balance`,
+        badge: utangSummary
+          ? `${utangSummary.customersWithBalanceCount} customers with balance`
+          : 'Credit summary unavailable',
+      };
+    }
+    if (isSalesUnavailable) {
+      return {
+        amount: '—',
+        label: `${periodLabel} Sales`,
+        badge: 'Sales unavailable',
       };
     }
     return {
@@ -378,10 +498,15 @@ export default function ReportsScreen() {
     grossProfit,
     netStoreProfit,
     hasIncompleteCosts,
+    isProductsUnavailable,
+    hasIncompleteInventoryCosts,
     inventoryValuation.retailValue,
+    inventoryValuation.costValue,
+    inventoryValuation.trackedCostProducts,
     productSummary,
     totalUtang,
     utangSummary,
+    isSalesUnavailable,
     totalSalesAmount,
     sales.length,
   ]);
@@ -408,11 +533,15 @@ export default function ReportsScreen() {
       ? chartBars.length - 1
       : null;
 
-  const isInitialLoadError =
-    Boolean(errorMessage) &&
-    !cogsSummary &&
-    sales.length === 0 &&
-    products.length === 0;
+  const hasAnyDomainData =
+    !isSalesUnavailable ||
+    !isProductsUnavailable ||
+    cogsSummary !== null ||
+    expenseSummary !== null ||
+    utangSummary !== null ||
+    topProducts.length > 0;
+
+  const isInitialLoadError = Boolean(errorMessage) && !hasAnyDomainData;
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
@@ -448,7 +577,7 @@ export default function ReportsScreen() {
           refreshControl={
             <RefreshControl
               refreshing={isRefreshing}
-              onRefresh={() => loadAnalytics(selectedPeriod, true)}
+              onRefresh={handleRefresh}
               tintColor={Colors.primary}
               colors={[Colors.primary]}
               progressBackgroundColor={Colors.surface}
@@ -465,10 +594,13 @@ export default function ReportsScreen() {
                     accessibilityRole="button"
                     accessibilityState={{ selected: isSelected }}
                     accessibilityLabel={`Filter reports by ${p.label}`}
+                    accessibilityHint={`Shows store analytics for ${p.label}`}
+                    hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
                     onPress={() => handlePeriodChange(p.key)}
-                    style={[
+                    style={({ pressed }) => [
                       styles.periodSegmentBtn,
                       isSelected && styles.periodSegmentBtnActive,
+                      pressed && styles.periodSegmentBtnPressed,
                     ]}>
                     <Text
                       style={[
@@ -495,8 +627,15 @@ export default function ReportsScreen() {
                     key={tab}
                     accessibilityRole="tab"
                     accessibilityState={{ selected: isSelected }}
+                    accessibilityLabel={`${tab} report tab`}
+                    accessibilityHint={`Switches view to ${tab} analytics`}
+                    hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
                     onPress={() => setSelectedTab(tab)}
-                    style={[styles.tabChip, isSelected && styles.tabChipActive]}>
+                    style={({ pressed }) => [
+                      styles.tabChip,
+                      isSelected && styles.tabChipActive,
+                      pressed && styles.tabChipPressed,
+                    ]}>
                     <Text
                       style={[
                         styles.tabChipText,
@@ -512,7 +651,7 @@ export default function ReportsScreen() {
             {errorMessage && !isInitialLoadError ? (
               <DashboardErrorBanner
                 message={errorMessage}
-                onRetry={() => loadAnalytics(selectedPeriod, true)}
+                onRetry={handleRefresh}
                 onDismiss={() => setErrorMessage(null)}
               />
             ) : null}
@@ -541,18 +680,33 @@ export default function ReportsScreen() {
                   <TindaMateButton
                     title="Retry Loading"
                     variant="primary"
-                    onPress={() => loadAnalytics(selectedPeriod, true)}
+                    onPress={() =>
+                      loadAnalytics(selectedPeriodRef.current, 'initial')
+                    }
                     accessibilityLabel="Retry loading store reports"
                   />
                 </View>
               </View>
             ) : (
-              <>
+              <View
+                style={[
+                  styles.reportContentWrap,
+                  isPeriodSwitching && styles.periodSwitchingContent,
+                ]}>
                 {/* Main KPI & Full-Width Interactive Bar Chart Card */}
                 <View style={styles.kpiChartCard}>
                   <View style={styles.kpiHeaderRow}>
                     <View style={styles.kpiLeftCol}>
-                      <Text style={styles.kpiLabel}>{heroMetric.label}</Text>
+                      <View style={styles.kpiLabelRow}>
+                        <Text style={styles.kpiLabel}>{heroMetric.label}</Text>
+                        {isPeriodSwitching ? (
+                          <ActivityIndicator
+                            size="small"
+                            color={Colors.primary}
+                            accessibilityLabel="Updating period metrics"
+                          />
+                        ) : null}
+                      </View>
                       <Text
                         style={styles.kpiBigAmount}
                         adjustsFontSizeToFit
@@ -639,7 +793,9 @@ export default function ReportsScreen() {
 
                     {isChartEmpty ? (
                       <Text style={styles.emptyChartCaption} numberOfLines={1}>
-                        No sales recorded in this period
+                        {isSalesUnavailable
+                          ? 'Sales trend unavailable'
+                          : 'No sales recorded in this period'}
                       </Text>
                     ) : null}
                   </View>
@@ -695,7 +851,9 @@ export default function ReportsScreen() {
                       <View style={styles.pnlRow}>
                         <Text style={styles.pnlLabel}>Sales Revenue</Text>
                         <Text style={styles.pnlValue}>
-                          {formatPesoCurrency(totalSalesAmount)}
+                          {isSalesUnavailable
+                            ? '—'
+                            : formatPesoCurrency(totalSalesAmount)}
                         </Text>
                       </View>
                       <View style={styles.pnlRow}>
@@ -764,7 +922,14 @@ export default function ReportsScreen() {
                       </Text>
                       <Pressable
                         accessibilityRole="button"
-                        onPress={() => router.push('/products')}>
+                        accessibilityLabel="Manage store products"
+                        accessibilityHint="Opens the products and inventory screen"
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        onPress={() => router.push('/products')}
+                        style={({ pressed }) => [
+                          styles.sectionLinkBtn,
+                          pressed && styles.sectionLinkPressed,
+                        ]}>
                         <Text style={styles.seeAllLink}>Manage →</Text>
                       </Pressable>
                     </View>
@@ -772,37 +937,62 @@ export default function ReportsScreen() {
                       <View style={styles.pnlRow}>
                         <Text style={styles.pnlLabel}>Total Products</Text>
                         <Text style={styles.pnlValue}>
-                          {productSummary.totalProducts}
+                          {isProductsUnavailable
+                            ? '—'
+                            : productSummary.totalProducts}
                         </Text>
                       </View>
                       <View style={styles.pnlRow}>
                         <Text style={styles.pnlLabel}>In Stock</Text>
                         <Text style={styles.pnlValuePositive}>
-                          {productSummary.inStockCount}
+                          {isProductsUnavailable
+                            ? '—'
+                            : productSummary.inStockCount}
                         </Text>
                       </View>
                       <View style={styles.pnlRow}>
                         <Text style={styles.pnlLabel}>Low Stock</Text>
                         <Text style={styles.pnlValueWarning}>
-                          {productSummary.lowStockCount}
+                          {isProductsUnavailable
+                            ? '—'
+                            : productSummary.lowStockCount}
                         </Text>
                       </View>
                       <View style={styles.pnlRow}>
                         <Text style={styles.pnlLabel}>Out of Stock</Text>
                         <Text style={styles.pnlValueDanger}>
-                          {productSummary.outOfStockCount}
+                          {isProductsUnavailable
+                            ? '—'
+                            : productSummary.outOfStockCount}
                         </Text>
                       </View>
                       <View style={styles.pnlDivider} />
                       <View style={styles.pnlRow}>
                         <Text style={styles.pnlLabelBold}>
-                          Tracked Cost Value ({inventoryValuation.trackedCostProducts}/
-                          {productSummary.totalProducts})
+                          {isProductsUnavailable
+                            ? 'Tracked Cost Value'
+                            : `Tracked Cost Value (${inventoryValuation.trackedCostProducts}/${productSummary.totalProducts})`}
                         </Text>
                         <Text style={styles.pnlValueBold}>
-                          {formatPesoCurrency(inventoryValuation.costValue)}
+                          {isProductsUnavailable
+                            ? '—'
+                            : `${hasIncompleteInventoryCosts ? '~' : ''}${formatPesoCurrency(inventoryValuation.costValue)}`}
                         </Text>
                       </View>
+                      {hasIncompleteInventoryCosts ? (
+                        <View style={styles.inventoryCostNote}>
+                          <AlertCircleIcon
+                            size={14}
+                            color={Colors.warningText}
+                          />
+                          <Text style={styles.inventoryCostNoteText}>
+                            {inventoryValuation.trackedCostProducts}/
+                            {productSummary.totalProducts} products have
+                            recorded cost prices. Update missing costs in
+                            Products for a complete valuation.
+                          </Text>
+                        </View>
+                      ) : null}
                     </View>
                   </View>
                 ) : null}
@@ -816,7 +1006,14 @@ export default function ReportsScreen() {
                       </Text>
                       <Pressable
                         accessibilityRole="button"
-                        onPress={() => router.push('/customers' as any)}>
+                        accessibilityLabel="Open customer credit ledger"
+                        accessibilityHint="Opens the customers and utang ledger screen"
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        onPress={() => router.push('/customers' as any)}
+                        style={({ pressed }) => [
+                          styles.sectionLinkBtn,
+                          pressed && styles.sectionLinkPressed,
+                        ]}>
                         <Text style={styles.seeAllLink}>Open Ledger →</Text>
                       </Pressable>
                     </View>
@@ -871,14 +1068,23 @@ export default function ReportsScreen() {
                     </Text>
                     <Pressable
                       accessibilityRole="button"
-                      onPress={() => router.push('/products')}>
+                      accessibilityLabel="See all products"
+                      accessibilityHint="Opens the full products list"
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      onPress={() => router.push('/products')}
+                      style={({ pressed }) => [
+                        styles.sectionLinkBtn,
+                        pressed && styles.sectionLinkPressed,
+                      ]}>
                       <Text style={styles.seeAllLink}>See All →</Text>
                     </Pressable>
                   </View>
 
                   {topProducts.length === 0 ? (
                     <Text style={styles.emptySubtext}>
-                      No product sales recorded for this period yet.
+                      {isTopProductsUnavailable
+                        ? 'Top products are unavailable for this period.'
+                        : 'No product sales recorded for this period yet.'}
                     </Text>
                   ) : (
                     <View style={styles.topProductsList}>
@@ -964,21 +1170,41 @@ export default function ReportsScreen() {
 
                 {/* Financial & Inventory Breakdown Grid */}
                 <View style={styles.breakdownGrid}>
-                  <View style={styles.breakdownTile}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`${periodLabel} Sales: ${isSalesUnavailable ? 'unavailable' : formatPesoCurrency(totalSalesAmount)}`}
+                    accessibilityHint="Switches to the Sales report tab"
+                    onPress={() => setSelectedTab('Sales')}
+                    style={({ pressed }) => [
+                      styles.breakdownTile,
+                      pressed && styles.breakdownTilePressed,
+                    ]}>
                     <Text style={styles.breakdownLabel}>{periodLabel} Sales</Text>
                     <Text
                       style={styles.breakdownValue}
                       numberOfLines={1}
                       adjustsFontSizeToFit
                       minimumFontScale={0.78}>
-                      {formatPesoCurrency(totalSalesAmount)}
+                      {isSalesUnavailable
+                        ? '—'
+                        : formatPesoCurrency(totalSalesAmount)}
                     </Text>
                     <Text style={styles.breakdownCaption}>
-                      {sales.length} {sales.length === 1 ? 'sale' : 'total sales'}
+                      {isSalesUnavailable
+                        ? 'Sales unavailable'
+                        : `${sales.length} ${sales.length === 1 ? 'sale' : 'total sales'}`}
                     </Text>
-                  </View>
+                  </Pressable>
 
-                  <View style={styles.breakdownTile}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Recorded COGS: ${totalCOGS !== null ? formatPesoCurrency(totalCOGS) : 'unavailable'}`}
+                    accessibilityHint="Switches to the Profit report tab"
+                    onPress={() => setSelectedTab('Profit')}
+                    style={({ pressed }) => [
+                      styles.breakdownTile,
+                      pressed && styles.breakdownTilePressed,
+                    ]}>
                     <Text style={styles.breakdownLabel}>
                       {hasIncompleteCosts ? 'Tracked COGS*' : 'Recorded COGS'}
                     </Text>
@@ -994,9 +1220,17 @@ export default function ReportsScreen() {
                         ? `${cogsSummary.trackedCostItemCount}/${cogsSummary.saleItemCount} items tracked`
                         : 'COGS unavailable'}
                     </Text>
-                  </View>
+                  </Pressable>
 
-                  <View style={styles.breakdownTile}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`${periodLabel} Expenses: ${totalExpenses !== null ? formatPesoCurrency(totalExpenses) : 'unavailable'}`}
+                    accessibilityHint="Opens the expenses screen"
+                    onPress={() => router.push('/expenses' as any)}
+                    style={({ pressed }) => [
+                      styles.breakdownTile,
+                      pressed && styles.breakdownTilePressed,
+                    ]}>
                     <Text style={styles.breakdownLabel}>
                       {periodLabel} Expenses
                     </Text>
@@ -1016,11 +1250,19 @@ export default function ReportsScreen() {
                               ? 'entry'
                               : 'entries'
                           }`
-                        : '—'}
+                        : 'Expenses unavailable'}
                     </Text>
-                  </View>
+                  </Pressable>
 
-                  <View style={styles.breakdownTile}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Unpaid Utang: ${totalUtang !== null ? formatPesoCurrency(totalUtang) : 'unavailable'}`}
+                    accessibilityHint="Switches to the Utang report tab"
+                    onPress={() => setSelectedTab('Utang')}
+                    style={({ pressed }) => [
+                      styles.breakdownTile,
+                      pressed && styles.breakdownTilePressed,
+                    ]}>
                     <Text style={styles.breakdownLabel}>Unpaid Utang</Text>
                     <Text
                       style={[
@@ -1034,11 +1276,13 @@ export default function ReportsScreen() {
                       {totalUtang !== null ? formatPesoCurrency(totalUtang) : '—'}
                     </Text>
                     <Text style={styles.breakdownCaption}>
-                      Current outstanding balance
+                      {utangSummary
+                        ? 'Current outstanding balance'
+                        : 'Utang unavailable'}
                     </Text>
-                  </View>
+                  </Pressable>
                 </View>
-              </>
+              </View>
             )}
           </View>
         </ScrollView>
@@ -1111,6 +1355,9 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     ...Shadows.xs,
   },
+  periodSegmentBtnPressed: {
+    opacity: 0.72,
+  },
   periodSegmentText: {
     fontSize: 12,
     fontWeight: Typography.weights.semiBold,
@@ -1127,8 +1374,10 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   tabChip: {
+    minHeight: 36,
     paddingHorizontal: 18,
     paddingVertical: 8,
+    justifyContent: 'center',
     borderRadius: BorderRadius.full,
     backgroundColor: Colors.surface,
     borderWidth: 1,
@@ -1139,6 +1388,10 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primaryDark,
     borderColor: Colors.primaryDark,
   },
+  tabChipPressed: {
+    opacity: 0.78,
+    transform: [{ scale: 0.97 }],
+  },
   tabChipText: {
     fontSize: Typography.sizes.xs,
     fontWeight: Typography.weights.bold,
@@ -1146,6 +1399,12 @@ const styles = StyleSheet.create({
   },
   tabChipTextActive: {
     color: Colors.textInverse,
+  },
+  reportContentWrap: {
+    gap: Spacing.three,
+  },
+  periodSwitchingContent: {
+    opacity: 0.7,
   },
   loadingCard: {
     backgroundColor: Colors.surface,
@@ -1220,6 +1479,11 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 160,
     gap: 2,
+  },
+  kpiLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   kpiBigAmount: {
     fontSize: 30,
@@ -1443,6 +1707,24 @@ const styles = StyleSheet.create({
   pnlNetNegative: {
     color: Colors.error,
   },
+  inventoryCostNote: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+    backgroundColor: Colors.warningLight,
+    borderWidth: 1,
+    borderColor: '#FCD34D',
+    borderRadius: BorderRadius.md,
+    paddingHorizontal: Spacing.twoHalf,
+    paddingVertical: Spacing.two,
+    marginTop: 2,
+  },
+  inventoryCostNoteText: {
+    flex: 1,
+    fontSize: 11.5,
+    color: Colors.warningText,
+    lineHeight: 16,
+  },
   // Top Products Section
   topProductsCard: {
     backgroundColor: Colors.surface,
@@ -1463,6 +1745,14 @@ const styles = StyleSheet.create({
     fontSize: Typography.sizes.md,
     fontWeight: Typography.weights.extraBold,
     color: Colors.textPrimary,
+  },
+  sectionLinkBtn: {
+    paddingVertical: 2,
+    paddingHorizontal: 4,
+    borderRadius: BorderRadius.sm,
+  },
+  sectionLinkPressed: {
+    opacity: 0.6,
   },
   seeAllLink: {
     fontSize: Typography.sizes.xs,
@@ -1567,6 +1857,10 @@ const styles = StyleSheet.create({
     padding: Spacing.threeHalf,
     gap: 4,
     ...Shadows.xs,
+  },
+  breakdownTilePressed: {
+    opacity: 0.84,
+    transform: [{ scale: 0.985 }],
   },
   breakdownLabel: {
     fontSize: 11,
