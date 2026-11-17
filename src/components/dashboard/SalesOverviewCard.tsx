@@ -1,5 +1,11 @@
 import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 
 import { SalesOverviewChartHeaderIcon } from './DashboardNavIcons';
 import { Colors, Shadows, Spacing, Typography } from '@/constants/theme';
@@ -44,8 +50,14 @@ export function SalesOverviewCard({
   maxWeeklyAmount,
   onPeriodPress,
 }: SalesOverviewCardProps) {
+  const { width: windowWidth } = useWindowDimensions();
+  const isNarrowPhone = windowWidth < 360;
+  const barWidth = isNarrowPhone ? 18 : 24;
+
   const [isCardHovered, setIsCardHovered] = useState(false);
   const [selectedBarIdx, setSelectedBarIdx] = useState<number | null>(null);
+
+  const hasWeeklySales = weeklyBars.some((b) => b.amount > 0);
 
   const [labelTop, labelUpperMid, labelLowerMid, labelZero] =
     getFourStepYAxisLabels(maxWeeklyAmount);
@@ -77,7 +89,8 @@ export function SalesOverviewCard({
 
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Filter sales overview by period"
+          accessibilityLabel="View full sales reports"
+          accessibilityHint="Opens the Reports and Analytics screen"
           onPress={onPeriodPress}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           style={({ pressed }) => [
@@ -134,7 +147,9 @@ export function SalesOverviewCard({
                 <Pressable
                   key={`${bar.label}-${idx}`}
                   accessibilityRole="button"
+                  accessibilityState={{ selected: isHighlighted }}
                   accessibilityLabel={`${bar.label} sales: ${formattedCallout}`}
+                  accessibilityHint="Tap to highlight this day's sales total"
                   onPress={() =>
                     setSelectedBarIdx((prev) => (prev === idx ? null : idx))
                   }
@@ -157,7 +172,7 @@ export function SalesOverviewCard({
                       style={[
                         styles.barFill,
                         isHighlighted && styles.barFillToday,
-                        { height: barPixelHeight },
+                        { height: barPixelHeight, width: barWidth },
                       ]}>
                       {!isZero && (
                         <View
@@ -185,6 +200,12 @@ export function SalesOverviewCard({
           </View>
         </View>
       </View>
+
+      {!hasWeeklySales ? (
+        <Text style={styles.emptyWeekCaption} maxFontSizeMultiplier={1.2}>
+          No sales recorded this week yet
+        </Text>
+      ) : null}
     </Pressable>
   );
 }
@@ -359,5 +380,12 @@ const styles = StyleSheet.create({
   dayLabelToday: {
     color: '#0A3D28',
     fontWeight: Typography.weights.bold,
+  },
+  emptyWeekCaption: {
+    fontSize: 11.5,
+    fontWeight: Typography.weights.medium,
+    color: Colors.textMuted,
+    textAlign: 'center',
+    paddingTop: 2,
   },
 });

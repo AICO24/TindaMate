@@ -159,6 +159,7 @@ const styles = StyleSheet.create({
   },
   tilePressed: {
     opacity: 0.9,
+    transform: [{ scale: 0.97 }],
   },
   iconCircle: {
     alignItems: 'center',
