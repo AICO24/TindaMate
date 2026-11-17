@@ -1,10 +1,10 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import {
+  FlatList,
   KeyboardAvoidingView,
   Platform,
   Pressable,
   RefreshControl,
-  ScrollView,
   StyleSheet,
   Text,
   useWindowDimensions,
@@ -24,8 +24,10 @@ import { DashboardErrorBanner } from '@/components/dashboard/DashboardErrorBanne
 import { TindaMateLoadingView } from '@/components/animated-icon';
 import {
   DashboardBadgeVectorIcon,
+  NavCustomersIcon,
   NavUtangIcon,
   SearchVectorIcon,
+  WarningTriangleIcon,
 } from '@/components/dashboard/DashboardNavIcons';
 import { ProductScreenHeader } from '@/components/products/ProductScreenHeader';
 import { FilterChipItem, FilterChipRow } from '@/components/ui/FilterChipRow';
@@ -43,6 +45,14 @@ import { fetchStoreCustomers } from '@/lib/customers';
 import { formatPesoCurrency } from '@/lib/products';
 import { supabase } from '@/lib/supabase';
 import { CustomerFilterTab, CustomerWithCredit } from '@/types/customer';
+
+type CustomerSortOption = 'name' | 'balance_desc' | 'recent';
+
+const SORT_LABELS: Record<CustomerSortOption, string> = {
+  name: 'Name A–Z',
+  balance_desc: 'Highest Utang',
+  recent: 'Recent Activity',
+};
 
 function getFilterEmptyCopy(filter: CustomerFilterTab): {
   title: string;
@@ -93,6 +103,7 @@ export default function CustomersListScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] =
     useState<CustomerFilterTab>('All');
+  const [sortBy, setSortBy] = useState<CustomerSortOption>('name');
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -224,29 +235,290 @@ export default function CustomersListScreen() {
     });
 
     const trimmedQuery = searchQuery.trim().toLowerCase();
-    if (!trimmedQuery) {
-      return tabMatched;
+    const searchMatched = !trimmedQuery
+      ? tabMatched
+      : tabMatched.filter((c) => {
+          const nameMatch = c.name.toLowerCase().includes(trimmedQuery);
+          const phoneMatch = c.phone
+            ? c.phone.toLowerCase().includes(trimmedQuery)
+            : false;
+          const notesMatch = c.notes
+            ? c.notes.toLowerCase().includes(trimmedQuery)
+            : false;
+          return nameMatch || phoneMatch || notesMatch;
+        });
+
+    if (sortBy === 'balance_desc') {
+      return [...searchMatched].sort(
+        (a, b) =>
+          (b.credit_summary?.current_balance ?? 0) -
+            (a.credit_summary?.current_balance ?? 0) ||
+          a.name.localeCompare(b.name)
+      );
     }
 
-    return tabMatched.filter((c) => {
-      const nameMatch = c.name.toLowerCase().includes(trimmedQuery);
-      const phoneMatch = c.phone
-        ? c.phone.toLowerCase().includes(trimmedQuery)
-        : false;
-      const notesMatch = c.notes
-        ? c.notes.toLowerCase().includes(trimmedQuery)
-        : false;
-      return nameMatch || phoneMatch || notesMatch;
+    if (sortBy === 'recent') {
+      return [...searchMatched].sort((a, b) => {
+        const timeA = a.credit_summary?.last_transaction_at
+          ? new Date(a.credit_summary.last_transaction_at).getTime()
+          : 0;
+        const timeB = b.credit_summary?.last_transaction_at
+          ? new Date(b.credit_summary.last_transaction_at).getTime()
+          : 0;
+        return timeB - timeA || a.name.localeCompare(b.name);
+      });
+    }
+
+    return [...searchMatched].sort((a, b) => a.name.localeCompare(b.name));
+  }, [allCustomers, selectedFilter, searchQuery, sortBy]);
+
+  const cycleSortOption = () => {
+    setSortBy((prev) => {
+      if (prev === 'name') return 'balance_desc';
+      if (prev === 'balance_desc') return 'recent';
+      return 'name';
     });
-  }, [allCustomers, selectedFilter, searchQuery]);
+  };
+
+  const isAnyFilterActive =
+    selectedFilter !== 'All' || searchQuery.trim().length > 0;
 
   const headerSubtitle = isInitialLoading
     ? 'Loading customer ledger...'
+    : errorMessage && allCustomers.length === 0
+    ? 'Unable to load customer ledger'
     : `${allCustomers.length} ${
         allCustomers.length === 1 ? 'customer' : 'customers'
       } • ${utangCustomerCount} with utang`;
 
   const filterEmptyCopy = getFilterEmptyCopy(selectedFilter);
+
+  const renderListHeader = () => (
+    <View style={styles.headerControlsBlock}>
+      {/* Error Banner on Refresh Failure */}
+      {errorMessage && allCustomers.length > 0 ? (
+        <DashboardErrorBanner
+          message={errorMessage}
+          onRetry={() => loadCustomers(true)}
+          onDismiss={() => setErrorMessage(null)}
+        />
+      ) : null}
+
+      {/* Store-wide Total Outstanding Hero Card + Filter Chips + Sort Toolbar */}
+      {!isInitialLoading && allCustomers.length > 0 ? (
+        <>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Total Outstanding Utang ${formatPesoCurrency(totalOutstanding)} across ${utangCustomerCount} customers. ${
+              selectedFilter === 'With Utang'
+                ? 'Currently filtering by With Utang. Tap to show all customers.'
+                : 'Tap to filter by With Utang.'
+            }`}
+            onPress={() =>
+              setSelectedFilter((prev) =>
+                prev === 'With Utang' ? 'All' : 'With Utang'
+              )
+            }
+            style={({ pressed }) => [
+              styles.outstandingHeroCard,
+              isCompactPhone && styles.outstandingHeroCardCompact,
+              selectedFilter === 'With Utang' &&
+                styles.outstandingHeroCardFiltering,
+              pressed && styles.buttonPressed,
+            ]}>
+            <View style={styles.outstandingHeroGlow} />
+            <View style={styles.outstandingIconCircle}>
+              <DashboardBadgeVectorIcon
+                type="record_utang"
+                color={Colors.textInverse}
+              />
+            </View>
+
+            <View style={styles.outstandingTextCol}>
+              <Text style={styles.outstandingLabel}>Total Outstanding</Text>
+              <Text
+                style={styles.outstandingAmount}
+                adjustsFontSizeToFit
+                minimumFontScale={0.78}
+                numberOfLines={1}>
+                {formatPesoCurrency(totalOutstanding)}
+              </Text>
+              <Text style={styles.outstandingSubtext}>
+                {totalOutstanding === 0
+                  ? 'All customer accounts settled'
+                  : `${utangCustomerCount} ${
+                      utangCustomerCount === 1
+                        ? 'customer with active utang'
+                        : 'customers with active utang'
+                    }`}
+              </Text>
+            </View>
+
+            <View
+              style={[
+                styles.heroFilterPill,
+                selectedFilter === 'With Utang' && styles.heroFilterPillActive,
+              ]}>
+              <Text
+                style={[
+                  styles.heroFilterPillText,
+                  selectedFilter === 'With Utang' &&
+                    styles.heroFilterPillTextActive,
+                ]}
+                numberOfLines={1}>
+                {selectedFilter === 'With Utang'
+                  ? 'Filtering Utang ✕'
+                  : 'Filter Utang'}
+              </Text>
+            </View>
+          </Pressable>
+
+          {/* Shared Filter Chip Row with Live Counts */}
+          <FilterChipRow<CustomerFilterTab>
+            items={filterChipItems}
+            selectedId={selectedFilter}
+            onSelect={setSelectedFilter}
+            accessibilityLabelPrefix="Filter customers by"
+            contentContainerStyle={styles.filterRowContent}
+          />
+
+          {/* Results Count & Sort Toolbar */}
+          <View style={styles.resultsToolbar}>
+            <Text
+              style={styles.resultsCountText}
+              numberOfLines={1}
+              maxFontSizeMultiplier={1.2}>
+              {isAnyFilterActive
+                ? `Showing ${filteredCustomers.length} of ${allCustomers.length} customers`
+                : `${allCustomers.length} ${
+                    allCustomers.length === 1 ? 'Customer' : 'Customers'
+                  }`}
+            </Text>
+
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Sort customers, currently sorted by ${SORT_LABELS[sortBy]}`}
+              accessibilityHint="Cycles between sorting by Name A to Z, Highest Utang, and Recent Activity"
+              onPress={cycleSortOption}
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+              style={({ pressed }) => [
+                styles.sortPill,
+                sortBy !== 'name' && styles.sortPillActive,
+                pressed && styles.buttonPressed,
+              ]}>
+              <Text
+                style={[
+                  styles.sortPillText,
+                  sortBy !== 'name' && styles.sortPillTextActive,
+                ]}
+                maxFontSizeMultiplier={1.2}>
+                Sort: {SORT_LABELS[sortBy]} ▾
+              </Text>
+            </Pressable>
+          </View>
+        </>
+      ) : null}
+    </View>
+  );
+
+  const renderEmptyComponent = () => {
+    if (isInitialLoading) {
+      return (
+        <View style={styles.stateCard}>
+          <TindaMateLoadingView
+            compact
+            message="Fetching customer records & utang..."
+          />
+        </View>
+      );
+    }
+
+    if (errorMessage && allCustomers.length === 0) {
+      return (
+        <View style={styles.stateCard}>
+          <View style={styles.errorIconCircle}>
+            <WarningTriangleIcon
+              size={24}
+              bgColor={Colors.errorLight}
+              fgColor={Colors.error}
+            />
+          </View>
+          <Text style={styles.stateTitle}>Could Not Load Customers</Text>
+          <Text style={styles.stateSubtitle}>{errorMessage}</Text>
+          <View style={styles.emptyActionRow}>
+            <TindaMateButton
+              title="Retry Loading"
+              variant="primary"
+              onPress={() => loadCustomers(true)}
+              accessibilityLabel="Retry loading customers"
+            />
+          </View>
+        </View>
+      );
+    }
+
+    if (allCustomers.length === 0) {
+      return (
+        <View style={styles.stateCard}>
+          <View style={styles.emptyIconCircle}>
+            <NavUtangIcon color={Colors.primary} />
+          </View>
+          <Text style={styles.stateTitle}>No Customers Yet</Text>
+          <Text style={styles.stateSubtitle}>
+            Add your regular store patrons and suki to track customer credit
+            (utang) easily.
+          </Text>
+          <View style={styles.emptyActionRow}>
+            <TindaMateButton
+              title="+ Add Your First Customer"
+              variant="primary"
+              onPress={() => router.push('/customers/add' as any)}
+            />
+          </View>
+        </View>
+      );
+    }
+
+    if (searchQuery.trim().length > 0) {
+      return (
+        <View style={styles.stateCard}>
+          <View style={styles.searchIconCircle}>
+            <SearchVectorIcon color={Colors.primaryDark} size={22} />
+          </View>
+          <Text style={styles.stateTitle}>No Customers Found</Text>
+          <Text style={styles.stateSubtitle}>
+            No customers matched &ldquo;{searchQuery.trim()}&rdquo;
+            {selectedFilter !== 'All' ? ` in ${selectedFilter}` : ''}. Try a
+            different name, phone number, or landmark note.
+          </Text>
+          <View style={styles.emptyActionRow}>
+            <TindaMateButton
+              title="Clear Search"
+              variant="secondary"
+              onPress={handleClearSearch}
+            />
+          </View>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.stateCard}>
+        <View style={styles.emptyIconCircle}>
+          <NavUtangIcon color={Colors.primary} />
+        </View>
+        <Text style={styles.stateTitle}>{filterEmptyCopy.title}</Text>
+        <Text style={styles.stateSubtitle}>{filterEmptyCopy.subtitle}</Text>
+        <View style={styles.emptyActionRow}>
+          <TindaMateButton
+            title="Show All Customers"
+            variant="secondary"
+            onPress={() => setSelectedFilter('All')}
+          />
+        </View>
+      </View>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
@@ -258,11 +530,8 @@ export default function CustomersListScreen() {
         <ProductScreenHeader
           title="Customers"
           subtitle={headerSubtitle}
-          showBack={true}
-          onBack={() =>
-            router.canGoBack() ? router.back() : router.replace('/home')
-          }
-          leftIcon={<NavUtangIcon color={Colors.textInverse} />}
+          showBack={false}
+          leftIcon={<NavCustomersIcon color={Colors.textInverse} />}
           rightActionLabel="+ Add Customer"
           rightActionAccessibilityLabel="Add a new customer"
           onRightActionPress={() => router.push('/customers/add' as any)}>
@@ -271,15 +540,34 @@ export default function CustomersListScreen() {
             onChangeText={setSearchQuery}
             placeholder="Search name, phone, or notes..."
             accessibilityLabel="Search customers"
+            inputProps={{ editable: !isInitialLoading }}
           />
         </ProductScreenHeader>
 
-        {/* Scrollable Content */}
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
+        {/* Virtualized Customers List */}
+        <FlatList
+          data={
+            isInitialLoading || (errorMessage && allCustomers.length === 0)
+              ? []
+              : filteredCustomers
+          }
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <CustomerCard customer={item} onPress={handleCustomerPress} />
+          )}
+          ListHeaderComponent={renderListHeader}
+          ListEmptyComponent={renderEmptyComponent}
+          ItemSeparatorComponent={() => <View style={styles.itemSeparator} />}
+          style={styles.flatList}
+          contentContainerStyle={[
+            styles.listContentContainer,
+            isCompactPhone && styles.listContentContainerCompact,
+          ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          initialNumToRender={12}
+          maxToRenderPerBatch={12}
+          windowSize={7}
           refreshControl={
             <RefreshControl
               refreshing={isRefreshing}
@@ -288,157 +576,8 @@ export default function CustomersListScreen() {
               colors={[Colors.primary]}
               progressBackgroundColor={Colors.surface}
             />
-          }>
-          <View
-            style={[
-              styles.bodyContainer,
-              isCompactPhone && styles.bodyContainerCompact,
-            ]}>
-            {/* Store-wide Total Outstanding Hero Card */}
-            {!isInitialLoading ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`Total Outstanding Utang ${formatPesoCurrency(totalOutstanding)} across ${utangCustomerCount} customers`}
-                onPress={() =>
-                  setSelectedFilter((prev) =>
-                    prev === 'With Utang' ? 'All' : 'With Utang'
-                  )
-                }
-                style={({ pressed }) => [
-                  styles.outstandingHeroCard,
-                  isCompactPhone && styles.outstandingHeroCardCompact,
-                  pressed && styles.buttonPressed,
-                ]}>
-                <View style={styles.outstandingHeroGlow} />
-                <View style={styles.outstandingIconCircle}>
-                  <DashboardBadgeVectorIcon
-                    type="record_utang"
-                    color={Colors.textInverse}
-                  />
-                </View>
-
-                <View style={styles.outstandingTextCol}>
-                  <Text style={styles.outstandingLabel}>Total Outstanding</Text>
-                  <Text
-                    style={styles.outstandingAmount}
-                    adjustsFontSizeToFit
-                    minimumFontScale={0.78}
-                    numberOfLines={1}>
-                    {formatPesoCurrency(totalOutstanding)}
-                  </Text>
-                  <Text style={styles.outstandingSubtext}>
-                    {utangCustomerCount}{' '}
-                    {utangCustomerCount === 1
-                      ? 'customer with active utang'
-                      : 'customers with active utang'}
-                  </Text>
-                </View>
-
-                <Text style={styles.outstandingChevron}>›</Text>
-              </Pressable>
-            ) : null}
-
-            {/* Shared Filter Chip Row with Live Counts */}
-            {!isInitialLoading ? (
-              <FilterChipRow<CustomerFilterTab>
-                items={filterChipItems}
-                selectedId={selectedFilter}
-                onSelect={setSelectedFilter}
-                accessibilityLabelPrefix="Filter customers by"
-                contentContainerStyle={styles.filterRowContent}
-              />
-            ) : null}
-
-            {/* Error Banner */}
-            {errorMessage ? (
-              <DashboardErrorBanner
-                message={errorMessage}
-                onRetry={() => loadCustomers(true)}
-                onDismiss={() => setErrorMessage(null)}
-              />
-            ) : null}
-
-            {/* Loading State */}
-            {isInitialLoading ? (
-              <View style={styles.stateCard}>
-                <TindaMateLoadingView
-                  compact
-                  message="Fetching customer records & utang..."
-                />
-              </View>
-            ) : allCustomers.length === 0 ? (
-              /* No Customers in Store State */
-              <View style={styles.stateCard}>
-                <View style={styles.emptyIconCircle}>
-                  <NavUtangIcon color={Colors.primary} />
-                </View>
-                <Text style={styles.stateTitle}>No Customers Yet</Text>
-                <Text style={styles.stateSubtitle}>
-                  Add your regular store patrons and suki to track customer
-                  credit (utang) easily.
-                </Text>
-                <View style={styles.emptyActionRow}>
-                  <TindaMateButton
-                    title="+ Add Your First Customer"
-                    variant="primary"
-                    onPress={() => router.push('/customers/add' as any)}
-                  />
-                </View>
-              </View>
-            ) : filteredCustomers.length === 0 ? (
-              searchQuery.trim().length > 0 ? (
-                /* Search Empty State */
-                <View style={styles.stateCard}>
-                  <View style={styles.searchIconCircle}>
-                    <SearchVectorIcon color={Colors.primaryDark} size={22} />
-                  </View>
-                  <Text style={styles.stateTitle}>No Customers Found</Text>
-                  <Text style={styles.stateSubtitle}>
-                    No customers matched &ldquo;{searchQuery.trim()}&rdquo;
-                    {selectedFilter !== 'All' ? ` in ${selectedFilter}` : ''}.
-                    Try a different name or phone number.
-                  </Text>
-                  <View style={styles.emptyActionRow}>
-                    <TindaMateButton
-                      title="Clear Search"
-                      variant="secondary"
-                      onPress={handleClearSearch}
-                    />
-                  </View>
-                </View>
-              ) : (
-                /* Filter Tab Empty State */
-                <View style={styles.stateCard}>
-                  <View style={styles.emptyIconCircle}>
-                    <NavUtangIcon color={Colors.primary} />
-                  </View>
-                  <Text style={styles.stateTitle}>{filterEmptyCopy.title}</Text>
-                  <Text style={styles.stateSubtitle}>
-                    {filterEmptyCopy.subtitle}
-                  </Text>
-                  <View style={styles.emptyActionRow}>
-                    <TindaMateButton
-                      title="Show All Customers"
-                      variant="secondary"
-                      onPress={() => setSelectedFilter('All')}
-                    />
-                  </View>
-                </View>
-              )
-            ) : (
-              /* Customers List */
-              <View style={styles.customersList}>
-                {filteredCustomers.map((customer) => (
-                  <CustomerCard
-                    key={customer.id}
-                    customer={customer}
-                    onPress={handleCustomerPress}
-                  />
-                ))}
-              </View>
-            )}
-          </View>
-        </ScrollView>
+          }
+        />
 
         {/* Route-Aware Bottom Navigation */}
         <DashboardBottomNav
@@ -460,30 +599,34 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
     justifyContent: 'space-between',
   },
-  scrollView: {
+  flatList: {
     flex: 1,
     backgroundColor: Colors.background,
   },
-  scrollContent: {
-    paddingBottom: Spacing.five,
-  },
-  bodyContainer: {
+  listContentContainer: {
     width: '100%',
     maxWidth: DashboardMaxContentWidth,
     alignSelf: 'center',
     paddingHorizontal: Spacing.three,
     paddingTop: Spacing.three,
-    gap: Spacing.twoHalf,
+    paddingBottom: Spacing.five,
   },
-  bodyContainerCompact: {
+  listContentContainerCompact: {
     paddingHorizontal: Spacing.twoHalf,
+  },
+  headerControlsBlock: {
+    gap: Spacing.twoHalf,
+    marginBottom: Spacing.twoHalf,
+  },
+  itemSeparator: {
+    height: 10,
   },
   // Total Outstanding Hero Card
   outstandingHeroCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.primaryDark,
-    borderRadius: 24,
+    borderRadius: BorderRadius.xl,
     paddingVertical: 18,
     paddingHorizontal: Spacing.four,
     gap: 14,
@@ -496,6 +639,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     gap: 12,
   },
+  outstandingHeroCardFiltering: {
+    borderWidth: 1.5,
+    borderColor: '#34D399',
+  },
   outstandingHeroGlow: {
     position: 'absolute',
     right: -30,
@@ -506,9 +653,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(16, 185, 129, 0.22)',
   },
   outstandingIconCircle: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: 'rgba(255, 255, 255, 0.14)',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.22)',
@@ -537,28 +684,85 @@ const styles = StyleSheet.create({
     fontWeight: Typography.weights.medium,
     color: 'rgba(255, 255, 255, 0.78)',
   },
-  outstandingChevron: {
-    fontSize: 24,
+  heroFilterPill: {
+    backgroundColor: 'rgba(255, 255, 255, 0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.24)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: BorderRadius.full,
+  },
+  heroFilterPillActive: {
+    backgroundColor: Colors.accent,
+    borderColor: Colors.accentLight,
+  },
+  heroFilterPillText: {
+    fontSize: 11,
     fontWeight: Typography.weights.bold,
+    color: Colors.textInverse,
+  },
+  heroFilterPillTextActive: {
     color: Colors.textInverse,
   },
   filterRowContent: {
     paddingHorizontal: 0,
     paddingVertical: 2,
   },
-  customersList: {
-    gap: 10,
+  resultsToolbar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 2,
+    gap: Spacing.two,
+  },
+  resultsCountText: {
+    flex: 1,
+    fontSize: Typography.sizes.xs,
+    fontWeight: Typography.weights.semiBold,
+    color: Colors.textSecondary,
+    fontVariant: ['tabular-nums'],
+  },
+  sortPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: BorderRadius.full,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  sortPillActive: {
+    backgroundColor: Colors.primarySoft,
+    borderColor: Colors.primaryBorder,
+  },
+  sortPillText: {
+    fontSize: 11,
+    fontWeight: Typography.weights.bold,
+    color: Colors.textSecondary,
+  },
+  sortPillTextActive: {
+    color: Colors.primaryDark,
   },
   stateCard: {
     backgroundColor: Colors.surface,
     borderRadius: BorderRadius.xl,
-    padding: Spacing.six,
+    paddingVertical: Spacing.five,
+    paddingHorizontal: Spacing.four,
     borderWidth: 1,
     borderColor: Colors.border,
     alignItems: 'center',
     gap: Spacing.twoHalf,
     marginVertical: Spacing.two,
     ...Shadows.xs,
+  },
+  errorIconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: Colors.errorLight,
+    borderWidth: 1,
+    borderColor: Colors.errorBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   stateTitle: {
     fontSize: Typography.sizes.lg,
