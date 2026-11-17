@@ -104,7 +104,7 @@ const styles = StyleSheet.create({
     ...Shadows.md,
   },
   cardHovered: {
-    borderColor: '#000000',
+    borderColor: Colors.primaryBorder,
   },
   cardPressed: {
     opacity: 0.92,
@@ -182,6 +182,7 @@ const styles = StyleSheet.create({
     fontWeight: Typography.weights.extraBold,
     letterSpacing: -0.7,
     lineHeight: 35,
+    fontVariant: ['tabular-nums'],
   },
   badgePill: {
     backgroundColor: '#1E9E5A',

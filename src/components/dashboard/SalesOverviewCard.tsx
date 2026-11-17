@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { SalesOverviewChartHeaderIcon } from './DashboardNavIcons';
-import { Shadows, Spacing, Typography } from '@/constants/theme';
+import { Colors, Shadows, Spacing, Typography } from '@/constants/theme';
 
 export interface WeeklySalesBar {
   label: string;
@@ -201,7 +201,7 @@ const styles = StyleSheet.create({
     ...Shadows.sm,
   },
   sectionContainerHovered: {
-    borderColor: '#000000',
+    borderColor: Colors.primaryBorder,
   },
   headerRow: {
     flexDirection: 'row',

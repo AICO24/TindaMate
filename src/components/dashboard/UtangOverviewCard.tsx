@@ -113,7 +113,7 @@ export function UtangOverviewCard({
           </Text>
           {summary.todayPaymentsTotal > 0 && (
             <Text style={styles.compactCollectedText} numberOfLines={1}>
-              +{paymentsLabel}
+              +{paymentsLabel} today
             </Text>
           )}
         </View>
@@ -266,7 +266,7 @@ const styles = StyleSheet.create({
     ...Shadows.xs,
   },
   compactCardHovered: {
-    borderColor: '#000000',
+    borderColor: Colors.primaryBorder,
   },
   compactCardPressed: {
     opacity: 0.9,
