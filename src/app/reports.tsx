@@ -1,11 +1,11 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { Image } from 'expo-image';
@@ -24,8 +24,11 @@ import {
   CalendarFilterIcon,
   NavProductsIcon,
   TrendChartVectorIcon,
+  WarningTriangleIcon,
 } from '@/components/dashboard/DashboardNavIcons';
 import { ProductScreenHeader } from '@/components/products/ProductScreenHeader';
+import { AlertCircleIcon } from '@/components/ui/AuthIcons';
+import { TindaMateButton } from '@/components/ui/TindaMateButton';
 import {
   BorderRadius,
   Colors,
@@ -80,9 +83,12 @@ const REPORT_PERIODS: { key: ReportPeriod; label: string }[] = [
 export default function ReportsScreen() {
   const pathname = usePathname();
   const activeNavTab = resolveActiveNavTab(pathname);
+  const { width: windowWidth } = useWindowDimensions();
+  const isCompactPhone = windowWidth < 360;
 
   const [selectedPeriod, setSelectedPeriod] = useState<ReportPeriod>('month');
   const [selectedTab, setSelectedTab] = useState<ReportTab>('Sales');
+  const [selectedBarIdx, setSelectedBarIdx] = useState<number | null>(null);
   const [sales, setSales] = useState<Sale[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [cogsSummary, setCogsSummary] = useState<COGSSummary | null>(null);
@@ -194,6 +200,7 @@ export default function ReportsScreen() {
 
   const handlePeriodChange = (period: ReportPeriod) => {
     if (period === selectedPeriod) return;
+    setSelectedBarIdx(null);
     setSelectedPeriod(period);
     loadAnalytics(period, false);
   };
@@ -242,8 +249,9 @@ export default function ReportsScreen() {
   );
 
   const grossProfit = cogsSummary?.grossProfit ?? null;
-  const totalCOGS = cogsSummary?.cogs ?? 0;
+  const totalCOGS = cogsSummary?.cogs ?? null;
   const totalExpenses = expenseSummary?.totalExpenses ?? null;
+  const hasIncompleteCosts = Boolean(cogsSummary?.hasIncompleteCosts);
 
   const netStoreProfit = useMemo<number | null>(() => {
     if (grossProfit === null || totalExpenses === null) {
@@ -253,7 +261,28 @@ export default function ReportsScreen() {
     const expenseCentavos = Math.round(totalExpenses * 100);
     return Number(((grossCentavos - expenseCentavos) / 100).toFixed(2));
   }, [grossProfit, totalExpenses]);
-  const totalUtang = utangSummary?.totalOutstandingUtang ?? 0;
+  const totalUtang = utangSummary?.totalOutstandingUtang ?? null;
+
+  const inventoryValuation = useMemo(() => {
+    let retailCentavos = 0;
+    let costCentavos = 0;
+    let trackedCostProducts = 0;
+
+    for (const p of products) {
+      const qty = Math.max(0, p.stock_quantity);
+      retailCentavos += Math.round(p.selling_price * 100) * qty;
+      if (p.cost_price !== null && p.cost_price !== undefined) {
+        costCentavos += Math.round(p.cost_price * 100) * qty;
+        trackedCostProducts += 1;
+      }
+    }
+
+    return {
+      retailValue: Number((retailCentavos / 100).toFixed(2)),
+      costValue: Number((costCentavos / 100).toFixed(2)),
+      trackedCostProducts,
+    };
+  }, [products]);
 
   const periodRange = useMemo(
     () => getReportingPeriodRange(selectedPeriod),
@@ -294,29 +323,42 @@ export default function ReportsScreen() {
 
   const heroMetric = useMemo(() => {
     if (selectedTab === 'Profit') {
+      const formattedGross =
+        grossProfit !== null
+          ? hasIncompleteCosts
+            ? `~${formatPesoCurrency(grossProfit)}`
+            : formatPesoCurrency(grossProfit)
+          : '—';
+      const formattedNet =
+        netStoreProfit !== null
+          ? hasIncompleteCosts
+            ? `~${formatPesoCurrency(netStoreProfit)}`
+            : formatPesoCurrency(netStoreProfit)
+          : null;
+
       return {
-        amount: grossProfit !== null ? formatPesoCurrency(grossProfit) : '—',
-        label: `${periodLabel} Gross Profit`,
+        amount: formattedGross,
+        label: hasIncompleteCosts
+          ? `${periodLabel} Est. Gross Profit*`
+          : `${periodLabel} Gross Profit`,
         badge:
-          netStoreProfit !== null
-            ? `Net after expenses: ${formatPesoCurrency(netStoreProfit)}`
+          formattedNet !== null
+            ? `${hasIncompleteCosts ? 'Est. net' : 'Net'} after expenses: ${formattedNet}`
             : 'Net profit unavailable',
       };
     }
     if (selectedTab === 'Inventory') {
-      const totalRetailVal = products.reduce(
-        (acc, p) => acc + p.selling_price * Math.max(0, p.stock_quantity),
-        0
-      );
       return {
-        amount: formatPesoCurrency(totalRetailVal),
+        amount: formatPesoCurrency(inventoryValuation.retailValue),
         label: 'Inventory Retail Value',
-        badge: `${productSummary.totalProducts} products · ${productSummary.lowStockCount} low stock`,
+        badge: `${productSummary.totalProducts} products · ${
+          productSummary.lowStockCount + productSummary.outOfStockCount
+        } alerts`,
       };
     }
     if (selectedTab === 'Utang') {
       return {
-        amount: formatPesoCurrency(totalUtang),
+        amount: totalUtang !== null ? formatPesoCurrency(totalUtang) : '—',
         label: 'Total Outstanding Utang',
         badge: `${
           utangSummary?.customersWithBalanceCount ?? 0
@@ -326,17 +368,17 @@ export default function ReportsScreen() {
     return {
       amount: formatPesoCurrency(totalSalesAmount),
       label: `${periodLabel} Sales`,
-      badge: `↑ ${sales.length} ${
+      badge: `${sales.length} ${
         sales.length === 1 ? 'transaction' : 'transactions'
       } recorded`,
     };
   }, [
     selectedTab,
-    selectedPeriod,
     periodLabel,
     grossProfit,
     netStoreProfit,
-    products,
+    hasIncompleteCosts,
+    inventoryValuation.retailValue,
     productSummary,
     totalUtang,
     utangSummary,
@@ -348,39 +390,56 @@ export default function ReportsScreen() {
   const maxBucketAmount = Math.max(...chartBars.map((b) => b.amount), 0);
   const getBarHeight = (amount: number) =>
     amount > 0 && maxBucketAmount > 0
-      ? Math.max(6, Math.round((amount / maxBucketAmount) * 76))
+      ? Math.max(6, Math.round((amount / maxBucketAmount) * 84))
       : 2; // zero baseline indicator, 2px
 
   const barCount = chartBars.length;
-  const barWidth = barCount >= 7 ? 10 : barCount === 6 ? 11 : 14;
-  const barGap = barCount >= 7 ? 5 : barCount === 6 ? 6 : 8;
+  const barWidth = isCompactPhone
+    ? barCount >= 7
+      ? 18
+      : 22
+    : barCount >= 7
+    ? 24
+    : 28;
+  const activeBarIdx =
+    selectedBarIdx !== null && selectedBarIdx < chartBars.length
+      ? selectedBarIdx
+      : chartBars.length > 0
+      ? chartBars.length - 1
+      : null;
+
+  const isInitialLoadError =
+    Boolean(errorMessage) &&
+    !cogsSummary &&
+    sales.length === 0 &&
+    products.length === 0;
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <StatusBar style="light" />
       <View style={styles.mainContainer}>
         {/* Deep Green Header */}
-        <View style={styles.heroHeaderZone}>
-          <ProductScreenHeader
-            title="Reports"
-            showBack={true}
-            onBack={() =>
-              router.canGoBack() ? router.back() : router.replace('/home')
-            }
-            leftIcon={
-              <TrendChartVectorIcon color={Colors.textInverse} size={20} />
-            }
-            rightElement={
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="View sales history log"
-                onPress={() => router.push('/sales/history')}
-                style={styles.calendarIconBtn}>
-                <CalendarFilterIcon color={Colors.textInverse} size={18} />
-              </Pressable>
-            }
-          />
-        </View>
+        <ProductScreenHeader
+          title="Reports"
+          subtitle={`${periodLabel} store performance & profit`}
+          showBack={true}
+          onBack={() =>
+            router.canGoBack() ? router.back() : router.replace('/home')
+          }
+          rightElement={
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="View sales history log"
+              accessibilityHint="Opens full sales history screen"
+              onPress={() => router.push('/sales/history')}
+              style={({ pressed }) => [
+                styles.calendarIconBtn,
+                pressed && styles.iconBtnPressed,
+              ]}>
+              <CalendarFilterIcon color={Colors.textInverse} size={18} />
+            </Pressable>
+          }
+        />
 
         <ScrollView
           style={styles.scrollView}
@@ -450,7 +509,7 @@ export default function ReportsScreen() {
               })}
             </ScrollView>
 
-            {errorMessage ? (
+            {errorMessage && !isInitialLoadError ? (
               <DashboardErrorBanner
                 message={errorMessage}
                 onRetry={() => loadAnalytics(selectedPeriod, true)}
@@ -465,19 +524,43 @@ export default function ReportsScreen() {
                   message="Calculating Store Reports..."
                 />
               </View>
+            ) : isInitialLoadError ? (
+              <View style={styles.errorStateCard}>
+                <View style={styles.errorIconCircle}>
+                  <WarningTriangleIcon
+                    size={24}
+                    bgColor={Colors.errorLight}
+                    fgColor={Colors.error}
+                  />
+                </View>
+                <Text style={styles.errorStateTitle}>
+                  Could Not Load Store Reports
+                </Text>
+                <Text style={styles.errorStateSubtitle}>{errorMessage}</Text>
+                <View style={styles.errorRetryWrap}>
+                  <TindaMateButton
+                    title="Retry Loading"
+                    variant="primary"
+                    onPress={() => loadAnalytics(selectedPeriod, true)}
+                    accessibilityLabel="Retry loading store reports"
+                  />
+                </View>
+              </View>
             ) : (
               <>
-                {/* Main KPI & Bar Chart Card */}
+                {/* Main KPI & Full-Width Interactive Bar Chart Card */}
                 <View style={styles.kpiChartCard}>
-                  <View style={styles.kpiLeftCol}>
-                    <Text
-                      style={styles.kpiBigAmount}
-                      adjustsFontSizeToFit
-                      minimumFontScale={0.8}
-                      numberOfLines={1}>
-                      {heroMetric.amount}
-                    </Text>
-                    <Text style={styles.kpiLabel}>{heroMetric.label}</Text>
+                  <View style={styles.kpiHeaderRow}>
+                    <View style={styles.kpiLeftCol}>
+                      <Text style={styles.kpiLabel}>{heroMetric.label}</Text>
+                      <Text
+                        style={styles.kpiBigAmount}
+                        adjustsFontSizeToFit
+                        minimumFontScale={0.75}
+                        numberOfLines={1}>
+                        {heroMetric.amount}
+                      </Text>
+                    </View>
 
                     <View style={styles.kpiTrendPill}>
                       <Text style={styles.kpiTrendPillText} numberOfLines={1}>
@@ -486,18 +569,42 @@ export default function ReportsScreen() {
                     </View>
                   </View>
 
-                  {/* Period-Aware Chronological Sales Trend Chart */}
-                  <View style={styles.chartCol}>
-                    <Text style={styles.chartSubtitle} numberOfLines={1}>
-                      Sales Trend
-                    </Text>
-                    <View style={[styles.barChartWrap, { gap: barGap }]}>
+                  <View style={styles.chartDivider} />
+
+                  {/* Period-Aware Chronological Interactive Sales Trend Chart */}
+                  <View style={styles.chartSection}>
+                    <View style={styles.chartHeaderRow}>
+                      <View style={styles.chartTitleCluster}>
+                        <TrendChartVectorIcon
+                          size={15}
+                          color={Colors.primaryDark}
+                        />
+                        <Text style={styles.chartSubtitle} numberOfLines={1}>
+                          Sales Trend ({periodLabel})
+                        </Text>
+                      </View>
+                      {activeBarIdx !== null && chartBars[activeBarIdx] ? (
+                        <Text
+                          style={styles.chartSelectedReadout}
+                          numberOfLines={1}>
+                          {chartBars[activeBarIdx].label}:{' '}
+                          {formatPesoCurrency(chartBars[activeBarIdx].amount)}
+                        </Text>
+                      ) : null}
+                    </View>
+
+                    <View style={styles.barChartWrap}>
                       {chartBars.map((bucket, idx) => {
                         const barHeight = getBarHeight(bucket.amount);
-                        const isLastBar = idx === chartBars.length - 1;
+                        const isSelected = activeBarIdx === idx;
                         return (
-                          <View
+                          <Pressable
                             key={`${bucket.label}-${idx}`}
+                            accessibilityRole="button"
+                            accessibilityState={{ selected: isSelected }}
+                            accessibilityLabel={`${bucket.label} sales: ${formatPesoCurrency(bucket.amount)}`}
+                            accessibilityHint="Tap to inspect sales total for this period"
+                            onPress={() => setSelectedBarIdx(idx)}
                             style={styles.barItemCol}>
                             <View style={styles.barStage}>
                               <View
@@ -506,42 +613,262 @@ export default function ReportsScreen() {
                                   {
                                     width: barWidth,
                                     height: barHeight,
-                                    backgroundColor: isLastBar
+                                    backgroundColor: isSelected
                                       ? Colors.primaryDark
-                                      : Colors.primary,
+                                      : bucket.amount > 0
+                                      ? Colors.primary
+                                      : Colors.border,
                                   },
                                 ]}
                               />
                             </View>
                             <Text
-                              style={styles.barLabel}
+                              style={[
+                                styles.barLabel,
+                                isSelected && styles.barLabelSelected,
+                              ]}
                               numberOfLines={1}
                               adjustsFontSizeToFit
                               minimumFontScale={0.75}>
                               {bucket.label}
                             </Text>
-                          </View>
+                          </Pressable>
                         );
                       })}
                     </View>
-                    <View style={styles.captionSlot}>
-                      {isChartEmpty && (
-                        <Text
-                          style={styles.emptyChartCaption}
-                          numberOfLines={1}
-                          adjustsFontSizeToFit
-                          minimumFontScale={0.75}>
-                          No sales in this period
-                        </Text>
-                      )}
-                    </View>
+
+                    {isChartEmpty ? (
+                      <Text style={styles.emptyChartCaption} numberOfLines={1}>
+                        No sales recorded in this period
+                      </Text>
+                    ) : null}
                   </View>
                 </View>
+
+                {/* Incomplete Product Cost Safety Warning Banner */}
+                {hasIncompleteCosts && cogsSummary ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Incomplete product cost warning. Tap to review products."
+                    accessibilityHint="Opens products list to update missing cost prices"
+                    onPress={() => router.push('/products')}
+                    style={({ pressed }) => [
+                      styles.incompleteCostBanner,
+                      pressed && styles.pressedCard,
+                    ]}>
+                    <AlertCircleIcon size={18} color={Colors.warningText} />
+                    <View style={styles.incompleteCostCol}>
+                      <Text style={styles.incompleteCostTitle}>
+                        Estimated Profit (Incomplete Cost Data)
+                      </Text>
+                      <Text style={styles.incompleteCostBody}>
+                        {cogsSummary.untrackedCostItemCount} sold{' '}
+                        {cogsSummary.untrackedCostItemCount === 1
+                          ? 'item'
+                          : 'items'}{' '}
+                        ({cogsSummary.untrackedQuantity}{' '}
+                        {cogsSummary.untrackedQuantity === 1 ? 'unit' : 'units'}
+                        ) had no recorded cost price. COGS reflects{' '}
+                        {cogsSummary.trackedCostItemCount}/
+                        {cogsSummary.saleItemCount} tracked items. Tap to update
+                        products ›
+                      </Text>
+                    </View>
+                  </Pressable>
+                ) : null}
+
+                {/* Profit & Loss Breakdown Card (Prominent on Profit tab, or below chart) */}
+                {selectedTab === 'Profit' || selectedTab === 'Sales' ? (
+                  <View style={styles.pnlCard}>
+                    <View style={styles.sectionHeaderRow}>
+                      <Text style={styles.sectionTitle}>
+                        {periodLabel} Profit &amp; Cost Summary
+                      </Text>
+                      {hasIncompleteCosts ? (
+                        <View style={styles.estPill}>
+                          <Text style={styles.estPillText}>ESTIMATED</Text>
+                        </View>
+                      ) : null}
+                    </View>
+
+                    <View style={styles.pnlRows}>
+                      <View style={styles.pnlRow}>
+                        <Text style={styles.pnlLabel}>Sales Revenue</Text>
+                        <Text style={styles.pnlValue}>
+                          {formatPesoCurrency(totalSalesAmount)}
+                        </Text>
+                      </View>
+                      <View style={styles.pnlRow}>
+                        <Text style={styles.pnlLabel}>
+                          Tracked Cost of Goods (COGS)
+                        </Text>
+                        <Text style={styles.pnlValueMuted}>
+                          {totalCOGS !== null
+                            ? `- ${formatPesoCurrency(totalCOGS)}`
+                            : '—'}
+                        </Text>
+                      </View>
+                      <View style={styles.pnlDivider} />
+                      <View style={styles.pnlRow}>
+                        <Text style={styles.pnlLabelBold}>
+                          {hasIncompleteCosts
+                            ? 'Est. Gross Profit*'
+                            : 'Gross Profit'}
+                        </Text>
+                        <Text style={styles.pnlValueBold}>
+                          {grossProfit !== null
+                            ? `${hasIncompleteCosts ? '~' : ''}${formatPesoCurrency(grossProfit)}`
+                            : '—'}
+                        </Text>
+                      </View>
+                      <View style={styles.pnlRow}>
+                        <Text style={styles.pnlLabel}>
+                          Operating Expenses ({expenseSummary?.expenseCount ?? 0}
+                          )
+                        </Text>
+                        <Text style={styles.pnlValueMuted}>
+                          {totalExpenses !== null
+                            ? `- ${formatPesoCurrency(totalExpenses)}`
+                            : '—'}
+                        </Text>
+                      </View>
+                      <View style={styles.pnlDivider} />
+                      <View style={styles.pnlRow}>
+                        <Text style={styles.pnlNetLabel}>
+                          {hasIncompleteCosts
+                            ? 'Est. Net Profit*'
+                            : 'Net Store Profit'}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.pnlNetValue,
+                            netStoreProfit !== null &&
+                              netStoreProfit < 0 &&
+                              styles.pnlNetNegative,
+                          ]}>
+                          {netStoreProfit !== null
+                            ? `${hasIncompleteCosts ? '~' : ''}${formatPesoCurrency(netStoreProfit)}`
+                            : '—'}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                ) : null}
+
+                {/* Tab-Aware Inventory Summary Card */}
+                {selectedTab === 'Inventory' ? (
+                  <View style={styles.pnlCard}>
+                    <View style={styles.sectionHeaderRow}>
+                      <Text style={styles.sectionTitle}>
+                        Store Inventory Health
+                      </Text>
+                      <Pressable
+                        accessibilityRole="button"
+                        onPress={() => router.push('/products')}>
+                        <Text style={styles.seeAllLink}>Manage →</Text>
+                      </Pressable>
+                    </View>
+                    <View style={styles.pnlRows}>
+                      <View style={styles.pnlRow}>
+                        <Text style={styles.pnlLabel}>Total Products</Text>
+                        <Text style={styles.pnlValue}>
+                          {productSummary.totalProducts}
+                        </Text>
+                      </View>
+                      <View style={styles.pnlRow}>
+                        <Text style={styles.pnlLabel}>In Stock</Text>
+                        <Text style={styles.pnlValuePositive}>
+                          {productSummary.inStockCount}
+                        </Text>
+                      </View>
+                      <View style={styles.pnlRow}>
+                        <Text style={styles.pnlLabel}>Low Stock</Text>
+                        <Text style={styles.pnlValueWarning}>
+                          {productSummary.lowStockCount}
+                        </Text>
+                      </View>
+                      <View style={styles.pnlRow}>
+                        <Text style={styles.pnlLabel}>Out of Stock</Text>
+                        <Text style={styles.pnlValueDanger}>
+                          {productSummary.outOfStockCount}
+                        </Text>
+                      </View>
+                      <View style={styles.pnlDivider} />
+                      <View style={styles.pnlRow}>
+                        <Text style={styles.pnlLabelBold}>
+                          Tracked Cost Value ({inventoryValuation.trackedCostProducts}/
+                          {productSummary.totalProducts})
+                        </Text>
+                        <Text style={styles.pnlValueBold}>
+                          {formatPesoCurrency(inventoryValuation.costValue)}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                ) : null}
+
+                {/* Tab-Aware Utang Summary Card */}
+                {selectedTab === 'Utang' ? (
+                  <View style={styles.pnlCard}>
+                    <View style={styles.sectionHeaderRow}>
+                      <Text style={styles.sectionTitle}>
+                        Customer Credit &amp; Collections
+                      </Text>
+                      <Pressable
+                        accessibilityRole="button"
+                        onPress={() => router.push('/customers' as any)}>
+                        <Text style={styles.seeAllLink}>Open Ledger →</Text>
+                      </Pressable>
+                    </View>
+                    <View style={styles.pnlRows}>
+                      <View style={styles.pnlRow}>
+                        <Text style={styles.pnlLabel}>
+                          Total Outstanding Utang
+                        </Text>
+                        <Text
+                          style={[
+                            styles.pnlValueBold,
+                            totalUtang !== null &&
+                              totalUtang > 0 && { color: Colors.accentDark },
+                          ]}>
+                          {totalUtang !== null
+                            ? formatPesoCurrency(totalUtang)
+                            : '—'}
+                        </Text>
+                      </View>
+                      <View style={styles.pnlRow}>
+                        <Text style={styles.pnlLabel}>
+                          Customers with Balance
+                        </Text>
+                        <Text style={styles.pnlValue}>
+                          {utangSummary
+                            ? utangSummary.customersWithBalanceCount
+                            : '—'}
+                        </Text>
+                      </View>
+                      <View style={styles.pnlDivider} />
+                      <View style={styles.pnlRow}>
+                        <Text style={styles.pnlLabelBold}>
+                          Collected Today
+                        </Text>
+                        <Text style={styles.pnlValuePositive}>
+                          {utangSummary
+                            ? formatPesoCurrency(
+                                utangSummary.todayPaymentsTotal
+                              )
+                            : '—'}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                ) : null}
 
                 {/* Top Products Card */}
                 <View style={styles.topProductsCard}>
                   <View style={styles.sectionHeaderRow}>
-                    <Text style={styles.sectionTitle}>Top Products</Text>
+                    <Text style={styles.sectionTitle}>
+                      Top Products ({periodLabel})
+                    </Text>
                     <Pressable
                       accessibilityRole="button"
                       onPress={() => router.push('/products')}>
@@ -555,55 +882,82 @@ export default function ReportsScreen() {
                     </Text>
                   ) : (
                     <View style={styles.topProductsList}>
-                      {topProducts.map((item, idx) => (
-                        <Pressable
-                          key={item.id}
-                          accessibilityRole="button"
-                          onPress={() => router.push('/products')}
-                          style={styles.topProductRow}>
-                          {/* Product Thumbnail / Icon */}
-                          <View style={styles.topProductThumb}>
-                            {item.imageUrl ? (
-                              <Image
-                                source={{ uri: item.imageUrl }}
-                                style={styles.topProductImg}
-                                contentFit="contain"
-                              />
-                            ) : (
-                              <NavProductsIcon color={Colors.primary} />
-                            )}
-                          </View>
-
-                          {/* Name + Progress Bar */}
-                          <View style={styles.topProductCenter}>
-                            <View style={styles.topProductTitleRow}>
-                              <Text
-                                style={styles.topProductName}
-                                numberOfLines={1}>
-                                {item.name}
-                              </Text>
-                              <Text style={styles.topProductShare}>
-                                {item.sharePercent}%
+                      {topProducts.map((item, idx) => {
+                        const hasValidProductId = /^[0-9a-f]{8}-/i.test(
+                          item.id
+                        );
+                        return (
+                          <Pressable
+                            key={item.id}
+                            accessibilityRole="button"
+                            accessibilityLabel={`Rank ${idx + 1}: ${item.name}, ${item.unitsSold} sold, ${formatPesoCurrency(item.revenue)}, ${item.sharePercent}% of sales`}
+                            onPress={() =>
+                              router.push(
+                                hasValidProductId
+                                  ? (`/products/${item.id}` as any)
+                                  : '/products'
+                              )
+                            }
+                            style={({ pressed }) => [
+                              styles.topProductRow,
+                              pressed && styles.pressedCard,
+                            ]}>
+                            <View style={styles.rankBadge}>
+                              <Text style={styles.rankBadgeText}>
+                                {idx + 1}
                               </Text>
                             </View>
 
-                            <View style={styles.progressTrack}>
-                              <View
-                                style={[
-                                  styles.progressFill,
-                                  {
-                                    width: `${Math.max(
-                                      12,
-                                      item.sharePercent
-                                    )}%`,
-                                    backgroundColor: Colors.accent,
-                                  },
-                                ]}
-                              />
+                            {/* Product Thumbnail / Icon */}
+                            <View style={styles.topProductThumb}>
+                              {item.imageUrl ? (
+                                <Image
+                                  source={{ uri: item.imageUrl }}
+                                  style={styles.topProductImg}
+                                  contentFit="contain"
+                                />
+                              ) : (
+                                <NavProductsIcon color={Colors.primary} />
+                              )}
                             </View>
-                          </View>
-                        </Pressable>
-                      ))}
+
+                            {/* Name + Units/Share + Progress Bar */}
+                            <View style={styles.topProductCenter}>
+                              <View style={styles.topProductTitleRow}>
+                                <Text
+                                  style={styles.topProductName}
+                                  numberOfLines={1}>
+                                  {item.name}
+                                </Text>
+                                <Text style={styles.topProductShare}>
+                                  {formatPesoCurrency(item.revenue)}
+                                </Text>
+                              </View>
+
+                              <Text style={styles.topProductMeta}>
+                                {item.unitsSold}{' '}
+                                {item.unitsSold === 1 ? 'unit' : 'units'} sold ·{' '}
+                                {item.sharePercent}% of sales
+                              </Text>
+
+                              <View style={styles.progressTrack}>
+                                <View
+                                  style={[
+                                    styles.progressFill,
+                                    {
+                                      width: `${Math.max(
+                                        12,
+                                        item.sharePercent
+                                      )}%`,
+                                      backgroundColor: Colors.accent,
+                                    },
+                                  ]}
+                                />
+                              </View>
+                            </View>
+                          </Pressable>
+                        );
+                      })}
                     </View>
                   )}
                 </View>
@@ -612,7 +966,11 @@ export default function ReportsScreen() {
                 <View style={styles.breakdownGrid}>
                   <View style={styles.breakdownTile}>
                     <Text style={styles.breakdownLabel}>{periodLabel} Sales</Text>
-                    <Text style={styles.breakdownValue}>
+                    <Text
+                      style={styles.breakdownValue}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                      minimumFontScale={0.78}>
                       {formatPesoCurrency(totalSalesAmount)}
                     </Text>
                     <Text style={styles.breakdownCaption}>
@@ -621,18 +979,32 @@ export default function ReportsScreen() {
                   </View>
 
                   <View style={styles.breakdownTile}>
-                    <Text style={styles.breakdownLabel}>Recorded COGS</Text>
-                    <Text style={styles.breakdownValue}>
-                      {formatPesoCurrency(totalCOGS)}
+                    <Text style={styles.breakdownLabel}>
+                      {hasIncompleteCosts ? 'Tracked COGS*' : 'Recorded COGS'}
+                    </Text>
+                    <Text
+                      style={styles.breakdownValue}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                      minimumFontScale={0.78}>
+                      {totalCOGS !== null ? formatPesoCurrency(totalCOGS) : '—'}
                     </Text>
                     <Text style={styles.breakdownCaption}>
-                      Product cost of goods
+                      {cogsSummary
+                        ? `${cogsSummary.trackedCostItemCount}/${cogsSummary.saleItemCount} items tracked`
+                        : 'COGS unavailable'}
                     </Text>
                   </View>
 
                   <View style={styles.breakdownTile}>
-                    <Text style={styles.breakdownLabel}>{periodLabel} Expenses</Text>
-                    <Text style={styles.breakdownValue}>
+                    <Text style={styles.breakdownLabel}>
+                      {periodLabel} Expenses
+                    </Text>
+                    <Text
+                      style={styles.breakdownValue}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                      minimumFontScale={0.78}>
                       {totalExpenses !== null
                         ? formatPesoCurrency(totalExpenses)
                         : '—'}
@@ -653,9 +1025,13 @@ export default function ReportsScreen() {
                     <Text
                       style={[
                         styles.breakdownValue,
-                        totalUtang > 0 && { color: Colors.accent },
-                      ]}>
-                      {formatPesoCurrency(totalUtang)}
+                        totalUtang !== null &&
+                          totalUtang > 0 && { color: Colors.accentDark },
+                      ]}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                      minimumFontScale={0.78}>
+                      {totalUtang !== null ? formatPesoCurrency(totalUtang) : '—'}
                     </Text>
                     <Text style={styles.breakdownCaption}>
                       Current outstanding balance
@@ -687,13 +1063,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
     justifyContent: 'space-between',
   },
-  heroHeaderZone: {
-    backgroundColor: Colors.primaryDark,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    paddingBottom: Spacing.one,
-    ...Shadows.sm,
-  },
   calendarIconBtn: {
     width: 38,
     height: 38,
@@ -703,6 +1072,10 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.22)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  iconBtnPressed: {
+    opacity: 0.75,
+    transform: [{ scale: 0.95 }],
   },
   scrollView: {
     flex: 1,
@@ -777,82 +1150,152 @@ const styles = StyleSheet.create({
   loadingCard: {
     backgroundColor: Colors.surface,
     borderRadius: BorderRadius.xl,
-    padding: Spacing.five,
+    paddingVertical: Spacing.five,
+    paddingHorizontal: Spacing.four,
     alignItems: 'center',
     gap: Spacing.two,
     borderWidth: 1,
     borderColor: Colors.borderSubtle,
   },
-  loadingText: {
-    fontSize: Typography.sizes.bodySm,
-    fontWeight: Typography.weights.semiBold,
-    color: Colors.textSecondary,
-  },
-  // Main KPI & Bar Chart Card
-  kpiChartCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  errorStateCard: {
     backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.xxl,
+    borderRadius: BorderRadius.xl,
+    paddingVertical: Spacing.five,
+    paddingHorizontal: Spacing.four,
+    alignItems: 'center',
+    gap: Spacing.twoHalf,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    ...Shadows.xs,
+  },
+  errorIconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: Colors.errorLight,
+    borderWidth: 1,
+    borderColor: Colors.errorBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  errorStateTitle: {
+    fontSize: Typography.sizes.lg,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.textPrimary,
+    textAlign: 'center',
+  },
+  errorStateSubtitle: {
+    fontSize: Typography.sizes.body,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: Typography.lineHeights.relaxed,
+  },
+  errorRetryWrap: {
+    width: '100%',
+    maxWidth: 260,
+    marginTop: Spacing.one,
+  },
+  pressedCard: {
+    opacity: 0.88,
+  },
+  // Main KPI & Full-Width Interactive Bar Chart Card
+  kpiChartCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.primaryCard,
     borderWidth: 1,
     borderColor: Colors.borderSubtle,
-    paddingVertical: 20,
+    paddingVertical: Spacing.four,
     paddingHorizontal: Spacing.four,
-    gap: 14,
+    gap: Spacing.three,
     ...Shadows.sm,
+  },
+  kpiHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: Spacing.two,
+    flexWrap: 'wrap',
   },
   kpiLeftCol: {
     flex: 1,
-    gap: 4,
+    minWidth: 160,
+    gap: 2,
   },
   kpiBigAmount: {
     fontSize: 30,
     fontWeight: Typography.weights.extraBold,
     color: Colors.textPrimary,
     letterSpacing: -0.6,
+    fontVariant: ['tabular-nums'],
   },
   kpiLabel: {
-    fontSize: Typography.sizes.bodySm,
+    fontSize: Typography.sizes.caption,
     fontWeight: Typography.weights.bold,
     color: Colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
   },
   kpiTrendPill: {
     alignSelf: 'flex-start',
-    backgroundColor: '#DCFCE7',
+    backgroundColor: Colors.primaryLight,
     paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingVertical: 5,
     borderRadius: BorderRadius.full,
-    marginTop: 4,
+    marginTop: 2,
   },
   kpiTrendPillText: {
     fontSize: 11,
     fontWeight: Typography.weights.extraBold,
     color: Colors.primaryDark,
+    fontVariant: ['tabular-nums'],
   },
-  chartCol: {
+  chartDivider: {
+    height: 1,
+    backgroundColor: Colors.borderSubtle,
+  },
+  chartSection: {
+    gap: Spacing.two,
+  },
+  chartHeaderRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.two,
+  },
+  chartTitleCluster: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   chartSubtitle: {
     fontSize: Typography.sizes.xs,
-    fontWeight: Typography.weights.semiBold,
-    color: Colors.textSecondary,
-    marginBottom: Spacing.xs,
-    textAlign: 'center',
+    fontWeight: Typography.weights.bold,
+    color: Colors.textPrimary,
+  },
+  chartSelectedReadout: {
+    fontSize: Typography.sizes.xs,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.primaryDark,
+    backgroundColor: Colors.primarySoft,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: BorderRadius.full,
+    fontVariant: ['tabular-nums'],
   },
   barChartWrap: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    justifyContent: 'center',
-    height: 94,
-    paddingHorizontal: 2,
+    justifyContent: 'space-around',
+    height: 106,
+    paddingTop: Spacing.one,
   },
   barItemCol: {
+    flex: 1,
     alignItems: 'center',
+    justifyContent: 'flex-end',
   },
   barStage: {
-    height: 76,
+    height: 84,
     justifyContent: 'flex-end',
     alignItems: 'center',
   },
@@ -860,28 +1303,150 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   barLabel: {
-    fontSize: 10,
-    fontWeight: Typography.weights.bold,
+    fontSize: 10.5,
+    fontWeight: Typography.weights.semiBold,
     color: Colors.textSecondary,
     marginTop: Spacing.xs,
     textAlign: 'center',
   },
-  captionSlot: {
-    height: 14,
-    marginTop: 2,
-    justifyContent: 'center',
-    alignItems: 'center',
+  barLabelSelected: {
+    color: Colors.primaryDark,
+    fontWeight: Typography.weights.extraBold,
   },
   emptyChartCaption: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: Typography.weights.medium,
-    color: Colors.textSecondary,
+    color: Colors.textMuted,
     textAlign: 'center',
+  },
+  // Incomplete Cost Warning Banner
+  incompleteCostBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.twoHalf,
+    backgroundColor: Colors.warningLight,
+    borderWidth: 1,
+    borderColor: '#FCD34D',
+    borderRadius: BorderRadius.card,
+    padding: Spacing.three,
+  },
+  incompleteCostCol: {
+    flex: 1,
+    gap: 2,
+  },
+  incompleteCostTitle: {
+    fontSize: Typography.sizes.caption,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.warningText,
+  },
+  incompleteCostBody: {
+    fontSize: 11.5,
+    color: Colors.warningText,
+    lineHeight: 16,
+  },
+  // P&L / Inventory / Utang Summary Card
+  pnlCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.primaryCard,
+    borderWidth: 1,
+    borderColor: Colors.borderSubtle,
+    padding: Spacing.four,
+    gap: Spacing.three,
+    ...Shadows.sm,
+  },
+  estPill: {
+    backgroundColor: Colors.warningLight,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.full,
+  },
+  estPillText: {
+    fontSize: 10,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.warningText,
+    letterSpacing: 0.4,
+  },
+  pnlRows: {
+    gap: Spacing.two,
+  },
+  pnlRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.two,
+  },
+  pnlLabel: {
+    fontSize: Typography.sizes.bodySm,
+    color: Colors.textSecondary,
+    fontWeight: Typography.weights.medium,
+    flex: 1,
+  },
+  pnlLabelBold: {
+    fontSize: Typography.sizes.bodySm,
+    color: Colors.textPrimary,
+    fontWeight: Typography.weights.bold,
+    flex: 1,
+  },
+  pnlValue: {
+    fontSize: Typography.sizes.bodySm,
+    fontWeight: Typography.weights.bold,
+    color: Colors.textPrimary,
+    fontVariant: ['tabular-nums'],
+  },
+  pnlValueMuted: {
+    fontSize: Typography.sizes.bodySm,
+    fontWeight: Typography.weights.semiBold,
+    color: Colors.textSecondary,
+    fontVariant: ['tabular-nums'],
+  },
+  pnlValueBold: {
+    fontSize: Typography.sizes.base,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.textPrimary,
+    fontVariant: ['tabular-nums'],
+  },
+  pnlValuePositive: {
+    fontSize: Typography.sizes.bodySm,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.successText,
+    fontVariant: ['tabular-nums'],
+  },
+  pnlValueWarning: {
+    fontSize: Typography.sizes.bodySm,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.warning,
+    fontVariant: ['tabular-nums'],
+  },
+  pnlValueDanger: {
+    fontSize: Typography.sizes.bodySm,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.error,
+    fontVariant: ['tabular-nums'],
+  },
+  pnlDivider: {
+    height: 1,
+    backgroundColor: Colors.borderSubtle,
+    marginVertical: 2,
+  },
+  pnlNetLabel: {
+    fontSize: Typography.sizes.base,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.textPrimary,
+    flex: 1,
+  },
+  pnlNetValue: {
+    fontSize: Typography.sizes.lg,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.primary,
+    fontVariant: ['tabular-nums'],
+  },
+  pnlNetNegative: {
+    color: Colors.error,
   },
   // Top Products Section
   topProductsCard: {
     backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.xxl,
+    borderRadius: BorderRadius.primaryCard,
     borderWidth: 1,
     borderColor: Colors.borderSubtle,
     padding: Spacing.four,
@@ -892,6 +1457,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: Spacing.two,
   },
   sectionTitle: {
     fontSize: Typography.sizes.md,
@@ -901,7 +1467,7 @@ const styles = StyleSheet.create({
   seeAllLink: {
     fontSize: Typography.sizes.xs,
     fontWeight: Typography.weights.bold,
-    color: Colors.textSecondary,
+    color: Colors.primary,
   },
   emptySubtext: {
     fontSize: Typography.sizes.bodySm,
@@ -915,11 +1481,25 @@ const styles = StyleSheet.create({
   topProductRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
+  },
+  rankBadge: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: Colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rankBadgeText: {
+    fontSize: 11,
+    fontWeight: Typography.weights.extraBold,
+    color: Colors.primaryDark,
+    fontVariant: ['tabular-nums'],
   },
   topProductThumb: {
-    width: 44,
-    height: 44,
+    width: 42,
+    height: 42,
     borderRadius: BorderRadius.md,
     backgroundColor: Colors.surfaceSubtle,
     borderWidth: 1,
@@ -934,7 +1514,7 @@ const styles = StyleSheet.create({
   },
   topProductCenter: {
     flex: 1,
-    gap: 6,
+    gap: 4,
   },
   topProductTitleRow: {
     flexDirection: 'row',
@@ -949,13 +1529,20 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
   },
   topProductShare: {
-    fontSize: Typography.sizes.body,
+    fontSize: Typography.sizes.bodySm,
     fontWeight: Typography.weights.extraBold,
-    color: Colors.textPrimary,
+    color: Colors.primaryDark,
+    fontVariant: ['tabular-nums'],
+  },
+  topProductMeta: {
+    fontSize: 11.5,
+    color: Colors.textSecondary,
+    fontWeight: Typography.weights.medium,
+    fontVariant: ['tabular-nums'],
   },
   progressTrack: {
     width: '100%',
-    height: 7,
+    height: 6,
     borderRadius: BorderRadius.full,
     backgroundColor: Colors.surfaceSubtle,
     overflow: 'hidden',
@@ -974,7 +1561,7 @@ const styles = StyleSheet.create({
   breakdownTile: {
     width: '48.4%',
     backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.xl,
+    borderRadius: BorderRadius.card,
     borderWidth: 1,
     borderColor: Colors.borderSubtle,
     padding: Spacing.threeHalf,
@@ -991,6 +1578,7 @@ const styles = StyleSheet.create({
     fontSize: Typography.sizes.lg,
     fontWeight: Typography.weights.extraBold,
     color: Colors.primaryDark,
+    fontVariant: ['tabular-nums'],
   },
   breakdownCaption: {
     fontSize: 11,
