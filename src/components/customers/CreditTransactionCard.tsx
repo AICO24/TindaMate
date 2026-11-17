@@ -48,10 +48,9 @@ export function CreditTransactionCard({
   const formattedDate = formatSaleDate(transaction.created_at);
   const formattedTime = formatSaleTime(transaction.created_at);
 
-  const displayTitle =
-    transaction.sale?.product_name ||
-    transaction.notes ||
-    (isCharge ? 'Utang Transaction' : 'Payment Received');
+  const displayTitle = isCharge
+    ? transaction.sale?.product_name || transaction.notes || 'Utang Transaction'
+    : 'Payment Received';
 
   const saleInfo = transaction.sale;
   const isMultiItem = (saleInfo?.item_count ?? 1) > 1;
@@ -64,6 +63,13 @@ export function CreditTransactionCard({
       unitSummary = `${saleInfo.quantity} ${saleInfo.unit || 'units'}`;
     }
   }
+
+  const paymentNoteSubtitle =
+    !isCharge &&
+    transaction.notes &&
+    transaction.notes.toLowerCase() !== 'customer payment'
+      ? transaction.notes
+      : null;
 
   const referenceTag = transaction.sale_id
     ? `#${transaction.sale_id.slice(0, 8).toUpperCase()}`
@@ -125,6 +131,13 @@ export function CreditTransactionCard({
               numberOfLines={1}
               maxFontSizeMultiplier={1.2}>
               {unitSummary}
+            </Text>
+          ) : paymentNoteSubtitle ? (
+            <Text
+              style={styles.itemSubtitle}
+              numberOfLines={1}
+              maxFontSizeMultiplier={1.2}>
+              {paymentNoteSubtitle}
             </Text>
           ) : transaction.notes && transaction.notes !== displayTitle ? (
             <Text
@@ -275,7 +288,7 @@ const styles = StyleSheet.create({
     fontSize: Typography.sizes.base,
     fontWeight: Typography.weights.bold,
     color: Colors.textPrimary,
-    lineHeight: Typography.lineHeights.heading,
+    lineHeight: Typography.lineHeights.relaxed,
   },
   itemSubtitle: {
     fontSize: Typography.sizes.caption,

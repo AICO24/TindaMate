@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   Alert,
   Linking,
@@ -26,7 +26,8 @@ import {
   WarningTriangleIcon,
 } from '@/components/dashboard/DashboardNavIcons';
 import { ProductScreenHeader } from '@/components/products/ProductScreenHeader';
-import { AlertCircleIcon, CheckIcon } from '@/components/ui/AuthIcons';
+import { CheckIcon } from '@/components/ui/AuthIcons';
+import { FilterChipItem, FilterChipRow } from '@/components/ui/FilterChipRow';
 import { TindaMateButton } from '@/components/ui/TindaMateButton';
 import {
   BorderRadius,
@@ -51,6 +52,8 @@ import {
   CustomerWithCredit,
 } from '@/types/customer';
 
+type LedgerFilter = 'all' | 'charge' | 'payment';
+
 function getCustomerInitials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return '?';
@@ -70,7 +73,10 @@ function getCustomerInitials(name: string): string {
  * 6. Completely read-only (No payment or settlement actions in Batch 8D)
  */
 export default function CustomerDetailsScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, status } = useLocalSearchParams<{
+    id: string;
+    status?: string;
+  }>();
   const customerId = Array.isArray(id) ? id[0] : id;
   const { width: windowWidth } = useWindowDimensions();
   const isNarrowPhone = windowWidth < 360;
@@ -79,10 +85,21 @@ export default function CustomerDetailsScreen() {
   const [transactions, setTransactions] = useState<CustomerCreditTransaction[]>(
     []
   );
+  const [ledgerFilter, setLedgerFilter] = useState<LedgerFilter>('all');
+  const [isBannerDismissed, setIsBannerDismissed] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const rawStatus = Array.isArray(status) ? status[0] : status;
+  const feedbackBanner = isBannerDismissed
+    ? null
+    : rawStatus === 'created'
+    ? 'Customer added to your store ledger.'
+    : rawStatus === 'updated'
+    ? 'Customer details updated.'
+    : null;
 
   // Payment Modal & Submission State
   const [isPaymentModalVisible, setIsPaymentModalVisible] = useState(false);
@@ -288,6 +305,35 @@ export default function CustomerDetailsScreen() {
     ? formatSaleDate(lastTransAt)
     : 'No transactions yet';
 
+  const { chargeCount, paymentCount } = useMemo(() => {
+    let charges = 0;
+    let payments = 0;
+    for (const tx of transactions) {
+      if (tx.transaction_type === 'payment') {
+        payments += 1;
+      } else {
+        charges += 1;
+      }
+    }
+    return { chargeCount: charges, paymentCount: payments };
+  }, [transactions]);
+
+  const ledgerFilterItems: FilterChipItem<LedgerFilter>[] = useMemo(
+    () => [
+      { id: 'all', label: 'All', count: transactions.length },
+      { id: 'charge', label: 'Utang Charges', count: chargeCount },
+      { id: 'payment', label: 'Payments', count: paymentCount },
+    ],
+    [transactions.length, chargeCount, paymentCount]
+  );
+
+  const filteredTransactions = useMemo(() => {
+    if (ledgerFilter === 'all') {
+      return transactions;
+    }
+    return transactions.filter((tx) => tx.transaction_type === ledgerFilter);
+  }, [transactions, ledgerFilter]);
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <StatusBar style="light" />
@@ -296,7 +342,11 @@ export default function CustomerDetailsScreen() {
         <ProductScreenHeader
           title={customer ? customer.name : 'Customer Details'}
           subtitle={
-            customer?.is_active ? 'Active Customer' : 'Inactive Customer'
+            customer
+              ? customer.phone
+                ? `${customer.phone} · Customer Ledger`
+                : 'Customer Credit Ledger'
+              : undefined
           }
           showBack={true}
           onBack={handleBack}
@@ -324,6 +374,28 @@ export default function CustomerDetailsScreen() {
               styles.bodyContainer,
               isNarrowPhone && styles.bodyContainerCompact,
             ]}>
+            {/* Post-Save Confirmation Banner */}
+            {feedbackBanner ? (
+              <View
+                style={styles.successBanner}
+                accessibilityRole="alert"
+                accessibilityLiveRegion="polite">
+                <View style={styles.successLeft}>
+                  <View style={styles.successIconCircle}>
+                    <CheckIcon size={12} color={Colors.textInverse} />
+                  </View>
+                  <Text style={styles.successBannerText}>{feedbackBanner}</Text>
+                </View>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Dismiss notification"
+                  onPress={() => setIsBannerDismissed(true)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Text style={styles.successDismissText}>✕</Text>
+                </Pressable>
+              </View>
+            ) : null}
+
             {/* Error Banner when customer was already loaded */}
             {errorMessage && customer ? (
               <DashboardErrorBanner
@@ -568,14 +640,6 @@ export default function CustomerDetailsScreen() {
                     </Text>
                     <Text style={styles.lastActivityValue}>{formattedDate}</Text>
                   </View>
-
-                  {/* Informational Hint */}
-                  <View style={styles.infoBanner}>
-                    <AlertCircleIcon size={16} color={Colors.pastel.blue.accent} />
-                    <Text style={styles.infoBannerText}>
-                      Purchases recorded as Utang from the POS are automatically logged into this customer&apos;s credit ledger.
-                    </Text>
-                  </View>
                 </View>
 
                 {/* 3. Utang / Credit Transaction History Section */}
@@ -596,6 +660,16 @@ export default function CustomerDetailsScreen() {
                     )}
                   </View>
 
+                  {transactions.length > 0 ? (
+                    <FilterChipRow<LedgerFilter>
+                      items={ledgerFilterItems}
+                      selectedId={ledgerFilter}
+                      onSelect={setLedgerFilter}
+                      accessibilityLabelPrefix="Filter ledger by"
+                      contentContainerStyle={styles.ledgerFilterContent}
+                    />
+                  ) : null}
+
                   {transactions.length === 0 ? (
                     /* Clean Empty State for Customer with no credit transactions */
                     <View style={styles.emptyHistoryCard}>
@@ -606,13 +680,34 @@ export default function CustomerDetailsScreen() {
                         No Credit Transactions Yet
                       </Text>
                       <Text style={styles.emptyHistorySubtitle}>
-                        This customer currently has no recorded utang or credit transactions in your store.
+                        Purchases recorded as Utang from the POS are
+                        automatically logged here.
                       </Text>
+                    </View>
+                  ) : filteredTransactions.length === 0 ? (
+                    <View style={styles.emptyHistoryCard}>
+                      <Text style={styles.emptyHistoryTitle}>
+                        {ledgerFilter === 'payment'
+                          ? 'No Payments Recorded Yet'
+                          : 'No Utang Charges Recorded'}
+                      </Text>
+                      <Text style={styles.emptyHistorySubtitle}>
+                        {ledgerFilter === 'payment'
+                          ? 'This customer has no recorded payment entries in this ledger yet.'
+                          : 'This customer has no recorded utang charge entries.'}
+                      </Text>
+                      <View style={styles.emptyFilterAction}>
+                        <TindaMateButton
+                          title="Show All Transactions"
+                          variant="secondary"
+                          onPress={() => setLedgerFilter('all')}
+                        />
+                      </View>
                     </View>
                   ) : (
                     /* Populated Transaction List */
                     <View style={styles.transactionsList}>
-                      {transactions.map((tx) => (
+                      {filteredTransactions.map((tx) => (
                         <CreditTransactionCard
                           key={tx.id}
                           transaction={tx}
@@ -633,7 +728,7 @@ export default function CustomerDetailsScreen() {
                         ? 'Deactivate Customer'
                         : 'Reactivate Customer'
                     }
-                    variant={customer.is_active ? 'secondary' : 'primary'}
+                    variant={customer.is_active ? 'danger' : 'primary'}
                     onPress={handleToggleActive}
                     disabled={isUpdatingStatus}
                     accessibilityLabel={
@@ -708,11 +803,50 @@ const styles = StyleSheet.create({
   loadingCard: {
     backgroundColor: Colors.surface,
     borderRadius: BorderRadius.xl,
-    padding: Spacing.six,
+    paddingVertical: Spacing.five,
+    paddingHorizontal: Spacing.four,
     alignItems: 'center',
     gap: Spacing.three,
     borderWidth: 1,
     borderColor: Colors.border,
+  },
+  successBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.successLight,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: Colors.primaryBorder,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.twoHalf,
+    gap: Spacing.two,
+    ...Shadows.xs,
+  },
+  successLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  successIconCircle: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: Colors.success,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  successBannerText: {
+    flex: 1,
+    fontSize: Typography.sizes.bodySm,
+    fontWeight: Typography.weights.bold,
+    color: Colors.successText,
+  },
+  successDismissText: {
+    fontSize: Typography.sizes.body,
+    color: Colors.successText,
+    fontWeight: Typography.weights.bold,
   },
   loadingText: {
     fontSize: Typography.sizes.body,
@@ -1062,24 +1196,17 @@ const styles = StyleSheet.create({
     fontWeight: Typography.weights.bold,
     color: Colors.textPrimary,
   },
-  infoBanner: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: Spacing.two,
-    backgroundColor: Colors.pastel.blue.bg,
-    borderRadius: BorderRadius.md,
-    padding: Spacing.three,
-    borderWidth: 1,
-    borderColor: Colors.pastel.blue.border,
-  },
-  infoBannerText: {
-    flex: 1,
-    fontSize: Typography.sizes.xs,
-    color: Colors.pastel.blue.accent,
-    lineHeight: Typography.lineHeights.normal,
-  },
   historySection: {
     gap: Spacing.twoHalf,
+  },
+  ledgerFilterContent: {
+    paddingHorizontal: 0,
+    paddingVertical: 2,
+  },
+  emptyFilterAction: {
+    width: '100%',
+    maxWidth: 240,
+    marginTop: Spacing.two,
   },
   historyHeaderRow: {
     flexDirection: 'row',
@@ -1121,7 +1248,8 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.xl,
     borderWidth: 1,
     borderColor: Colors.border,
-    padding: Spacing.six,
+    paddingVertical: Spacing.five,
+    paddingHorizontal: Spacing.four,
     alignItems: 'center',
     gap: Spacing.two,
     ...Shadows.xs,

@@ -58,7 +58,7 @@ export default function AddCustomerScreen() {
       const created = await createStoreCustomer(input);
 
       // Navigate directly to the newly created customer details
-      router.replace(`/customers/${created.id}` as any);
+      router.replace(`/customers/${created.id}?status=created` as any);
     } catch (err: unknown) {
       const msg =
         err instanceof Error
